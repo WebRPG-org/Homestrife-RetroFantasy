@@ -95,17 +95,20 @@
 	const rpParams = PluginManager.parameters('RetroPixels');
 	parseRPParameters();
 	
+	// plugin variables
+	let curTextImage = 0;
+	
 	// helper functions
 	function parseRPParameters() {
 		rpParams.retroPixelSize = parseRPInt(rpParams.retroPixelSize, 3, 1);
-		rpParams.iconW = parseRPInt(rpParams.iconW, 8, 1);
-		rpParams.iconH = parseRPInt(rpParams.iconH, 8, 1);
+		rpParams.iconW = parseRPInt(rpParams.iconW, 8, 1)*rpParams.retroPixelSize;
+		rpParams.iconH = parseRPInt(rpParams.iconH, 8, 1)*rpParams.retroPixelSize;
 		rpParams.useTextImages = rpParams.useTextImages === 'true';
 		rpParams.textImages = JSON.parse(rpParams.textImages);
 		for(const textImageInfoStringIndex in rpParams.textImages) {
 			const textImageInfo = JSON.parse(rpParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parseRPInt(textImageInfo.characterW, 8, 1);
-			textImageInfo.characterH = parseRPInt(textImageInfo.characterH, 8, 1);
+			textImageInfo.characterW = parseRPInt(textImageInfo.characterW, 8, 1)*rpParams.retroPixelSize;
+			textImageInfo.characterH = parseRPInt(textImageInfo.characterH, 8, 1)*rpParams.retroPixelSize;
 			rpParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
 	}
@@ -120,8 +123,7 @@
 	
 	// Bitmap
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
-		const blah = rpParams;
-		if(false) {
+		if(rpParams.useTextImages && rpParams.textImages.length > 0) {
 			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
 		} else {
 			this.drawTextFromFont(text, x, y, maxWidth, lineHeight, align);
@@ -157,16 +159,30 @@
 	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align) {
 		const context = this.context;
 		maxWidth = maxWidth || 0xffffffff;
+		const textImage = rpParams.textImages[curTextImage] === undefined ? rpParams.textImages[0] : rpParams.textImages[curTextImage];
 		let tx = x;
-		let ty = Math.round(y + lineHeight / 2 + this.fontSize * 0.35);
+		let ty = y;
 		if (align === "center") {
-			tx += maxWidth / 2;
+			tx += maxWidth / 2 - (text.length*textImage.characterW) / 2;
 		}
 		if (align === "right") {
-			tx += maxWidth;
+			tx += maxWidth - text.length*textImage.characterW;
 		}
-		for(const c in text) {
-			
+		const bmp = ImageManager.loadBitmapFromUrl(textImage.file + ".png");
+		let curTx = tx;
+		for(let i = 0; i < text.length; i++) {
+			if(curTx + textImage.characterW > maxWidth) { break; }
+			const c = text.charCodeAt(i);
+			this.blt(
+				bmp,
+				(c-33)*textImage.characterW,
+				0,
+				textImage.characterW,
+				textImage.characterH,
+				curTx,
+				ty
+			);
+			curTx += textImage.characterW;
 		}
 	};
 })();

@@ -1,39 +1,23 @@
 //=============================================================================
-// RPG Maker MZ - Retro Pixels
+// RPG Maker MZ - Pixel Perfect
 //=============================================================================
 
 /*:
  * @target MZ
- * @plugindesc Adjustments and options for retro-style graphics
+ * @plugindesc Adjustments and options for different resolutions.
  * @author Jonathan "Darlos9D" Royal
  *
- * @help RetroPixels.js
+ * @help PixelPerfect.js
  *
- * A plugin that helps emulate retro graphics found in early generation video
- * game consoles. Aids in UI window sizing and positioning, cursor handling,
- * screen scrolling, image-based text, audio channels, and on-the-fly color
- * shifting.
- *
- * The plugin's features are dependent on "retro pixel size." This parameter
- * allows for consistent handling of graphics that appear low-resolution.
- * Graphics should be designed with this size in mind. For instance, with a
- * retro pixel size of 3, graphics should be designed with an artifically
- * pixelated appearance, where each 'pixel' is a 3x3 square of real pixels. A
- * retro pixel size of 1 will effectively disable this feature and allow a
- * plugin developer to handle resolution in their own way, but this will result
- * in very small graphics in the RPG Maker editor interface, possibly making
- * graphics difficult to see and position. Conveniently, a retro pixel size of
- * 3 plays nicely with the default game resolution of 816x624, and 17x13 tiles.
- * It results in a virtual resolution of 272x208, and each tile measuring 16x16
- * virtual pixels. This is very similar to actual retro console specifications.
+ * PLUGIN DESCRIPTION HERE
  *
  * This plugin does not provide plugin commands.
  * 
- * @param retroPixelSize
- * @text Retro Pixel Size
- * @desc The size of retro pixels, measured in real image pixels. Affects size/position/scroll/movement logic.
+ * @param tileSize
+ * @text Tile Size
+ * @desc The size of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
  * @type number
- * @default 3
+ * @default 48
  * @min 1
  * @decimals 0
  *
@@ -51,17 +35,17 @@
  *
  * @param iconW
  * @text Icon width
- * @desc The width of icons, in retro pixels.
+ * @desc The width of icons, measured in pixels.
  * @type number
- * @default 8
+ * @default 32
  * @min 1
  * @decimals 0
  *
  * @param iconH
  * @text Icon Height
- * @desc The height of icons, in retro pixels.
+ * @desc The height of icons, measured in pixels.
  * @type number
- * @default 8
+ * @default 32
  * @min 1
  * @decimals 0
  */
@@ -75,17 +59,17 @@
  *
  * @param characterW
  * @text Character width
- * @desc The width of an individual text character, in retro pixels.
+ * @desc The width of an individual text character, measured in pixels.
  * @type number
- * @default 8
+ * @default 32
  * @min 1
  * @decimals 0
  *
  * @param characterH
  * @text Character Height
- * @desc The height of an individual text character, in retro pixels.
+ * @desc The height of an individual text character, measured in pixels.
  * @type number
- * @default 8
+ * @default 32
  * @min 1
  * @decimals 0
  */
@@ -100,15 +84,15 @@
 	
 	// helper functions
 	function parseRPParameters() {
-		rpParams.retroPixelSize = parseRPInt(rpParams.retroPixelSize, 3, 1);
-		rpParams.iconW = parseRPInt(rpParams.iconW, 8, 1)*rpParams.retroPixelSize;
-		rpParams.iconH = parseRPInt(rpParams.iconH, 8, 1)*rpParams.retroPixelSize;
+		rpParams.tileSize = parseRPInt(rpParams.tileSize, 48, 1);
+		rpParams.iconW = parseRPInt(rpParams.iconW, 32, 1);
+		rpParams.iconH = parseRPInt(rpParams.iconH, 32, 1);
 		rpParams.useTextImages = rpParams.useTextImages === 'true';
 		rpParams.textImages = JSON.parse(rpParams.textImages);
 		for(const textImageInfoStringIndex in rpParams.textImages) {
 			const textImageInfo = JSON.parse(rpParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parseRPInt(textImageInfo.characterW, 8, 1)*rpParams.retroPixelSize;
-			textImageInfo.characterH = parseRPInt(textImageInfo.characterH, 8, 1)*rpParams.retroPixelSize;
+			textImageInfo.characterW = parseRPInt(textImageInfo.characterW, 32, 1);
+			textImageInfo.characterH = parseRPInt(textImageInfo.characterH, 32, 1);
 			rpParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
 	}

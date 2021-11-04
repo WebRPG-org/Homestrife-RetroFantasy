@@ -13,13 +13,26 @@
  *
  * This plugin does not provide plugin commands.
  * 
- * @param tileSize
- * @text Tile Size
- * @desc The size of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
+ * @param tileWidth
+ * @text Tile Width
+ * @desc The width of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
  * @type number
  * @default 48
  * @min 1
  * @decimals 0
+ * 
+ * @param tileHeight
+ * @text Tile Height
+ * @desc The height of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param imageFileTag
+ * @text Image File Tag
+ * @desc The tag to be added to image files that represent ingame graphics and are scaled to the tile size.
+ * @type string
  *
  * @param useTextImages
  * @text Use Text Images
@@ -76,28 +89,29 @@
  
 (() => {
 	// plugin parameters
-	const rpParams = PluginManager.parameters('RetroPixels');
-	parseRPParameters();
+	const ppParams = PluginManager.parameters('PixelPerfect');
+	parsePPParameters();
 	
 	// plugin variables
 	let curTextImage = 0;
 	
 	// helper functions
-	function parseRPParameters() {
-		rpParams.tileSize = parseRPInt(rpParams.tileSize, 48, 1);
-		rpParams.iconW = parseRPInt(rpParams.iconW, 32, 1);
-		rpParams.iconH = parseRPInt(rpParams.iconH, 32, 1);
-		rpParams.useTextImages = rpParams.useTextImages === 'true';
-		rpParams.textImages = JSON.parse(rpParams.textImages);
-		for(const textImageInfoStringIndex in rpParams.textImages) {
-			const textImageInfo = JSON.parse(rpParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parseRPInt(textImageInfo.characterW, 32, 1);
-			textImageInfo.characterH = parseRPInt(textImageInfo.characterH, 32, 1);
-			rpParams.textImages[textImageInfoStringIndex] = textImageInfo;
+	function parsePPParameters() {
+		ppParams.tileWidth = parsePPInt(ppParams.tileWidth, 48, 1);
+		ppParams.tileHeight = parsePPInt(ppParams.tileHeight, 48, 1);
+		ppParams.iconW = parsePPInt(ppParams.iconW, 32, 1);
+		ppParams.iconH = parsePPInt(ppParams.iconH, 32, 1);
+		ppParams.useTextImages = ppParams.useTextImages === 'true';
+		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
+		for(const textImageInfoStringIndex in ppParams.textImages) {
+			const textImageInfo = JSON.parse(ppParams.textImages[textImageInfoStringIndex]);
+			textImageInfo.characterW = parsePPInt(textImageInfo.characterW, 32, 1);
+			textImageInfo.characterH = parsePPInt(textImageInfo.characterH, 32, 1);
+			ppParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
 	}
 	
-	function parseRPInt(string, defaultValue, min, max) {
+	function parsePPInt(string, defaultValue, min, max) {
 		let parsedValue = parseInt(string);
 		if(parsedValue === NaN) { return defaultValue; }
 		if(min !== undefined) { parsedValue = Math.max(min, parsedValue); }
@@ -105,45 +119,25 @@
 		return parsedValue;
 	}
 	
+	function parsePPJSON(string, defaultValue) {
+		if(string && string.length > 0) { return JSON.parse(string); }
+		return defaultValue;
+	}
+	
 	// Bitmap
+	const _Bitmap_drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
-		if(rpParams.useTextImages && rpParams.textImages.length > 0) {
+		if(ppParams.useTextImages && ppParams.textImages.length > 0) {
 			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
 		} else {
-			this.drawTextFromFont(text, x, y, maxWidth, lineHeight, align);
+			_Bitmap_drawText.call(this, text, x, y, maxWidth, lineHeight, align);
 		}
-	};
-	
-	Bitmap.prototype.drawTextFromFont = function(text, x, y, maxWidth, lineHeight, align) {
-		// [Note] Different browser makes different rendering with
-		//   textBaseline == 'top'. So we use 'alphabetic' here.
-		const context = this.context;
-		const alpha = context.globalAlpha;
-		maxWidth = maxWidth || 0xffffffff;
-		let tx = x;
-		let ty = Math.round(y + lineHeight / 2 + this.fontSize * 0.35);
-		if (align === "center") {
-			tx += maxWidth / 2;
-		}
-		if (align === "right") {
-			tx += maxWidth;
-		}
-		context.save();
-		context.font = this._makeFontNameText();
-		context.textAlign = align;
-		context.textBaseline = "alphabetic";
-		context.globalAlpha = 1;
-		this._drawTextOutline(text, tx, ty, maxWidth);
-		context.globalAlpha = alpha;
-		this._drawTextBody(text, tx, ty, maxWidth);
-		context.restore();
-		this._baseTexture.update();
 	};
 	
 	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align) {
 		const context = this.context;
 		maxWidth = maxWidth || 0xffffffff;
-		const textImage = rpParams.textImages[curTextImage] === undefined ? rpParams.textImages[0] : rpParams.textImages[curTextImage];
+		const textImage = ppParams.textImages[curTextImage] === undefined ? ppParams.textImages[0] : ppParams.textImages[curTextImage];
 		let tx = x;
 		let ty = y;
 		if (align === "center") {
@@ -168,5 +162,22 @@
 			);
 			curTx += textImage.characterW;
 		}
+	};
+	
+	// Tilemap
+	const _Tilemap_initialize = Tilemap.prototype.initialize;
+	Tilemap.prototype.initialize = function() {
+		_Tilemap_initialize.apply(this);
+		this._tileWidth = ppParams.tileWidth;
+		this._tileHeight = ppParams.tileHeight;
+	};
+	
+	// Game Map
+	Game_Map.prototype.tileWidth = function() {
+		return ppParams.tileWidth;;
+	};
+
+	Game_Map.prototype.tileHeight = function() {
+		return ppParams.tileHeight;;
 	};
 })();

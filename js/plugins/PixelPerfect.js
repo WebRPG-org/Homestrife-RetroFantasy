@@ -31,8 +31,9 @@
  *
  * @param imageFileTag
  * @text Image File Tag
- * @desc The tag to be added to image files that represent ingame graphics and are scaled to the tile size.
+ * @desc The tag to be added to the ends of the names of image files, that represent runtime graphics and are scaled to the tile size.
  * @type string
+ * @default _RUNTIME
  *
  * @param useTextImages
  * @text Use Text Images

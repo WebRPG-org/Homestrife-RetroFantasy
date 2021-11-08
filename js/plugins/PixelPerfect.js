@@ -143,6 +143,12 @@
 		return defaultValue;
 	}
 	
+	function directoryPath(dir) {
+		const path = require("path");
+		const base = path.dirname(process.mainModule.filename);
+		return path.join(base, dir);
+	}
+	
 	// Bitmap
 	const _Bitmap_drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
@@ -189,6 +195,14 @@
 		_Tilemap_initialize.apply(this);
 		this._tileWidth = ppParams.tileWidth;
 		this._tileHeight = ppParams.tileHeight;
+	};
+	
+	// Image Manager
+	const _ImageManager_loadBitmap = ImageManager.loadBitmap;
+	ImageManager.loadBitmap = function(folder, filename) {
+		const runtimeFilename = filename + ppParams.imageFileTag;
+		const fs = require("fs");
+		return _ImageManager_loadBitmap.call(this, folder, fs.existsSync(directoryPath(folder) + runtimeFilename + ".png") ? runtimeFilename : filename);
 	};
 	
 	// Game Map

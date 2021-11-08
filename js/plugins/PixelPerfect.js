@@ -48,7 +48,7 @@
  * @parent useTextImages
  *
  * @param iconW
- * @text Icon width
+ * @text Icon Width
  * @desc The width of icons, measured in pixels.
  * @type number
  * @default 32
@@ -60,6 +60,22 @@
  * @desc The height of icons, measured in pixels.
  * @type number
  * @default 32
+ * @min 1
+ * @decimals 0
+ *
+ * @param sideViewActorW
+ * @text Side View Actor Width
+ * @desc The width of side view battle actors, measured in pixels.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param sideViewActorH
+ * @text Side View Actor Height
+ * @desc The height of side view battle actors, measured in pixels.
+ * @type number
+ * @default 64
  * @min 1
  * @decimals 0
  */
@@ -102,6 +118,8 @@
 		ppParams.tileHeight = parsePPInt(ppParams.tileHeight, 48, 1);
 		ppParams.iconW = parsePPInt(ppParams.iconW, 32, 1);
 		ppParams.iconH = parsePPInt(ppParams.iconH, 32, 1);
+		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
+		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
 		ppParams.useTextImages = ppParams.useTextImages === 'true';
 		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
 		for(const textImageInfoStringIndex in ppParams.textImages) {

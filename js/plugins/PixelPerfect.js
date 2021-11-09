@@ -180,7 +180,6 @@
  * @desc The Y offset of the battle field, measured in pixels.
  * @type number
  * @default 24
- * @min 1
  * @decimals 0
  */
  
@@ -236,7 +235,7 @@
 		ppParams.mainCommandW = parsePPInt(ppParams.mainCommandW, 240, 1);
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
-		ppParams.battleFieldOffsetY = parsePPInt(ppParams.battleFieldOffsetY, 24, 1);
+		ppParams.battleFieldOffsetY = parsePPInt(ppParams.battleFieldOffsetY, 24);
 		ppParams.useTextImages = ppParams.useTextImages === 'true';
 		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
 		for(const textImageInfoStringIndex in ppParams.textImages) {

@@ -79,14 +79,6 @@
  * @min 1
  * @decimals 0
  *
- * @param buttonAreaH
- * @text Button Area Height
- * @desc The hidth of touch screen buttons area, measured in pixels.
- * @type number
- * @default 52
- * @min 1
- * @decimals 0
- *
  * @param iconW
  * @text Icon Width
  * @desc The width of icons, measured in pixels.
@@ -100,6 +92,22 @@
  * @desc The height of icons, measured in pixels.
  * @type number
  * @default 32
+ * @min 1
+ * @decimals 0
+ *
+ * @param faceW
+ * @text Face Width
+ * @desc The width of face images, measured in pixels.
+ * @type number
+ * @default 144
+ * @min 1
+ * @decimals 0
+ *
+ * @param faceH
+ * @text Face Height
+ * @desc The height of face images, measured in pixels.
+ * @type number
+ * @default 144
  * @min 1
  * @decimals 0
  *
@@ -135,30 +143,6 @@
  * @min 1
  * @decimals 0
  *
- * @param windowFileW
- * @text Window File Width
- * @desc The width of the window file, measured in pixels.
- * @type number
- * @default 192
- * @min 1
- * @decimals 0
- *
- * @param windowFileH
- * @text Window File Height
- * @desc The height of the window file, measured in pixels.
- * @type number
- * @default 192
- * @min 1
- * @decimals 0
- *
- * @param mainCommandW
- * @text Main Command Width
- * @desc The width of the main command area, measured in pixels.
- * @type number
- * @default 240
- * @min 1
- * @decimals 0
- *
  * @param sideViewActorW
  * @text Side View Actor Width
  * @desc The width of side view battle actors, measured in pixels.
@@ -173,13 +157,6 @@
  * @type number
  * @default 64
  * @min 1
- * @decimals 0
- *
- * @param battleFieldOffsetY
- * @text Battle Field Offset Y
- * @desc The Y offset of the battle field, measured in pixels.
- * @type number
- * @default 24
  * @decimals 0
  */
  
@@ -219,23 +196,23 @@
 	function parsePPParameters() {
 		ppParams.tileWidth = parsePPInt(ppParams.tileWidth, 48, 1);
 		ppParams.tileHeight = parsePPInt(ppParams.tileHeight, 48, 1);
+		
 		ppParams.balloonW = parsePPInt(ppParams.balloonW, 48, 1);
 		ppParams.balloonH = parsePPInt(ppParams.balloonH, 48, 1);
 		ppParams.buttonW = parsePPInt(ppParams.buttonW, 48, 1);
 		ppParams.buttonH = parsePPInt(ppParams.buttonH, 48, 1);
-		ppParams.buttonAreaH = parsePPInt(ppParams.buttonAreaH, 52, 1);
 		ppParams.iconW = parsePPInt(ppParams.iconW, 32, 1);
 		ppParams.iconH = parsePPInt(ppParams.iconH, 32, 1);
+		ppParams.faceW = parsePPInt(ppParams.faceW, 144, 1);
+		ppParams.faceH = parsePPInt(ppParams.faceH, 144, 1);
 		ppParams.stateW = parsePPInt(ppParams.stateW, 96, 1);
 		ppParams.stateH = parsePPInt(ppParams.stateH, 96, 1);
 		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
 		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
-		ppParams.windowFileW = parsePPInt(ppParams.windowFileW, 192, 1);
-		ppParams.windowFileH = parsePPInt(ppParams.windowFileH, 192, 1);
-		ppParams.mainCommandW = parsePPInt(ppParams.mainCommandW, 240, 1);
+		
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
-		ppParams.battleFieldOffsetY = parsePPInt(ppParams.battleFieldOffsetY, 24);
+		
 		ppParams.useTextImages = ppParams.useTextImages === 'true';
 		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
 		for(const textImageInfoStringIndex in ppParams.textImages) {
@@ -263,6 +240,38 @@
 		const path = require("path");
 		const base = path.dirname(process.mainModule.filename);
 		return path.join(base, dir);
+	}
+	
+	function ResScaleX() {
+		return $dataSystem.advanced.screenWidth / 816;
+	}
+	
+	function ResScaleY() {
+		return $dataSystem.advanced.screenHeight / 624;
+	}
+	
+	function ScaleResX(pixels) {
+		return Math.round(pixels * ResScaleX());
+	}
+	
+	function ScaleResY(pixels) {
+		return Math.round(pixels * ResScaleY());
+	}
+	
+	function UIScaleX() {
+		return $dataSystem.advanced.uiAreaWidth / 816;
+	}
+	
+	function UIScaleY() {
+		return $dataSystem.advanced.uiAreaHeight / 624;
+	}
+	
+	function ScaleUIX(pixels) {
+		return Math.round(pixels * UIScaleX());
+	}
+	
+	function ScaleUIY(pixels) {
+		return Math.round(pixels * UIScaleY());
 	}
 	
 	// Bitmap
@@ -314,6 +323,11 @@
 	};
 	
 	// Image Manager
+	ImageManager.iconWidth = ppParams.iconW;
+	ImageManager.iconHeight = ppParams.iconH;
+	ImageManager.faceWidth = ppParams.faceW;
+	ImageManager.faceHeight = ppParams.faceH;
+	
 	const _ImageManager_loadBitmap = ImageManager.loadBitmap;
 	ImageManager.loadBitmap = function(folder, filename) {
 		const runtimeFilename = filename + ppParams.imageFileTag;
@@ -331,16 +345,18 @@
 	};
 	
 	// Scene Base
+	const _Scene_Base_mainCommandWidth = Scene_Base.prototype.mainCommandWidth;
 	Scene_Base.prototype.mainCommandWidth = function() {
-		return ppParams.mainCommandW;
+		return ScaleUIX(_Scene_Base_mainCommandWidth.call(this));
 	};
 	
+	const _Scene_Base_buttonAreaHeight = Scene_Base.prototype.buttonAreaHeight;
 	Scene_Base.prototype.buttonAreaHeight = function() {
-		return ppParams.buttonAreaH;
+		return ScaleUIY(_Scene_Base_buttonAreaHeight.call(this));
 	};
 	
 	Scene_Base.prototype.buttonY = function() {
-		const offsetY = Math.floor((this.buttonAreaHeight() - ppParams.buttonH) / 2);
+		const offsetY = Math.floor((this.buttonAreaHeight() - ScaleUIY(48)) / 2);
 		return this.buttonAreaTop() + offsetY;
 	};
 	
@@ -390,7 +406,89 @@
 	};
 	
 	// Spriteset Battle
+	const _Spriteset_Battle_battleFieldOffsetY = Spriteset_Battle.prototype.battleFieldOffsetY;
 	Spriteset_Battle.prototype.battleFieldOffsetY = function() {
-		return ppParams.battleFieldOffsetY;
+		return ScaleResY(_Spriteset_Battle_battleFieldOffsetY.call(this));
+	};
+	
+	// Window Base
+	const _Window_Base_lineHeight = Window_Base.prototype.lineHeight;
+	Window_Base.prototype.lineHeight = function() {
+		return ScaleUIY(_Window_Base_lineHeight.call(this));
+	};
+	
+	const _Window_Base_itemPadding = Window_Base.prototype.itemPadding;
+	Window_Base.prototype.itemPadding = function() {
+		return ScaleUIX(_Window_Base_itemPadding.call(this));
+	};
+	
+	Window_Base.prototype.updateOpen = function() {
+		if (this._opening) {
+			this.openness += ScaleUIY(32);
+			if (this.isOpen()) {
+				this._opening = false;
+			}
+		}
+	};
+
+	Window_Base.prototype.updateClose = function() {
+		if (this._closing) {
+			this.openness -= ScaleUIY(32);
+			if (this.isClosed()) {
+				this._closing = false;
+			}
+		}
+	};
+	
+	Window_Base.prototype.drawItemName = function(item, x, y, width) {
+		if (item) {
+			const iconY = y + (this.lineHeight() - ImageManager.iconHeight) / 2;
+			const textMargin = ImageManager.iconWidth + ScaleUIX(4);
+			const itemWidth = Math.max(0, width - textMargin);
+			this.resetTextColor();
+			this.drawIcon(item.iconIndex, x, iconY);
+			this.drawText(item.name, x + textMargin, y, itemWidth);
+		}
+	};
+
+	Window_Base.prototype.drawCurrencyValue = function(value, unit, x, y, width) {
+		const unitWidth = Math.min(ScaleUIX(80), this.textWidth(unit));
+		this.resetTextColor();
+		this.drawText(value, x, y, width - unitWidth - ScaleUIX(4), "right");
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(unit, x + width - unitWidth, y, unitWidth, "right");
+	};
+	
+	Window_Base.prototype.refreshDimmerBitmap = function() {
+		if (this._dimmerSprite) {
+			const bitmap = this._dimmerSprite.bitmap;
+			const w = this.width > 0 ? this.width + ScaleUIX(8) : 0;
+			const h = this.height;
+			const m = this.padding;
+			const c1 = ColorManager.dimColor1();
+			const c2 = ColorManager.dimColor2();
+			bitmap.resize(w, h);
+			bitmap.gradientFillRect(0, 0, w, m, c2, c1, true);
+			bitmap.fillRect(0, m, w, h - m * 2, c1);
+			bitmap.gradientFillRect(0, h - m, w, m, c1, c2, true);
+			this._dimmerSprite.setFrame(0, 0, w, h);
+		}
+	};
+	
+	// Window Selectable
+	const _Window_Selectable_colSpacing = Window_Selectable.prototype.colSpacing;
+	Window_Selectable.prototype.colSpacing = function() {
+		return ScaleUIX(_Window_Selectable_colSpacing.call(this));
+	};
+
+	const _Window_Selectable_rowSpacing = Window_Selectable.prototype.rowSpacing;
+	Window_Selectable.prototype.rowSpacing = function() {
+		return ScaleUIY(_Window_Selectable_rowSpacing.call(this));
+	};
+
+	// Window Status Base
+	const _Window_StatusBase_gaugeLineHeight = Window_StatusBase.prototype.gaugeLineHeight;
+	Window_StatusBase.prototype.gaugeLineHeight = function() {
+		return ScaleUIY(_Window_StatusBase_gaugeLineHeight.call(this));
 	};
 })();

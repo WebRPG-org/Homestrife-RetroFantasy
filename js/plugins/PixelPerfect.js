@@ -47,6 +47,38 @@
  * @type struct<textImageInfo>[]
  * @parent useTextImages
  *
+ * @param balloonW
+ * @text Balloon Width
+ * @desc The width of balloons, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param balloonH
+ * @text Balloon Height
+ * @desc The height of balloons, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param buttonW
+ * @text Button Width
+ * @desc The width of touch screen buttons, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param buttonH
+ * @text Button Height
+ * @desc The hidth of touch screen buttons, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
  * @param iconW
  * @text Icon Width
  * @desc The width of icons, measured in pixels.
@@ -60,6 +92,86 @@
  * @desc The height of icons, measured in pixels.
  * @type number
  * @default 32
+ * @min 1
+ * @decimals 0
+ *
+ * @param shadowOneW
+ * @text Shadow One Width
+ * @desc The width of the map shadow, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param shadowOneH
+ * @text Shadow One Height
+ * @desc The height of the map shadow, measured in pixels.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param shadowTwoW
+ * @text Shadow Two Width
+ * @desc The width of the battle shadow, measured in pixels.
+ * @type number
+ * @default 82
+ * @min 1
+ * @decimals 0
+ *
+ * @param shadowTwoH
+ * @text Shadow Two Height
+ * @desc The height of the battle shadow, measured in pixels.
+ * @type number
+ * @default 38
+ * @min 1
+ * @decimals 0
+ *
+ * @param stateW
+ * @text State Width
+ * @desc The width of battle state graphics, measured in pixels.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param stateH
+ * @text State Height
+ * @desc The height of battle state graphics, measured in pixels.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param weaponW
+ * @text Weapon Width
+ * @desc The width of battle weapon graphics, measured in pixels.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param weaponH
+ * @text Weapon Height
+ * @desc The height of battle weapon graphics, measured in pixels.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param windowW
+ * @text Window Width
+ * @desc The width of the window file, measured in pixels.
+ * @type number
+ * @default 192
+ * @min 1
+ * @decimals 0
+ *
+ * @param windowH
+ * @text Window Height
+ * @desc The height of the window file, measured in pixels.
+ * @type number
+ * @default 192
  * @min 1
  * @decimals 0
  *
@@ -116,8 +228,22 @@
 	function parsePPParameters() {
 		ppParams.tileWidth = parsePPInt(ppParams.tileWidth, 48, 1);
 		ppParams.tileHeight = parsePPInt(ppParams.tileHeight, 48, 1);
+		ppParams.balloonW = parsePPInt(ppParams.balloonW, 48, 1);
+		ppParams.balloonH = parsePPInt(ppParams.balloonH, 48, 1);
+		ppParams.buttonW = parsePPInt(ppParams.buttonW, 48, 1);
+		ppParams.buttonH = parsePPInt(ppParams.buttonH, 48, 1);
 		ppParams.iconW = parsePPInt(ppParams.iconW, 32, 1);
 		ppParams.iconH = parsePPInt(ppParams.iconH, 32, 1);
+		ppParams.shadowOneW = parsePPInt(ppParams.shadowOneW, 48, 1);
+		ppParams.shadowOneH = parsePPInt(ppParams.shadowOneH, 48, 1);
+		ppParams.shadowTwoW = parsePPInt(ppParams.shadowTwoW, 82, 1);
+		ppParams.shadowTwoH = parsePPInt(ppParams.shadowTwoH, 38, 1);
+		ppParams.stateW = parsePPInt(ppParams.stateW, 96, 1);
+		ppParams.stateH = parsePPInt(ppParams.stateH, 96, 1);
+		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
+		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
+		ppParams.windowW = parsePPInt(ppParams.windowW, 192, 1);
+		ppParams.windowH = parsePPInt(ppParams.windowH, 192, 1);
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
 		ppParams.useTextImages = ppParams.useTextImages === 'true';

@@ -79,6 +79,14 @@
  * @min 1
  * @decimals 0
  *
+ * @param buttonAreaH
+ * @text Button Area Height
+ * @desc The hidth of touch screen buttons area, measured in pixels.
+ * @type number
+ * @default 52
+ * @min 1
+ * @decimals 0
+ *
  * @param iconW
  * @text Icon Width
  * @desc The width of icons, measured in pixels.
@@ -92,38 +100,6 @@
  * @desc The height of icons, measured in pixels.
  * @type number
  * @default 32
- * @min 1
- * @decimals 0
- *
- * @param shadowOneW
- * @text Shadow One Width
- * @desc The width of the map shadow, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param shadowOneH
- * @text Shadow One Height
- * @desc The height of the map shadow, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param shadowTwoW
- * @text Shadow Two Width
- * @desc The width of the battle shadow, measured in pixels.
- * @type number
- * @default 82
- * @min 1
- * @decimals 0
- *
- * @param shadowTwoH
- * @text Shadow Two Height
- * @desc The height of the battle shadow, measured in pixels.
- * @type number
- * @default 38
  * @min 1
  * @decimals 0
  *
@@ -159,19 +135,27 @@
  * @min 1
  * @decimals 0
  *
- * @param windowW
- * @text Window Width
+ * @param windowFileW
+ * @text Window File Width
  * @desc The width of the window file, measured in pixels.
  * @type number
  * @default 192
  * @min 1
  * @decimals 0
  *
- * @param windowH
- * @text Window Height
+ * @param windowFileH
+ * @text Window File Height
  * @desc The height of the window file, measured in pixels.
  * @type number
  * @default 192
+ * @min 1
+ * @decimals 0
+ *
+ * @param mainCommandW
+ * @text Main Command Width
+ * @desc The width of the main command area, measured in pixels.
+ * @type number
+ * @default 240
  * @min 1
  * @decimals 0
  *
@@ -188,6 +172,14 @@
  * @desc The height of side view battle actors, measured in pixels.
  * @type number
  * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param battleFieldOffsetY
+ * @text Battle Field Offset Y
+ * @desc The Y offset of the battle field, measured in pixels.
+ * @type number
+ * @default 24
  * @min 1
  * @decimals 0
  */
@@ -232,20 +224,19 @@
 		ppParams.balloonH = parsePPInt(ppParams.balloonH, 48, 1);
 		ppParams.buttonW = parsePPInt(ppParams.buttonW, 48, 1);
 		ppParams.buttonH = parsePPInt(ppParams.buttonH, 48, 1);
+		ppParams.buttonAreaH = parsePPInt(ppParams.buttonAreaH, 52, 1);
 		ppParams.iconW = parsePPInt(ppParams.iconW, 32, 1);
 		ppParams.iconH = parsePPInt(ppParams.iconH, 32, 1);
-		ppParams.shadowOneW = parsePPInt(ppParams.shadowOneW, 48, 1);
-		ppParams.shadowOneH = parsePPInt(ppParams.shadowOneH, 48, 1);
-		ppParams.shadowTwoW = parsePPInt(ppParams.shadowTwoW, 82, 1);
-		ppParams.shadowTwoH = parsePPInt(ppParams.shadowTwoH, 38, 1);
 		ppParams.stateW = parsePPInt(ppParams.stateW, 96, 1);
 		ppParams.stateH = parsePPInt(ppParams.stateH, 96, 1);
 		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
 		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
-		ppParams.windowW = parsePPInt(ppParams.windowW, 192, 1);
-		ppParams.windowH = parsePPInt(ppParams.windowH, 192, 1);
+		ppParams.windowFileW = parsePPInt(ppParams.windowFileW, 192, 1);
+		ppParams.windowFileH = parsePPInt(ppParams.windowFileH, 192, 1);
+		ppParams.mainCommandW = parsePPInt(ppParams.mainCommandW, 240, 1);
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
+		ppParams.battleFieldOffsetY = parsePPInt(ppParams.battleFieldOffsetY, 24, 1);
 		ppParams.useTextImages = ppParams.useTextImages === 'true';
 		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
 		for(const textImageInfoStringIndex in ppParams.textImages) {
@@ -338,5 +329,69 @@
 
 	Game_Map.prototype.tileHeight = function() {
 		return ppParams.tileHeight;;
+	};
+	
+	// Scene Base
+	Scene_Base.prototype.mainCommandWidth = function() {
+		return ppParams.mainCommandW;
+	};
+	
+	Scene_Base.prototype.buttonAreaHeight = function() {
+		return ppParams.buttonAreaH;
+	};
+	
+	Scene_Base.prototype.buttonY = function() {
+		const offsetY = Math.floor((this.buttonAreaHeight() - ppParams.buttonH) / 2);
+		return this.buttonAreaTop() + offsetY;
+	};
+	
+	// Sprite Button
+	Sprite_Button.prototype.blockWidth = function() {
+		return ppParams.buttonW;
+	};
+
+	Sprite_Button.prototype.blockHeight = function() {
+		return ppParams.buttonH;
+	};
+	
+	// Sprite Balloon
+	Sprite_Balloon.prototype.updateFrame = function() {
+		const w = ppParams.balloonW;
+		const h = ppParams.balloonH;
+		const sx = this.frameIndex() * w;
+		const sy = (this._balloonId - 1) * h;
+		this.setFrame(sx, sy, w, h);
+	};
+	
+	// Sprite Weapon
+	Sprite_Weapon.prototype.updateFrame = function() {
+		if (this._weaponImageId > 0) {
+			const index = (this._weaponImageId - 1) % 12;
+			const w = ppParams.weaponW;
+			const h = ppParams.weaponH;
+			const sx = (Math.floor(index / 6) * 3 + this._pattern) * w;
+			const sy = Math.floor(index % 6) * h;
+			this.setFrame(sx, sy, w, h);
+		} else {
+			this.setFrame(0, 0, 0, 0);
+		}
+	};
+	
+	// Sprite State Overlay
+	Sprite_StateOverlay.prototype.updateFrame = function() {
+		if (this._overlayIndex > 0) {
+			const w = ppParams.stateW;
+			const h = ppParams.stateH;
+			const sx = this._pattern * w;
+			const sy = (this._overlayIndex - 1) * h;
+			this.setFrame(sx, sy, w, h);
+		} else {
+			this.setFrame(0, 0, 0, 0);
+		}
+	};
+	
+	// Spriteset Battle
+	Spriteset_Battle.prototype.battleFieldOffsetY = function() {
+		return ppParams.battleFieldOffsetY;
 	};
 })();

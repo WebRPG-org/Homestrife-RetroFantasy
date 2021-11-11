@@ -314,6 +314,20 @@
 		}
 	};
 	
+	const _Bitmap_measureTextWidth = Bitmap.prototype.measureTextWidth;
+	Bitmap.prototype.measureTextWidth = function(text) {
+		if(ppParams.useTextImages && ppParams.textImages.length > 0) {
+			this.measureTextWidthFromImage(text);
+		} else {
+			_Bitmap_measureTextWidth.call(this, text);
+		}
+	};
+	
+	Bitmap.prototype.measureTextWidthFromImage = function(text) {
+		const textImage = ppParams.textImages[curTextImage] === undefined ? ppParams.textImages[0] : ppParams.textImages[curTextImage];
+		return text.length * textImage.characterW;
+	};
+	
 	// Tilemap
 	const _Tilemap_initialize = Tilemap.prototype.initialize;
 	Tilemap.prototype.initialize = function() {
@@ -490,5 +504,296 @@
 	const _Window_StatusBase_gaugeLineHeight = Window_StatusBase.prototype.gaugeLineHeight;
 	Window_StatusBase.prototype.gaugeLineHeight = function() {
 		return ScaleUIY(_Window_StatusBase_gaugeLineHeight.call(this));
+	};
+	
+	Window_StatusBase.prototype.drawActorLevel = function(actor, x, y) {
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(TextManager.levelA, x, y, ScaleUIX(48));
+		this.resetTextColor();
+		this.drawText(actor.level, x + ScaleUIX(84), y, ScaleUIX(36), "right");
+	};
+	
+	Window_StatusBase.prototype.drawActorIcons = function(actor, x, y, width) {
+		width = width || 144;
+		const iconWidth = ImageManager.iconWidth;
+		const icons = actor.allIcons().slice(0, Math.floor(width / iconWidth));
+		let iconX = x;
+		for (const icon of icons) {
+			this.drawIcon(icon, iconX, y + ScaleUIY(2));
+			iconX += iconWidth;
+		}
+	};
+	
+	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
+		const lineHeight = this.lineHeight();
+		const x2 = x + ScaleUIX(180);
+		this.drawActorName(actor, x, y);
+		this.drawActorLevel(actor, x, y + lineHeight * 1);
+		this.drawActorIcons(actor, x, y + lineHeight * 2);
+		this.drawActorClass(actor, x2, y);
+		this.placeBasicGauges(actor, x2, y + lineHeight);
+	};
+	
+	
+	// Window Menu Status
+	Window_MenuStatus.prototype.drawItemImage = function(index) {
+		const actor = this.actor(index);
+		const rect = this.itemRect(index);
+		const width = ImageManager.faceWidth;
+		const height = rect.height - ScaleUIY(2);
+		this.changePaintOpacity(actor.isBattleMember());
+		this.drawActorFace(actor, rect.x + ScaleUIX(1), rect.y + ScaleUIY(1), width, height);
+		this.changePaintOpacity(true);
+	};
+	
+	Window_MenuStatus.prototype.drawItemStatus = function(index) {
+		const actor = this.actor(index);
+		const rect = this.itemRect(index);
+		const x = rect.x + ScaleUIX(180);
+		const y = rect.y + Math.floor(rect.height / 2 - this.lineHeight() * 1.5);
+		this.drawActorSimpleStatus(actor, x, y);
+	};
+	
+	// Window Item List
+	const _Window_ItemList_colSpacing = Window_ItemList.prototype.colSpacing;
+	Window_ItemList.prototype.colSpacing = function() {
+		return ScaleUIX(_Window_ItemList_colSpacing.call(this));
+	};
+	
+	// Window Skill Status
+	Window_SkillStatus.prototype.refresh = function() {
+		Window_StatusBase.prototype.refresh.call(this);
+		if (this._actor) {
+			const x = this.colSpacing() / 2;
+			const h = this.innerHeight;
+			const y = h / 2 - this.lineHeight() * 1.5;
+			this.drawActorFace(this._actor, x + ScaleUIX(1), 0, ScaleUIX(144), h);
+			this.drawActorSimpleStatus(this._actor, x + ScaleUIX(180), y);
+		}
+	};
+	
+	// Window Skill List
+	const _Window_SkillList_colSpacing = Window_SkillList.prototype.colSpacing;
+	Window_SkillList.prototype.colSpacing = function() {
+		return ScaleUIX(_Window_SkillList_colSpacing.call(this));
+	};
+	
+	// Window Equip Status
+	const _Window_EquipStatus_rightArrowWidth = Window_EquipStatus.prototype.rightArrowWidth;
+	Window_EquipStatus.prototype.rightArrowWidth = function() {
+		return ScaleUIX(_Window_EquipStatus_rightArrowWidth.call(this));
+	};
+
+	const _Window_EquipStatus_paramWidth = Window_EquipStatus.prototype.paramWidth;
+	Window_EquipStatus.prototype.paramWidth = function() {
+		return ScaleUIX(_Window_EquipStatus_paramWidth.call(this));
+	};
+	
+	// Window Equip Slot
+	const _Window_EquipSlot_slotNameWidth = Window_EquipSlot.prototype.slotNameWidth;
+	Window_EquipSlot.prototype.slotNameWidth = function() {
+		return ScaleUIX(_Window_EquipSlot_slotNameWidth.call(this));
+	};
+	
+	// Window Equip Item
+	const _Window_EquipItem_colSpacing = Window_EquipItem.prototype.colSpacing;
+	Window_EquipItem.prototype.colSpacing = function() {
+		return ScaleUIX(_Window_EquipItem_colSpacing.call(this));
+	};
+	
+	// Window Status
+	Window_Status.prototype.drawBlock2 = function() {
+		const y = this.block2Y();
+		this.drawActorFace(this._actor, ScaleUIX(12), y);
+		this.drawBasicInfo(ScaleUIX(204), y);
+		this.drawExpInfo(ScaleUIX(456), y);
+	};
+	
+	Window_Status.prototype.drawExpInfo = function(x, y) {
+		const lineHeight = this.lineHeight();
+		const expTotal = TextManager.expTotal.format(TextManager.exp);
+		const expNext = TextManager.expNext.format(TextManager.level);
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(expTotal, x, y + lineHeight * 0, ScaleUIX(270));
+		this.drawText(expNext, x, y + lineHeight * 2, ScaleUIX(270));
+		this.resetTextColor();
+		this.drawText(this.expTotalValue(), x, y + lineHeight * 1, ScaleUIX(270), "right");
+		this.drawText(this.expNextValue(), x, y + lineHeight * 3, ScaleUIX(270), "right");
+	};
+	
+	// Window Status Params
+	Window_StatusParams.prototype.drawItem = function(index) {
+		const rect = this.itemLineRect(index);
+		const paramId = index + 2;
+		const name = TextManager.param(paramId);
+		const value = this._actor.param(paramId);
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(name, rect.x, rect.y, ScaleUIX(160));
+		this.resetTextColor();
+		this.drawText(value, rect.x + ScaleUIX(160), rect.y, ScaleUIX(60), "right");
+	};
+	
+	// Window Status Equip
+	Window_StatusEquip.prototype.drawItem = function(index) {
+		const rect = this.itemLineRect(index);
+		const equips = this._actor.equips();
+		const item = equips[index];
+		const slotName = this.actorSlotName(this._actor, index);
+		const sw = ScaleUIX(138);
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(slotName, rect.x, rect.y, sw, rect.height);
+		this.drawItemName(item, rect.x + sw, rect.y, rect.width - sw);
+	};
+	
+	// Window Options
+	const _Window_Options_statusWidth = Window_Options.prototype.statusWidth;
+	Window_Options.prototype.statusWidth = function() {
+		return ScaleUIX(_Window_Options_statusWidth.call(this));
+	};
+	
+	// Window Savefile List
+	Window_SavefileList.prototype.drawTitle = function(savefileId, x, y) {
+		if (savefileId === 0) {
+			this.drawText(TextManager.autosave, x, y, ScaleUIX(180));
+		} else {
+			this.drawText(TextManager.file + " " + savefileId, x, y, ScaleUIX(180));
+		}
+	};
+
+	Window_SavefileList.prototype.drawContents = function(info, rect) {
+		const bottom = rect.y + rect.height;
+		if (rect.width >= ScaleUIX(420)) {
+			this.drawPartyCharacters(info, rect.x + ScaleUIX(220), bottom - ScaleUIY(8));
+		}
+		const lineHeight = this.lineHeight();
+		const y2 = bottom - lineHeight - ScaleUIY(4);
+		if (y2 >= lineHeight) {
+			this.drawPlaytime(info, rect.x, y2, rect.width);
+		}
+	};
+
+	Window_SavefileList.prototype.drawPartyCharacters = function(info, x, y) {
+		if (info.characters) {
+			let characterX = x;
+			for (const data of info.characters) {
+				this.drawCharacter(data[0], data[1], characterX, y);
+				characterX += ScaleUIX(48);
+			}
+		}
+	};
+	
+	// Window Shop Buy
+	const _Window_ShopBuy_priceWidth = Window_ShopBuy.prototype.priceWidth;
+	Window_ShopBuy.prototype.priceWidth = function() {
+		return ScaleUIX(_Window_ShopBuy_priceWidth.call(this));
+	};
+	
+	// Window Shop Number
+	const _Window_ShopNumber_buttonSpacing = Window_ShopNumber.prototype.buttonSpacing;
+	Window_ShopNumber.prototype.buttonSpacing = function() {
+		return ScaleUIX(_Window_ShopNumber_buttonSpacing.call(this));
+	};
+	
+	Window_ShopNumber.prototype.drawHorzLine = function() {
+		const padding = this.itemPadding();
+		const lineHeight = this.lineHeight();
+		const itemY = this.itemNameY();
+		const totalY = this.totalPriceY();
+		const x = padding;
+		const y = Math.floor((itemY + totalY + lineHeight) / 2);
+		const width = this.innerWidth - padding * 2;
+		this.drawRect(x, y, width, ScaleUIY(5));
+	};
+	
+	// Window Name Edit
+	Window_NameEdit.prototype.faceWidth = function() {
+		return ImageManager.faceWidth;
+	};
+	
+	Window_NameEdit.prototype.left = function() {
+		const nameCenter = (this.innerWidth + this.faceWidth()) / 2;
+		const nameWidth = (this._maxLength + ScaleUIX(1)) * this.charWidth();
+		return Math.min(nameCenter - nameWidth / 2, this.innerWidth - nameWidth);
+	};
+	
+	Window_NameEdit.prototype.itemRect = function(index) {
+		const x = this.left() + index * this.charWidth();
+		const y = ScaleUIY(54);
+		const width = this.charWidth();
+		const height = this.lineHeight();
+		return new Rectangle(x, y, width, height);
+	};
+	
+	Window_NameEdit.prototype.underlineRect = function(index) {
+		const rect = this.itemRect(index);
+		rect.x++;
+		rect.y += rect.height - ScaleUIY(4);
+		rect.width -= ScaleUIX(2);
+		rect.height = ScaleUIY(2);
+		return rect;
+	};
+	
+	// Window Name Input
+	const _Window_NameInput_groupSpacing = Window_NameInput.prototype.groupSpacing;
+	Window_NameInput.prototype.groupSpacing = function() {
+		return ScaleUIX(_Window_NameInput_groupSpacing.call(this));
+	};
+	
+	// Window Number Input
+	Window_NumberInput.prototype.updatePlacement = function() {
+		const messageY = this._messageWindow.y;
+		const spacing = ScaleUIY(8);
+		this.width = this.windowWidth();
+		this.height = this.windowHeight();
+		this.x = (Graphics.boxWidth - this.width) / 2;
+		if (messageY >= Graphics.boxHeight / 2) {
+			this.y = messageY - this.height - spacing;
+		} else {
+			this.y = messageY + this._messageWindow.height + spacing;
+		}
+	};
+	
+	Window_NumberInput.prototype.windowHeight = function() {
+		if (ConfigManager.touchUI) {
+			return this.fittingHeight(1) + this.buttonSpacing() + ScaleUIY(48);
+		} else {
+			return this.fittingHeight(1);
+		}
+	};
+	
+	const _Window_NumberInput_itemWidth = Window_NumberInput.prototype.itemWidth;
+	Window_NumberInput.prototype.itemWidth = function() {
+		return ScaleUIX(_Window_NumberInput_itemWidth.call(this));
+	};
+	
+	const _Window_NumberInput_buttonSpacing = Window_NumberInput.prototype.buttonSpacing;
+	Window_NumberInput.prototype.buttonSpacing = function() {
+		return ScaleUIY(_Window_NumberInput_buttonSpacing.call(this));
+	};
+	
+	// Window Event Item
+	Window_EventItem.prototype.placeCancelButton = function() {
+		if (this._cancelButton) {
+			const spacing = ScaleUIY(8);
+			const button = this._cancelButton;
+			if (this.y === 0) {
+				button.y = this.height + spacing;
+			} else if (this._messageWindow.y >= Graphics.boxHeight / 4) {
+				const distance = this.y - this._messageWindow.y;
+				button.y = -button.height - spacing - distance;
+			} else {
+				button.y = -button.height - spacing;
+			}
+			button.x = this.width - button.width - spacing;
+		}
+	};
+	
+	// Window Message
+	Window_Message.prototype.newLineX = function(textState) {
+		const faceExists = $gameMessage.faceName() !== "";
+		const faceWidth = ImageManager.faceWidth;
+		const spacing = ScaleUIX(20);
+		const margin = faceExists ? faceWidth + spacing : ScaleUIX(4);
+		return textState.rtl ? this.innerWidth - margin : margin;
 	};
 })();

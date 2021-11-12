@@ -1,5 +1,5 @@
 //=============================================================================
-// RPG Maker MZ - Pixel Perfect
+// RPG Maker MZ - Darlos9D's Pixel Perfect
 //=============================================================================
 
 /*:
@@ -7,7 +7,7 @@
  * @plugindesc Adjustments and options for different resolutions.
  * @author Jonathan "Darlos9D" Royal
  *
- * @help PixelPerfect.js
+ * @help D9D_PixelPerfect.js
  *
  * PLUGIN DESCRIPTION HERE
  *
@@ -158,6 +158,14 @@
  * @default 64
  * @min 1
  * @decimals 0
+ *
+ * @param windowFileSize
+ * @text Window File Size
+ * @desc The width and height of the system window file, measured in pixels.
+ * @type number
+ * @default 192
+ * @min 1
+ * @decimals 0
  */
  
 /*~struct~textImageInfo:
@@ -186,7 +194,7 @@
  
 (() => {
 	// plugin parameters
-	const ppParams = PluginManager.parameters('PixelPerfect');
+	const ppParams = PluginManager.parameters('D9D_PixelPerfect');
 	parsePPParameters();
 	
 	// plugin variables
@@ -209,6 +217,7 @@
 		ppParams.stateH = parsePPInt(ppParams.stateH, 96, 1);
 		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
 		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
+		ppParams.windowFileSize = parsePPInt(ppParams.windowFileSize, 192, 1);
 		
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
@@ -274,6 +283,14 @@
 		return Math.round(pixels * UIScaleY());
 	}
 	
+	function WindowImageScale(pixels) {
+		return ppParams.windowFileSize / 192;
+	}
+	
+	function ScaleWindowImage(pixels) {
+		return Math.round(pixels * WindowImageScale(pixels));
+	}
+	
 	// Bitmap
 	const _Bitmap_drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
@@ -334,6 +351,101 @@
 		_Tilemap_initialize.apply(this);
 		this._tileWidth = ppParams.tileWidth;
 		this._tileHeight = ppParams.tileHeight;
+	};
+	
+	// Window
+	const _Window_initialize = Window.prototype.initialize;
+	Window.prototype.initialize = function() {
+		_Window_initialize.call(this);
+		this._padding = ScaleUIY(12);
+		this._margin = ScaleUIY(4);
+	}
+	
+	Window.prototype._refreshBack = function() {
+		const m = this._margin;
+		const w = Math.max(0, this._width - m * 2);
+		const h = Math.max(0, this._height - m * 2);
+		const sprite = this._backSprite;
+		const tilingSprite = sprite.children[0];
+		// [Note] We use 95 instead of 96 here to avoid blurring edges.
+		sprite.bitmap = this._windowskin;
+		sprite.setFrame(0, 0, ScaleWindowImage(95), ScaleWindowImage(95));
+		sprite.move(m, m);
+		sprite.scale.x = w / ScaleWindowImage(95);
+		sprite.scale.y = h / ScaleWindowImage(95);
+		tilingSprite.bitmap = this._windowskin;
+		tilingSprite.setFrame(0, ScaleWindowImage(96), ScaleWindowImage(96), ScaleWindowImage(96));
+		tilingSprite.move(0, 0, w, h);
+		tilingSprite.scale.x = 1 / sprite.scale.x;
+		tilingSprite.scale.y = 1 / sprite.scale.y;
+		sprite.setColorTone(this._colorTone);
+	};
+	
+	Window.prototype._refreshFrame = function() {
+		const drect = { x: 0, y: 0, width: this._width, height: this._height };
+		const srect = { x: ScaleWindowImage(96), y: 0, width: ScaleWindowImage(96), height: ScaleWindowImage(96) };
+		const m = ScaleWindowImage(24);
+		for (const child of this._frameSprite.children) {
+			child.bitmap = this._windowskin;
+		}
+		this._setRectPartsGeometry(this._frameSprite, srect, drect, m);
+	};
+
+	Window.prototype._refreshCursor = function() {
+		const drect = this._cursorRect.clone();
+		const srect = { x: ScaleWindowImage(96), y: ScaleWindowImage(96), width: ScaleWindowImage(48), height: ScaleWindowImage(48) };
+		const m = ScaleWindowImage(4);
+		for (const child of this._cursorSprite.children) {
+			child.bitmap = this._windowskin;
+		}
+		this._setRectPartsGeometry(this._cursorSprite, srect, drect, m);
+	};
+	
+	Window.prototype._refreshArrows = function() {
+		const w = this._width;
+		const h = this._height;
+		const p = ScaleWindowImage(24);
+		const q = p / 2;
+		const sx = ScaleWindowImage(96) + p;
+		const sy = 0 + p;
+		this._downArrowSprite.bitmap = this._windowskin;
+		this._downArrowSprite.anchor.x = 0.5;
+		this._downArrowSprite.anchor.y = 0.5;
+		this._downArrowSprite.setFrame(sx + q, sy + q + p, p, q);
+		this._downArrowSprite.move(w / 2, h - q);
+		this._upArrowSprite.bitmap = this._windowskin;
+		this._upArrowSprite.anchor.x = 0.5;
+		this._upArrowSprite.anchor.y = 0.5;
+		this._upArrowSprite.setFrame(sx + q, sy, p, q);
+		this._upArrowSprite.move(w / 2, q);
+	};
+
+	Window.prototype._refreshPauseSign = function() {
+		const sx = ScaleWindowImage(144);
+		const sy = ScaleWindowImage(96);
+		const p = ScaleWindowImage(24);
+		this._pauseSignSprite.bitmap = this._windowskin;
+		this._pauseSignSprite.anchor.x = 0.5;
+		this._pauseSignSprite.anchor.y = 1;
+		this._pauseSignSprite.move(this._width / 2, this._height);
+		this._pauseSignSprite.setFrame(sx, sy, p, p);
+		this._pauseSignSprite.alpha = 0;
+	};
+	
+	Window.prototype._updatePauseSign = function() {
+		const sprite = this._pauseSignSprite;
+		const x = Math.floor(this._animationCount / 16) % 2;
+		const y = Math.floor(this._animationCount / 16 / 2) % 2;
+		const sx = ScaleWindowImage(144);
+		const sy = ScaleWindowImage(96);
+		const p = ScaleWindowImage(24);
+		if (!this.pause) {
+			sprite.alpha = 0;
+		} else if (sprite.alpha < 1) {
+			sprite.alpha = Math.min(sprite.alpha + 0.1, 1);
+		}
+		sprite.setFrame(sx + x * p, sy + y * p, p, p);
+		sprite.visible = this.isOpen();
 	};
 	
 	// Image Manager

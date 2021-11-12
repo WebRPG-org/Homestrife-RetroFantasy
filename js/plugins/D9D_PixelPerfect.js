@@ -13,6 +13,38 @@
  *
  * This plugin does not provide plugin commands.
  * 
+ * @param screenWidth
+ * @text Screen Width
+ * @desc The width of the main game area, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @type number
+ * @default 816
+ * @min 1
+ * @decimals 0
+ * 
+ * @param screenHeight
+ * @text Screen Height
+ * @desc The height of the main game area, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @type number
+ * @default 624
+ * @min 1
+ * @decimals 0
+ * 
+ * @param uiAreaWidth
+ * @text UI Area Width
+ * @desc The width of the game UI space, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @type number
+ * @default 816
+ * @min 1
+ * @decimals 0
+ * 
+ * @param uiAreaHeight
+ * @text UI Area Height
+ * @desc The height of the game UI space, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @type number
+ * @default 624
+ * @min 1
+ * @decimals 0
+ * 
  * @param tileWidth
  * @text Tile Width
  * @desc The width of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
@@ -202,6 +234,10 @@
 	
 	// helper functions
 	function parsePPParameters() {
+		ppParams.screenWidth = parsePPInt(ppParams.screenWidth, 816, 1);
+		ppParams.screenHeight = parsePPInt(ppParams.screenHeight, 624, 1);
+		ppParams.uiAreaWidth = parsePPInt(ppParams.uiAreaWidth, 816, 1);
+		ppParams.uiAreaHeight = parsePPInt(ppParams.uiAreaHeight, 624, 1);
 		ppParams.tileWidth = parsePPInt(ppParams.tileWidth, 48, 1);
 		ppParams.tileHeight = parsePPInt(ppParams.tileHeight, 48, 1);
 		
@@ -252,11 +288,11 @@
 	}
 	
 	function ResScaleX() {
-		return $dataSystem.advanced.screenWidth / 816;
+		return ppParams.screenWidth / 816;
 	}
 	
 	function ResScaleY() {
-		return $dataSystem.advanced.screenHeight / 624;
+		return ppParams.screenHeight / 624;
 	}
 	
 	function ScaleResX(pixels) {
@@ -268,11 +304,11 @@
 	}
 	
 	function UIScaleX() {
-		return $dataSystem.advanced.uiAreaWidth / 816;
+		return ppParams.uiAreaWidth / 816;
 	}
 	
 	function UIScaleY() {
-		return $dataSystem.advanced.uiAreaHeight / 624;
+		return ppParams.uiAreaHeight / 624;
 	}
 	
 	function ScaleUIX(pixels) {
@@ -493,9 +529,17 @@
 	};
 	
 	// Scene Boot
+	Scene_Boot.prototype.resizeScreen = function() {
+		const screenWidth = ppParams.screenWidth;
+		const screenHeight = ppParams.screenHeight;
+		Graphics.resize(screenWidth, screenHeight);
+		this.adjustBoxSize();
+		this.adjustWindow();
+	};
+	
 	Scene_Boot.prototype.adjustBoxSize = function() {
-		const uiAreaWidth = $dataSystem.advanced.uiAreaWidth;
-		const uiAreaHeight = $dataSystem.advanced.uiAreaHeight;
+		const uiAreaWidth = ppParams.uiAreaWidth;
+		const uiAreaHeight = ppParams.uiAreaHeight;
 		const boxMargin = 4;
 		Graphics.boxWidth = uiAreaWidth - ScaleUIX(boxMargin) * 2;
 		Graphics.boxHeight = uiAreaHeight - ScaleUIY(boxMargin) * 2;
@@ -729,6 +773,13 @@
 	};
 	
 	// Sprite Enemy
+	Sprite_Enemy.prototype.setBattler = function(battler) {
+		Sprite_Battler.prototype.setBattler.call(this, battler);
+		this._enemy = battler;
+		this.setHome(ScaleResX(battler.screenX()), ScaleResY(battler.screenY()));
+		this._stateIconSprite.setup(battler);
+	};
+	
 	Sprite_Enemy.prototype.updateStateSprite = function() {
 		this._stateIconSprite.y = -Math.round((this.bitmap.height + ScaleResY(40)) * 0.9);
 		if (this._stateIconSprite.y < ScaleResY(20) - this.y) {
@@ -875,6 +926,10 @@
 	const _Window_Base_itemPadding = Window_Base.prototype.itemPadding;
 	Window_Base.prototype.itemPadding = function() {
 		return ScaleUIX(_Window_Base_itemPadding.call(this));
+	};
+	
+	Window_Base.prototype.fittingHeight = function(numLines) {
+		return numLines * this.itemHeight() + $gameSystem.windowPadding() * 2;
 	};
 	
 	Window_Base.prototype.drawItemName = function(item, x, y, width) {

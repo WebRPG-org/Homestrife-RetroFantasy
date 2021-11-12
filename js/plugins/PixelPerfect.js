@@ -317,9 +317,9 @@
 	const _Bitmap_measureTextWidth = Bitmap.prototype.measureTextWidth;
 	Bitmap.prototype.measureTextWidth = function(text) {
 		if(ppParams.useTextImages && ppParams.textImages.length > 0) {
-			this.measureTextWidthFromImage(text);
+			return this.measureTextWidthFromImage(text);
 		} else {
-			_Bitmap_measureTextWidth.call(this, text);
+			return _Bitmap_measureTextWidth.call(this, text);
 		}
 	};
 	
@@ -347,6 +347,12 @@
 		const runtimeFilename = filename + ppParams.imageFileTag;
 		const fs = require("fs");
 		return _ImageManager_loadBitmap.call(this, folder, fs.existsSync(directoryPath(folder) + runtimeFilename + ".png") ? runtimeFilename : filename);
+	};
+	
+	// Game System
+	const _Game_System_windowPadding = Game_System.prototype.windowPadding;
+	Game_System.prototype.windowPadding = function() {
+		return ScaleUIX(_Game_System_windowPadding.call(this));
 	};
 	
 	// Game Map
@@ -591,11 +597,11 @@
 	};
 	
 	Sprite_Actor.prototype.moveToStartPosition = function() {
-		this.startMove(ScaleRexX(300), 0, 0);
+		this.startMove(ScaleResX(300), 0, 0);
 	};
 	
 	Sprite_Actor.prototype.setActorHome = function(index) {
-		this.setHome(ScaleResX(600) + index * 32, ScaleResY(280) + index * 48);
+		this.setHome(ScaleResX(600) + index * ScaleResX(32), ScaleResY(280) + index * ScaleResY(48));
 	};
 	
 	Sprite_Actor.prototype.stepForward = function() {

@@ -374,6 +374,187 @@
 		return this.buttonAreaTop() + offsetY;
 	};
 	
+	// Scene Boot
+	Scene_Boot.prototype.adjustBoxSize = function() {
+		const uiAreaWidth = $dataSystem.advanced.uiAreaWidth;
+		const uiAreaHeight = $dataSystem.advanced.uiAreaHeight;
+		const boxMargin = 4;
+		Graphics.boxWidth = uiAreaWidth - ScaleUIX(boxMargin) * 2;
+		Graphics.boxHeight = uiAreaHeight - ScaleUIY(boxMargin) * 2;
+	};
+	
+	// Scene Title
+	Scene_Title.prototype.drawGameTitle = function() {
+		const x = ScaleUIX(20);
+		const y = Graphics.height / 4;
+		const maxWidth = Graphics.width - x * 2;
+		const text = $dataSystem.gameTitle;
+		const bitmap = this._gameTitleSprite.bitmap;
+		bitmap.fontFace = $gameSystem.mainFontFace();
+		bitmap.outlineColor = "black";
+		bitmap.outlineWidth = ScaleUIX(8);
+		bitmap.fontSize = ScaleUIY(72);
+		bitmap.drawText(text, x, y, maxWidth, ScaleUIY(48), "center");
+	};
+	
+	Scene_Title.prototype.commandWindowRect = function() {
+		const offsetX = $dataSystem.titleCommandWindow.offsetX;
+		const offsetY = $dataSystem.titleCommandWindow.offsetY;
+		const ww = this.mainCommandWidth();
+		const wh = this.calcWindowHeight(3, true);
+		const wx = (Graphics.boxWidth - ww) / 2 + offsetX;
+		const wy = Graphics.boxHeight - wh - ScaleUIY(96) + offsetY;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Message
+	Scene_Message.prototype.messageWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = this.calcWindowHeight(4, false) + ScaleUIY(8);
+		const wx = (Graphics.boxWidth - ww) / 2;
+		const wy = 0;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Map
+	Scene_Map.prototype.mapNameWindowRect = function() {
+		const wx = 0;
+		const wy = 0;
+		const ww = ScaleUIX(360);
+		const wh = this.calcWindowHeight(1, false);
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Map.prototype.createMenuButton = function() {
+		this._menuButton = new Sprite_Button("menu");
+		this._menuButton.x = Graphics.boxWidth - this._menuButton.width - ScaleUIX(4);
+		this._menuButton.y = this.buttonY();
+		this._menuButton.visible = false;
+		this.addWindow(this._menuButton);
+	};
+	
+	// Scene Menu Base
+	Scene_MenuBase.prototype.createCancelButton = function() {
+		this._cancelButton = new Sprite_Button("cancel");
+		this._cancelButton.x = Graphics.boxWidth - this._cancelButton.width - ScaleUIX(4);
+		this._cancelButton.y = this.buttonY();
+		this.addWindow(this._cancelButton);
+	};
+	
+	Scene_MenuBase.prototype.createPageButtons = function() {
+		this._pageupButton = new Sprite_Button("pageup");
+		this._pageupButton.x = ScaleUIX(4);
+		this._pageupButton.y = this.buttonY();
+		const pageupRight = this._pageupButton.x + this._pageupButton.width;
+		this._pagedownButton = new Sprite_Button("pagedown");
+		this._pagedownButton.x = pageupRight + ScaleUIX(4);
+		this._pagedownButton.y = this.buttonY();
+		this.addWindow(this._pageupButton);
+		this.addWindow(this._pagedownButton);
+		this._pageupButton.setClickHandler(this.previousActor.bind(this));
+		this._pagedownButton.setClickHandler(this.nextActor.bind(this));
+	};
+	
+	// Scene Equip
+	const _Scene_Equip_statusWidth = Scene_Equip.prototype.statusWidth;
+	Scene_Equip.prototype.statusWidth = function() {
+		return ScaleUIX(_Scene_Equip_statusWidth.call(this));
+	};
+	
+	// Scene Status
+	const _Scene_Status_statusParamsWidth = Scene_Status.prototype.statusParamsWidth;
+	Scene_Status.prototype.statusParamsWidth = function() {
+		return ScaleUIX(_Scene_Status_statusParamsWidth.call(this));
+	};
+	
+	// Scene Options
+	Scene_Options.prototype.optionsWindowRect = function() {
+		const n = Math.min(this.maxCommands(), this.maxVisibleCommands());
+		const ww = ScaleUIX(400);
+		const wh = this.calcWindowHeight(n, true);
+		const wx = (Graphics.boxWidth - ww) / 2;
+		const wy = (Graphics.boxHeight - wh) / 2;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Shop
+	const _Scene_Shop_statusWidth = Scene_Shop.prototype.statusWidth;
+	Scene_Shop.prototype.statusWidth = function() {
+		return ScaleUIX(_Scene_Shop_statusWidth.call(this));
+	};
+	
+	// Scene Name
+	Scene_Name.prototype.editWindowRect = function() {
+		const inputWindowHeight = this.calcWindowHeight(9, true);
+		const padding = $gameSystem.windowPadding();
+		const ww = ScaleUIX(600);
+		const wh = ImageManager.faceHeight + padding * 2;
+		const wx = (Graphics.boxWidth - ww) / 2;
+		const wy = (Graphics.boxHeight - (wh + inputWindowHeight + ScaleUIY(8))) / 2;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Name.prototype.inputWindowRect = function() {
+		const wx = this._editWindow.x;
+		const wy = this._editWindow.y + this._editWindow.height + ScaleUIY(8);
+		const ww = this._editWindow.width;
+		const wh = this.calcWindowHeight(9, true);
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Debug
+	Scene_Debug.prototype.rangeWindowRect = function() {
+		const wx = 0;
+		const wy = 0;
+		const ww = ScaleUIX(246);
+		const wh = Graphics.boxHeight;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Battle
+	Scene_Battle.prototype.updateStatusWindowPosition = function() {
+		const statusWindow = this._statusWindow;
+		const targetX = this.statusWindowX();
+		if (statusWindow.x < targetX) {
+			statusWindow.x = Math.min(statusWindow.x + ScaleUIX(16), targetX);
+		}
+		if (statusWindow.x > targetX) {
+			statusWindow.x = Math.max(statusWindow.x - ScaleUIX(16), targetX);
+		}
+	};
+	
+	Scene_Battle.prototype.statusWindowRect = function() {
+		const extra = ScaleUIY(10);
+		const ww = Graphics.boxWidth - ScaleUIX(192);
+		const wh = this.windowAreaHeight() + extra;
+		const wx = this.isRightInputMode() ? 0 : Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh + extra - ScaleUIY(4);
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.partyCommandWindowRect = function() {
+		const ww = ScaleUIX(192);
+		const wh = this.windowAreaHeight();
+		const wx = this.isRightInputMode() ? Graphics.boxWidth - ww : 0;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.actorCommandWindowRect = function() {
+		const ww = ScaleUIX(192);
+		const wh = this.windowAreaHeight();
+		const wx = this.isRightInputMode() ? Graphics.boxWidth - ww : 0;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.createCancelButton = function() {
+		this._cancelButton = new Sprite_Button("cancel");
+		this._cancelButton.x = Graphics.boxWidth - this._cancelButton.width - ScaleUIX(4);
+		this._cancelButton.y = this.buttonY();
+		this.addWindow(this._cancelButton);
+	};
+	
 	// Sprite Button
 	Sprite_Button.prototype.blockWidth = function() {
 		return ppParams.buttonW;
@@ -434,24 +615,6 @@
 	const _Window_Base_itemPadding = Window_Base.prototype.itemPadding;
 	Window_Base.prototype.itemPadding = function() {
 		return ScaleUIX(_Window_Base_itemPadding.call(this));
-	};
-	
-	Window_Base.prototype.updateOpen = function() {
-		if (this._opening) {
-			this.openness += ScaleUIY(32);
-			if (this.isOpen()) {
-				this._opening = false;
-			}
-		}
-	};
-
-	Window_Base.prototype.updateClose = function() {
-		if (this._closing) {
-			this.openness -= ScaleUIY(32);
-			if (this.isClosed()) {
-				this._closing = false;
-			}
-		}
 	};
 	
 	Window_Base.prototype.drawItemName = function(item, x, y, width) {
@@ -795,5 +958,19 @@
 		const spacing = ScaleUIX(20);
 		const margin = faceExists ? faceWidth + spacing : ScaleUIX(4);
 		return textState.rtl ? this.innerWidth - margin : margin;
+	};
+	
+	// Window Battle Status
+	const _Window_BattleStatus_extraHeight = Window_BattleStatus.prototype.extraHeight;
+	Window_BattleStatus.prototype.extraHeight = function() {
+		return ScaleUIY(_Window_BattleStatus_extraHeight.call(this));
+	};
+	
+	Window_BattleStatus.prototype.updatePadding = function() {
+		this.padding = ScaleUIX(8);
+	};
+	
+	Window_BattleStatus.prototype.stateIconY = function(rect) {
+		return rect.y + ImageManager.iconHeight / 2 + ScaleUIY(4);
 	};
 })();

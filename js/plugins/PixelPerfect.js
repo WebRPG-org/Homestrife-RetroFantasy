@@ -564,27 +564,129 @@
 		return ppParams.buttonH;
 	};
 	
-	// Sprite Balloon
-	Sprite_Balloon.prototype.updateFrame = function() {
-		const w = ppParams.balloonW;
-		const h = ppParams.balloonH;
-		const sx = this.frameIndex() * w;
-		const sy = (this._balloonId - 1) * h;
-		this.setFrame(sx, sy, w, h);
+	// Sprite Battler
+	Sprite_Battler.prototype.createDamageSprite = function() {
+		const last = this._damages[this._damages.length - 1];
+		const sprite = new Sprite_Damage();
+		if (last) {
+			sprite.x = last.x + ScaleResX(8);
+			sprite.y = last.y - ScaleResY(16);
+		} else {
+			sprite.x = this.x + this.damageOffsetX();
+			sprite.y = this.y + this.damageOffsetY();
+		}
+		sprite.setup(this._battler);
+		this._damages.push(sprite);
+		this.parent.addChild(sprite);
 	};
 	
-	// Sprite Weapon
-	Sprite_Weapon.prototype.updateFrame = function() {
-		if (this._weaponImageId > 0) {
-			const index = (this._weaponImageId - 1) % 12;
-			const w = ppParams.weaponW;
-			const h = ppParams.weaponH;
-			const sx = (Math.floor(index / 6) * 3 + this._pattern) * w;
-			const sy = Math.floor(index % 6) * h;
-			this.setFrame(sx, sy, w, h);
-		} else {
-			this.setFrame(0, 0, 0, 0);
+	// Sprite Actor
+	Sprite_Actor.prototype.createShadowSprite = function() {
+		this._shadowSprite = new Sprite();
+		this._shadowSprite.bitmap = ImageManager.loadSystem("Shadow2");
+		this._shadowSprite.anchor.x = 0.5;
+		this._shadowSprite.anchor.y = 0.5;
+		this._shadowSprite.y = ScaleResY(-2);
+		this.addChild(this._shadowSprite);
+	};
+	
+	Sprite_Actor.prototype.moveToStartPosition = function() {
+		this.startMove(ScaleRexX(300), 0, 0);
+	};
+	
+	Sprite_Actor.prototype.setActorHome = function(index) {
+		this.setHome(ScaleResX(600) + index * 32, ScaleResY(280) + index * 48);
+	};
+	
+	Sprite_Actor.prototype.stepForward = function() {
+		this.startMove(ScaleResX(-48), 0, 12);
+	};
+	
+	Sprite_Actor.prototype.retreat = function() {
+		this.startMove(ScaleResX(300), 0, 30);
+	};
+	
+	Sprite_Actor.prototype.damageOffsetX = function() {
+		return Sprite_Battler.prototype.damageOffsetX.call(this) - ScaleResX(32);
+	};
+	
+	// Sprite Enemy
+	Sprite_Enemy.prototype.updateStateSprite = function() {
+		this._stateIconSprite.y = -Math.round((this.bitmap.height + ScaleResY(40)) * 0.9);
+		if (this._stateIconSprite.y < ScaleResY(20) - this.y) {
+			this._stateIconSprite.y = ScaleResY(20) - this.y;
 		}
+	};
+	
+	Sprite_Enemy.prototype.updateBossCollapse = function() {
+		this._shake = ScaleResX((this._effectDuration % 2) * 4 - 2);
+		this.blendMode = 1;
+		this.opacity *= this._effectDuration / (this._effectDuration + 1);
+		this.setBlendColor([255, 255, 255, 255 - this.opacity]);
+		if (this._effectDuration % 20 === 19) {
+			SoundManager.playBossCollapse2();
+		}
+	};
+	
+	Sprite_Enemy.prototype.damageOffsetY = function() {
+		return Sprite_Battler.prototype.damageOffsetY.call(this) - ScaleResY(8);
+	};
+	
+	// Sprite Damage
+	Sprite_Damage.prototype.createChildSprite = function(width, height) {
+		const sprite = new Sprite();
+		sprite.bitmap = this.createBitmap(width, height);
+		sprite.anchor.x = 0.5;
+		sprite.anchor.y = 1;
+		sprite.y = ScaleResY(-40);
+		sprite.ry = sprite.y;
+		this.addChild(sprite);
+		return sprite;
+	};
+	
+	// Sprite Gauge
+	Sprite_Gauge.prototype.bitmapWidth = function() {
+		return ScaleUIX(128);
+	};
+
+	Sprite_Gauge.prototype.bitmapHeight = function() {
+		return ScaleUIY(32);
+	};
+
+	Sprite_Gauge.prototype.textHeight = function() {
+		return ScaleUIY(24);
+	};
+
+	Sprite_Gauge.prototype.gaugeHeight = function() {
+		return ScaleUIY(12);
+	};
+	
+	Sprite_Gauge.prototype.gaugeX = function() {
+		if (this._statusType === "time") {
+			return 0;
+		} else {
+			return this.measureLabelWidth() + ScaleUIX(6);
+		}
+	};
+	
+	Sprite_Gauge.prototype.drawGaugeRect = function(x, y, width, height) {
+		const rate = this.gaugeRate();
+		const fillW = Math.floor((width - ScaleUIX(2)) * rate);
+		const fillH = height - ScaleUIY(2);
+		const color0 = this.gaugeBackColor();
+		const color1 = this.gaugeColor1();
+		const color2 = this.gaugeColor2();
+		this.bitmap.fillRect(x, y, width, height, color0);
+		this.bitmap.gradientFillRect(x + ScaleUIX(1), y + ScaleUIY(1), fillW, fillH, color1, color2);
+	};
+	
+	// Sprite Name
+	Sprite_Name.prototype.bitmapWidth = function() {
+		return ScaleUIX(128);
+	};
+
+	Sprite_Name.prototype.bitmapHeight = function() {
+		return ScaleUIY(24);
 	};
 	
 	// Sprite State Overlay
@@ -598,6 +700,46 @@
 		} else {
 			this.setFrame(0, 0, 0, 0);
 		}
+	};
+	
+	// Sprite Weapon
+	Sprite_Weapon.prototype.initMembers = function() {
+		this._weaponImageId = 0;
+		this._animationCount = 0;
+		this._pattern = 0;
+		this.anchor.x = 0.5;
+		this.anchor.y = 1;
+		this.x = ScaleResX(-16);
+	};
+
+	Sprite_Weapon.prototype.updateFrame = function() {
+		if (this._weaponImageId > 0) {
+			const index = (this._weaponImageId - 1) % 12;
+			const w = ppParams.weaponW;
+			const h = ppParams.weaponH;
+			const sx = (Math.floor(index / 6) * 3 + this._pattern) * w;
+			const sy = Math.floor(index % 6) * h;
+			this.setFrame(sx, sy, w, h);
+		} else {
+			this.setFrame(0, 0, 0, 0);
+		}
+	};
+	
+	// Sprite Balloon
+	Sprite_Balloon.prototype.updateFrame = function() {
+		const w = ppParams.balloonW;
+		const h = ppParams.balloonH;
+		const sx = this.frameIndex() * w;
+		const sy = (this._balloonId - 1) * h;
+		this.setFrame(sx, sy, w, h);
+	};
+	
+	// Sprite Timer
+	Sprite_Timer.prototype.createBitmap = function() {
+		this.bitmap = new Bitmap(ScaleUIX(96), ScaleUIY(48));
+		this.bitmap.fontFace = this.fontFace();
+		this.bitmap.fontSize = this.fontSize();
+		this.bitmap.outlineColor = ColorManager.outlineColor();
 	};
 	
 	// Spriteset Battle

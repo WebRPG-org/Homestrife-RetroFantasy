@@ -385,6 +385,8 @@
 			tx += maxWidth - text.length*textImage.characterW;
 		}
 		const bmp = ImageManager.loadBitmapFromUrl(textImage.file + ".png");
+		tx = Math.round(tx);
+		ty = Math.round(ty);
 		let curTx = tx;
 		for(let i = 0; i < text.length; i++) {
 			if(curTx + textImage.characterW > maxWidth) { break; }

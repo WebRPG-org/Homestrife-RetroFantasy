@@ -12,6 +12,12 @@
  * PLUGIN DESCRIPTION HERE
  *
  * This plugin does not provide plugin commands.
+ *
+ * @param forceWholeResolution
+ * @text Force Whole Resolution
+ * @desc Only allow resolutions that are whole multiples of the base screen width, when resizing the game window.
+ * @type boolean
+ * @default false
  * 
  * @param screenWidth
  * @text Screen Width
@@ -234,6 +240,7 @@
 	
 	// helper functions
 	function parsePPParameters() {
+		ppParams.forceWholeResolution = ppParams.forceWholeResolution === 'true';
 		ppParams.screenWidth = parsePPInt(ppParams.screenWidth, 816, 1);
 		ppParams.screenHeight = parsePPInt(ppParams.screenHeight, 624, 1);
 		ppParams.uiAreaWidth = parsePPInt(ppParams.uiAreaWidth, 816, 1);
@@ -326,6 +333,21 @@
 	function ScaleWindowImage(pixels) {
 		return Math.round(pixels * WindowImageScale(pixels));
 	}
+	
+	// Graphics
+	Graphics._updateRealScale = function() {
+		if (this._stretchEnabled && this._width > 0 && this._height > 0) {
+			const h = this._stretchWidth() / this._width;
+			const v = this._stretchHeight() / this._height;
+			this._realScale = Math.min(h, v);
+			if(ppParams.forceWholeResolution) {
+				this._realScale = Math.floor(this._realScale);
+			}
+			window.scrollTo(0, 0);
+		} else {
+			this._realScale = this._defaultScale;
+		}
+	};
 	
 	// Bitmap
 	const _Bitmap_drawText = Bitmap.prototype.drawText;

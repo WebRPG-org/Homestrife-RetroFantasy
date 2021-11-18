@@ -13,6 +13,12 @@
  *
  * This plugin does not provide plugin commands.
  *
+ * @param renderPixelated
+ * @text Render Pixelated
+ * @desc Enlarged graphics will render pixelated rather than blurred.
+ * @type boolean
+ * @default false
+ *
  * @param forceWholeResolution
  * @text Force Whole Resolution
  * @desc Only allow resolutions that are whole multiples of the base screen width, when resizing the game window.
@@ -240,6 +246,7 @@
 	
 	// helper functions
 	function parsePPParameters() {
+		ppParams.renderPixelated = ppParams.renderPixelated === 'true';
 		ppParams.forceWholeResolution = ppParams.forceWholeResolution === 'true';
 		ppParams.screenWidth = parsePPInt(ppParams.screenWidth, 816, 1);
 		ppParams.screenHeight = parsePPInt(ppParams.screenHeight, 624, 1);
@@ -347,6 +354,12 @@
 		} else {
 			this._realScale = this._defaultScale;
 		}
+	};
+	
+	const _Graphics__updateCanvas = Graphics._updateCanvas;
+	Graphics._updateCanvas = function() {
+		_Graphics__updateCanvas.call(this);
+		this._canvas.style.imageRendering = ppParams.renderPixelated ? 'pixelated' : '';
 	};
 	
 	// Bitmap

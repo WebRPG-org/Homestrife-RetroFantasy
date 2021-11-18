@@ -9,13 +9,59 @@
  *
  * @help D9D_PixelPerfect.js
  *
- * PLUGIN DESCRIPTION HERE
+ * This plugin was created to aid in making games with different resolutions,
+ * as well as different tile sizes. Any internal value that isn't exposed by
+ * this plugin, this plugin will at least attempt to intelligently scale based
+ * on the current resolution settings. Note that no plugin can replace just
+ * getting your hands dirty with the UI code, if you have specific UI design
+ * needs.
+ *
+ * DO NOT change the screen and UI size settings in the System 2 section of the
+ * database. Leave them at the defaults of width 816 and height 624. Instead,
+ * use the settings of the same name given in this plugin. This is to avoid
+ * issues with the enemy positioning in the Troops section, which will
+ * experience bugs if you change the System 2 width and height settings.
+ *
+ * When using non-default tile (and, subsequently, character) sizes, face
+ * sizes, side view actor sizes, enemy sizes, and system graphic sizes, an
+ * alternate image file tag will have to be specified. In your image files, you
+ * will have to have two files for each resource: one file sized to match
+ * RMMZ's default sizes, and another file that represents the desired runtime
+ * graphics. The latter file will need to have the image file tag appended to
+ * the end of the file name to be detected and used by the plugin. So for
+ * instance the character image Actor1.png should be sized 576x384 and will be
+ * seen in RMMZ's editor UI, and Actor1_RUNTIME.png (if your tag is "_RUNTIME")
+ * should be sized according to your resolution and tile size choices. This is
+ * all so that the graphics you see in RMMZ's editor UI is sized in a readable
+ * manner.
+ *
+ * Window File Size is literally just the height and width measurement of your
+ * runtime Window(tag).png file in img/system. This file should always be a
+ * square. The window border thickness setting determines how much of the outer
+ * portion of the upper right quadrant of the window file counts as the window
+ * border. The cursor border thickness does the same for the cursor border,
+ * which uses the upper left quadrant of the lower right quadrant of the window
+ * file.
+ *
+ * The text images feature allows you to use text character graphics taken from
+ * a png, rather than using RMMZ's default behavior of using a font. You may
+ * want to use this feature if pixel perfect crispness is desired, such as when
+ * working with lower resolutions. The png must contain, starting from the
+ * left, monospaced character graphics, starting with ASCII character code 33
+ * (!) and increasing in ASCII character code moving to the right. The height
+ * of the png should be the character height you provide to the plugin, and
+ * each character should have a width of the character width you provide to the
+ * plugin. While you can provide more than one png to the plugin, only the
+ * first one will be used. The others require manual modification to use,
+ * through altering the curTextImage variable to the desired index. I hesitate
+ * to expand upon this further in this plugin, as such a feature probably
+ * belongs in a plugin focused more on text options.
  *
  * This plugin does not provide plugin commands.
  *
  * @param renderPixelated
  * @text Render Pixelated
- * @desc Enlarged graphics will render pixelated rather than blurred.
+ * @desc When resizing the game window, graphics will render sharply pixelated rather than blurred.
  * @type boolean
  * @default false
  *
@@ -27,7 +73,7 @@
  * 
  * @param screenWidth
  * @text Screen Width
- * @desc The width of the main game area, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @desc The width of the main game area. Leave System 2 setting alone and use this instead.
  * @type number
  * @default 816
  * @min 1
@@ -35,7 +81,7 @@
  * 
  * @param screenHeight
  * @text Screen Height
- * @desc The height of the main game area, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @desc The height of the main game area. Leave System 2 setting alone and use this instead.
  * @type number
  * @default 624
  * @min 1
@@ -43,7 +89,7 @@
  * 
  * @param uiAreaWidth
  * @text UI Area Width
- * @desc The width of the game UI space, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @desc The width of the game UI space. Leave System 2 setting alone and use this instead.
  * @type number
  * @default 816
  * @min 1
@@ -51,7 +97,7 @@
  * 
  * @param uiAreaHeight
  * @text UI Area Height
- * @desc The height of the game UI space, measured in pixels. Leave System 2 setting alone and use this instead.
+ * @desc The height of the game UI space. Leave System 2 setting alone and use this instead.
  * @type number
  * @default 624
  * @min 1
@@ -59,7 +105,7 @@
  * 
  * @param tileWidth
  * @text Tile Width
- * @desc The width of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
+ * @desc The width of tiles in the game. Impacts character/event movement and dimensions as well.
  * @type number
  * @default 48
  * @min 1
@@ -67,7 +113,7 @@
  * 
  * @param tileHeight
  * @text Tile Height
- * @desc The height of tiles in the game, measured in pixels. Impacts character/event movement and dimensions as well.
+ * @desc The height of tiles in the game. Impacts character/event movement and dimensions as well.
  * @type number
  * @default 48
  * @min 1
@@ -78,6 +124,142 @@
  * @desc The tag to be added to the ends of the names of image files, that represent runtime graphics and are scaled to the tile size.
  * @type string
  * @default _RUNTIME
+ *
+ * @param balloonW
+ * @text Balloon Width
+ * @desc The width of balloons.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param balloonH
+ * @text Balloon Height
+ * @desc The height of balloons.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param buttonW
+ * @text Button Width
+ * @desc The width of touch screen buttons.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param buttonH
+ * @text Button Height
+ * @desc The hidth of touch screen buttons.
+ * @type number
+ * @default 48
+ * @min 1
+ * @decimals 0
+ *
+ * @param iconW
+ * @text Icon Width
+ * @desc The width of icons.
+ * @type number
+ * @default 32
+ * @min 1
+ * @decimals 0
+ *
+ * @param iconH
+ * @text Icon Height
+ * @desc The height of icons.
+ * @type number
+ * @default 32
+ * @min 1
+ * @decimals 0
+ *
+ * @param faceW
+ * @text Face Width
+ * @desc The width of face images.
+ * @type number
+ * @default 144
+ * @min 1
+ * @decimals 0
+ *
+ * @param faceH
+ * @text Face Height
+ * @desc The height of face images.
+ * @type number
+ * @default 144
+ * @min 1
+ * @decimals 0
+ *
+ * @param stateW
+ * @text State Width
+ * @desc The width of battle state graphics.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param stateH
+ * @text State Height
+ * @desc The height of battle state graphics.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param weaponW
+ * @text Weapon Width
+ * @desc The width of battle weapon graphics.
+ * @type number
+ * @default 96
+ * @min 1
+ * @decimals 0
+ *
+ * @param weaponH
+ * @text Weapon Height
+ * @desc The height of battle weapon graphics.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param sideViewActorW
+ * @text Side View Actor Width
+ * @desc The width of side view battle actors.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param sideViewActorH
+ * @text Side View Actor Height
+ * @desc The height of side view battle actors.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param windowFileSize
+ * @text Window File Size
+ * @desc The width and height of the system window file.
+ * @type number
+ * @default 192
+ * @min 1
+ * @decimals 0
+ *
+ * @param windowBorderThickness
+ * @text Window Border Thickness
+ * @desc The outer portion of the window graphic that represents the window border.
+ * @type number
+ * @default 24
+ * @min 0
+ * @decimals 0
+ *
+ * @param cursorBorderThickness
+ * @text Cursor Border Thickness
+ * @desc The outer portion of the cursor graphic that represents the cursor border.
+ * @type number
+ * @default 4
+ * @min 0
+ * @decimals 0
  *
  * @param useTextImages
  * @text Use Text Images
@@ -90,126 +272,6 @@
  * @desc An array of text image files and their specifications.
  * @type struct<textImageInfo>[]
  * @parent useTextImages
- *
- * @param balloonW
- * @text Balloon Width
- * @desc The width of balloons, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param balloonH
- * @text Balloon Height
- * @desc The height of balloons, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param buttonW
- * @text Button Width
- * @desc The width of touch screen buttons, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param buttonH
- * @text Button Height
- * @desc The hidth of touch screen buttons, measured in pixels.
- * @type number
- * @default 48
- * @min 1
- * @decimals 0
- *
- * @param iconW
- * @text Icon Width
- * @desc The width of icons, measured in pixels.
- * @type number
- * @default 32
- * @min 1
- * @decimals 0
- *
- * @param iconH
- * @text Icon Height
- * @desc The height of icons, measured in pixels.
- * @type number
- * @default 32
- * @min 1
- * @decimals 0
- *
- * @param faceW
- * @text Face Width
- * @desc The width of face images, measured in pixels.
- * @type number
- * @default 144
- * @min 1
- * @decimals 0
- *
- * @param faceH
- * @text Face Height
- * @desc The height of face images, measured in pixels.
- * @type number
- * @default 144
- * @min 1
- * @decimals 0
- *
- * @param stateW
- * @text State Width
- * @desc The width of battle state graphics, measured in pixels.
- * @type number
- * @default 96
- * @min 1
- * @decimals 0
- *
- * @param stateH
- * @text State Height
- * @desc The height of battle state graphics, measured in pixels.
- * @type number
- * @default 96
- * @min 1
- * @decimals 0
- *
- * @param weaponW
- * @text Weapon Width
- * @desc The width of battle weapon graphics, measured in pixels.
- * @type number
- * @default 96
- * @min 1
- * @decimals 0
- *
- * @param weaponH
- * @text Weapon Height
- * @desc The height of battle weapon graphics, measured in pixels.
- * @type number
- * @default 64
- * @min 1
- * @decimals 0
- *
- * @param sideViewActorW
- * @text Side View Actor Width
- * @desc The width of side view battle actors, measured in pixels.
- * @type number
- * @default 64
- * @min 1
- * @decimals 0
- *
- * @param sideViewActorH
- * @text Side View Actor Height
- * @desc The height of side view battle actors, measured in pixels.
- * @type number
- * @default 64
- * @min 1
- * @decimals 0
- *
- * @param windowFileSize
- * @text Window File Size
- * @desc The width and height of the system window file, measured in pixels.
- * @type number
- * @default 192
- * @min 1
- * @decimals 0
  */
  
 /*~struct~textImageInfo:
@@ -221,7 +283,7 @@
  *
  * @param characterW
  * @text Character width
- * @desc The width of an individual text character, measured in pixels.
+ * @desc The width of an individual text character.
  * @type number
  * @default 32
  * @min 1
@@ -229,7 +291,7 @@
  *
  * @param characterH
  * @text Character Height
- * @desc The height of an individual text character, measured in pixels.
+ * @desc The height of an individual text character.
  * @type number
  * @default 32
  * @min 1
@@ -268,6 +330,8 @@
 		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
 		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
 		ppParams.windowFileSize = parsePPInt(ppParams.windowFileSize, 192, 1);
+		ppParams.windowBorderThickness = parsePPInt(ppParams.windowBorderThickness, 24, 1);
+		ppParams.cursorBorderThickness = parsePPInt(ppParams.cursorBorderThickness, 4, 1);
 		
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
@@ -457,7 +521,7 @@
 	Window.prototype._refreshFrame = function() {
 		const drect = { x: 0, y: 0, width: this._width, height: this._height };
 		const srect = { x: ScaleWindowImage(96), y: 0, width: ScaleWindowImage(96), height: ScaleWindowImage(96) };
-		const m = ScaleWindowImage(24);
+		const m = ppParams.windowBorderThickness;
 		for (const child of this._frameSprite.children) {
 			child.bitmap = this._windowskin;
 		}
@@ -467,7 +531,7 @@
 	Window.prototype._refreshCursor = function() {
 		const drect = this._cursorRect.clone();
 		const srect = { x: ScaleWindowImage(96), y: ScaleWindowImage(96), width: ScaleWindowImage(48), height: ScaleWindowImage(48) };
-		const m = ScaleWindowImage(4);
+		const m = ppParams.cursorBorderThickness;
 		for (const child of this._cursorSprite.children) {
 			child.bitmap = this._windowskin;
 		}

@@ -43,20 +43,6 @@
  * which uses the upper left quadrant of the lower right quadrant of the window
  * file.
  *
- * The text images feature allows you to use text character graphics taken from
- * a png, rather than using RMMZ's default behavior of using a font. You may
- * want to use this feature if pixel perfect crispness is desired, such as when
- * working with lower resolutions. The png must contain, starting from the
- * left, monospaced character graphics, starting with ASCII character code 33
- * (!) and increasing in ASCII character code moving to the right. The height
- * of the png should be the character height you provide to the plugin, and
- * each character should have a width of the character width you provide to the
- * plugin. While you can provide more than one png to the plugin, only the
- * first one will be used. The others require manual modification to use,
- * through altering the curTextImage variable to the desired index. I hesitate
- * to expand upon this further in this plugin, as such a feature probably
- * belongs in a plugin focused more on text options.
- *
  * This plugin does not provide plugin commands.
  *
  * @param renderPixelated
@@ -260,42 +246,6 @@
  * @default 4
  * @min 0
  * @decimals 0
- *
- * @param useTextImages
- * @text Use Text Images
- * @desc Use image files instead of fonts, for text. The best way to get pixel-accurate text.
- * @type boolean
- * @default false
- *
- * @param textImages
- * @text Text Images
- * @desc An array of text image files and their specifications.
- * @type struct<textImageInfo>[]
- * @parent useTextImages
- */
- 
-/*~struct~textImageInfo:
- *
- * @param file
- * @text File
- * @desc The text image file.
- * @type file
- *
- * @param characterW
- * @text Character width
- * @desc The width of an individual text character.
- * @type number
- * @default 32
- * @min 1
- * @decimals 0
- *
- * @param characterH
- * @text Character Height
- * @desc The height of an individual text character.
- * @type number
- * @default 32
- * @min 1
- * @decimals 0
  */
  
 (() => {
@@ -330,20 +280,11 @@
 		ppParams.weaponW = parsePPInt(ppParams.weaponW, 96, 1);
 		ppParams.weaponH = parsePPInt(ppParams.weaponH, 64, 1);
 		ppParams.windowFileSize = parsePPInt(ppParams.windowFileSize, 192, 1);
-		ppParams.windowBorderThickness = parsePPInt(ppParams.windowBorderThickness, 24, 1);
-		ppParams.cursorBorderThickness = parsePPInt(ppParams.cursorBorderThickness, 4, 1);
+		ppParams.windowBorderThickness = parsePPInt(ppParams.windowBorderThickness, 24, 0);
+		ppParams.cursorBorderThickness = parsePPInt(ppParams.cursorBorderThickness, 4, 0);
 		
 		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
 		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
-		
-		ppParams.useTextImages = ppParams.useTextImages === 'true';
-		ppParams.textImages = parsePPJSON(ppParams.textImages, []);
-		for(const textImageInfoStringIndex in ppParams.textImages) {
-			const textImageInfo = JSON.parse(ppParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parsePPInt(textImageInfo.characterW, 32, 1);
-			textImageInfo.characterH = parsePPInt(textImageInfo.characterH, 32, 1);
-			ppParams.textImages[textImageInfoStringIndex] = textImageInfo;
-		}
 	}
 	
 	function parsePPInt(string, defaultValue, min, max) {
@@ -424,62 +365,6 @@
 	Graphics._updateCanvas = function() {
 		_Graphics__updateCanvas.call(this);
 		this._canvas.style.imageRendering = ppParams.renderPixelated ? 'pixelated' : '';
-	};
-	
-	// Bitmap
-	const _Bitmap_drawText = Bitmap.prototype.drawText;
-	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
-		if(ppParams.useTextImages && ppParams.textImages.length > 0) {
-			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
-		} else {
-			_Bitmap_drawText.call(this, text, x, y, maxWidth, lineHeight, align);
-		}
-	};
-	
-	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align) {
-		const context = this.context;
-		maxWidth = maxWidth || 0xffffffff;
-		const textImage = ppParams.textImages[curTextImage] === undefined ? ppParams.textImages[0] : ppParams.textImages[curTextImage];
-		let tx = x;
-		let ty = y;
-		if (align === "center") {
-			tx += maxWidth / 2 - (text.length*textImage.characterW) / 2;
-		}
-		if (align === "right") {
-			tx += maxWidth - text.length*textImage.characterW;
-		}
-		const bmp = ImageManager.loadBitmapFromUrl(textImage.file + ".png");
-		tx = Math.round(tx);
-		ty = Math.round(ty);
-		let curTx = tx;
-		for(let i = 0; i < text.length; i++) {
-			if(curTx + textImage.characterW > maxWidth) { break; }
-			const c = text.charCodeAt(i);
-			this.blt(
-				bmp,
-				(c-33)*textImage.characterW,
-				0,
-				textImage.characterW,
-				textImage.characterH,
-				curTx,
-				ty
-			);
-			curTx += textImage.characterW;
-		}
-	};
-	
-	const _Bitmap_measureTextWidth = Bitmap.prototype.measureTextWidth;
-	Bitmap.prototype.measureTextWidth = function(text) {
-		if(ppParams.useTextImages && ppParams.textImages.length > 0) {
-			return this.measureTextWidthFromImage(text);
-		} else {
-			return _Bitmap_measureTextWidth.call(this, text);
-		}
-	};
-	
-	Bitmap.prototype.measureTextWidthFromImage = function(text) {
-		const textImage = ppParams.textImages[curTextImage] === undefined ? ppParams.textImages[0] : ppParams.textImages[curTextImage];
-		return text.length * textImage.characterW;
 	};
 	
 	// Tilemap

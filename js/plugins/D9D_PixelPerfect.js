@@ -498,6 +498,22 @@
 		return ppParams.tileHeight;;
 	};
 	
+	// Game Character Base
+	Game_CharacterBase.prototype.refreshBushDepth = function() {
+		if (
+			this.isNormalPriority() &&
+			!this.isObjectCharacter() &&
+			this.isOnBush() &&
+			!this.isJumping()
+		) {
+			if (!this.isMoving()) {
+				this._bushDepth = ScaleResY(12);
+			}
+		} else {
+			this._bushDepth = 0;
+		}
+	};
+	
 	// Scene Base
 	const _Scene_Base_mainCommandWidth = Scene_Base.prototype.mainCommandWidth;
 	Scene_Base.prototype.mainCommandWidth = function() {

@@ -144,4 +144,57 @@
 		const textImage = pluginParams.textImages[curTextImage] === undefined ? pluginParams.textImages[0] : pluginParams.textImages[curTextImage];
 		return text.length * textImage.characterW;
 	};
+	
+	// Game Character Base
+	Game_CharacterBase.prototype.shiftY = function() {
+		return 0;
+	};
+	
+	Game_CharacterBase.prototype.refreshBushDepth = function() {
+		if (
+			this.isNormalPriority() &&
+			!this.isObjectCharacter() &&
+			this.isOnBush() &&
+			!this.isJumping()
+		) {
+			if (!this.isMoving()) {
+				this._bushDepth = 8;
+			}
+		} else {
+			this._bushDepth = 0;
+		}
+	};
+	
+	// Sprite Character
+	Sprite_Character.prototype.updateCharacterFrame = function() {
+		const pw = this.patternWidth();
+		const ph = this.patternHeight();
+		const sx = (this.characterBlockX() + this.characterPatternX()) * pw;
+		const sy = (this.characterBlockY() + this.characterPatternY()) * ph;
+		this.updateHalfBodySprites();
+		if (this._bushDepth > 0) {
+			const d = this._bushDepth;
+			this._upperBody.setFrame(sx, sy, pw, ph - d);
+			this._lowerBody.setFrame(sx, sy + ph - d, pw, d);
+			this.setFrame(sx, sy, 0, ph);
+		} else {
+			this.setFrame(sx, sy, pw, ph);
+		}
+	};
+	
+	Sprite_Character.prototype.updateHalfBodySprites = function() {
+		if (this._bushDepth > 0) {
+			this.createHalfBodySprites();
+			this._upperBody.bitmap = this.bitmap;
+			this._upperBody.visible = true;
+			this._upperBody.y = -this._bushDepth;
+			this._lowerBody.visible = false;
+			this._upperBody.setBlendColor(this.getBlendColor());
+			this._upperBody.setColorTone(this.getColorTone());
+			this._upperBody.blendMode = this.blendMode;
+		} else if (this._upperBody) {
+			this._upperBody.visible = false;
+			this._lowerBody.visible = false;
+		}
+	};
 })();

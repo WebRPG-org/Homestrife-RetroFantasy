@@ -169,6 +169,16 @@
 		}
 	};
 	
+	Window.prototype._refreshCursor = function() {
+		const drect = this._cursorRect.clone();
+		const srect = { x: 32, y: 32, width: 16, height: 16 };
+		const m = 8;
+		for (const child of this._cursorSprite.children) {
+			child.bitmap = this._windowskin;
+		}
+		this._setRectPartsGeometry(this._cursorSprite, srect, drect, m);
+	};
+	
 	// Game System
 	Game_System.prototype.windowPadding = function() {
 		return 4;

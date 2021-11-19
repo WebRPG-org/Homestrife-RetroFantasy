@@ -179,6 +179,43 @@
 		this._setRectPartsGeometry(this._cursorSprite, srect, drect, m);
 	};
 	
+	Window.prototype._makeCursorAlpha = function() {
+		const blinkCount = this._animationCount % 2;
+		const baseAlpha = 1;
+		if (this.active) {
+			if (blinkCount == 0) {
+				return baseAlpha;
+			} else {
+				return 0;
+			}
+		}
+		return baseAlpha;
+	};
+	
+	// Audio Manager
+	const _AudioManager_playSe = AudioManager.playSe;
+	AudioManager.playSe = function(se) {
+		this.stopSe();
+		for (const buffer of this._staticBuffers) {
+			buffer.stop();
+		}
+		_AudioManager_playSe.call(this, se);
+	}
+	
+	AudioManager.playStaticSe = function(se) {
+		this.stopSe();
+		if (se.name) {
+			this.loadStaticSe(se);
+			for (const buffer of this._staticBuffers) {
+				buffer.stop();
+				if (buffer.name === se.name) {
+					this.updateSeParameters(buffer, se);
+					buffer.play(false);
+				}
+			}
+		}
+	};
+	
 	// Game System
 	Game_System.prototype.windowPadding = function() {
 		return 4;

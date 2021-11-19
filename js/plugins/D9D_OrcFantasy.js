@@ -116,7 +116,7 @@
 		ty = Math.round(ty);
 		let curTx = tx;
 		for(let i = 0; i < text.length; i++) {
-			if(curTx + textImage.characterW > maxWidth) { break; }
+			if(curTx + textImage.characterW > maxWidth + x) { break; }
 			const c = text.charCodeAt(i);
 			this.blt(
 				bmp,
@@ -145,6 +145,35 @@
 		return text.length * textImage.characterW;
 	};
 	
+	// Window
+	const _Window_initialize = Window.prototype.initialize;
+	Window.prototype.initialize = function() {
+		_Window_initialize.call(this);
+		this._padding = 4;
+		this._margin = 0;
+	};
+	
+	Window.prototype.move = function(x, y, width, height) {
+		this.x = x || 0;
+		this.y = y || 0;
+		const spriteW = $gameMap.tileWidth() / 2;
+		const spriteH = $gameMap.tileHeight() / 2;
+		this.x = Math.round(this.x / spriteW) * spriteW;
+		this.y = Math.round(this.y / spriteH) * spriteH;
+		if (this._width !== width || this._height !== height) {
+			this._width = width || 0;
+			this._height = height || 0;
+			this._width = Math.round(this._width / spriteW) * spriteW;
+			this._height = Math.round(this._height / spriteH) * spriteH;
+			this._refreshAllParts();
+		}
+	};
+	
+	// Game System
+	Game_System.prototype.windowPadding = function() {
+		return 4;
+	};
+	
 	// Game Character Base
 	Game_CharacterBase.prototype.shiftY = function() {
 		return 0;
@@ -163,6 +192,71 @@
 		} else {
 			this._bushDepth = 0;
 		}
+	};
+	
+	// Scene Boot
+	Scene_Boot.prototype.adjustBoxSize = function() {
+		Graphics.boxWidth = Graphics._width;
+		Graphics.boxHeight = Graphics._height;
+	};
+	
+	// Scene Base
+	Scene_Base.prototype.mainCommandWidth = function() {
+		return $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+	};
+	
+	Scene_MenuBase.prototype.mainAreaHeight = function() {
+		return $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
+	};
+	
+	Scene_MenuBase.prototype.mainAreaTop = function() {
+		return $gameMap.tileHeight()/2*8;
+	};
+	
+	Scene_MenuBase.prototype.createBackground = function() {
+		this._backgroundSprite = new Sprite();
+		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
+		this.addChild(this._backgroundSprite);
+		this.setBackgroundOpacity(255);
+	};
+	
+	// Scene Menu
+	Scene_Menu.prototype.createCommandWindow = function() {
+		const rect = this.commandWindowRect();
+		const commandWindow = new Window_MenuCommand(rect);
+		commandWindow.setHandler("item", this.commandItem.bind(this));
+		commandWindow.setHandler("skill", this.commandPersonal.bind(this));
+		commandWindow.setHandler("equip", this.commandPersonal.bind(this));
+		commandWindow.setHandler("status", this.commandPersonal.bind(this));
+		commandWindow.setHandler("formation", this.commandFormation.bind(this));
+		commandWindow.setHandler("options", this.commandOptions.bind(this));
+		commandWindow.setHandler("save", this.commandSave.bind(this));
+		commandWindow.setHandler("gameEnd", this.commandGameEnd.bind(this));
+		commandWindow.setHandler("cancel", this.popScene.bind(this));
+		this.addWindow(commandWindow);
+		this._commandWindow = commandWindow;
+	};
+	
+	Scene_Menu.prototype.commandWindowRect = function() {
+		const ww = this.mainCommandWidth();
+		const wh = this.mainAreaHeight();
+		const wx = this.isRightInputMode() ? Graphics.boxWidth - ww : 0;
+		const wy = this.mainAreaTop();
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Menu.prototype.createGoldWindow = function() {
+		const rect = this.goldWindowRect();
+		this._goldWindow = new Window_Gold(rect);
+		this.addWindow(this._goldWindow);
+		this._goldWindow.hide();
+	};
+	
+	Scene_Menu.prototype.createStatusWindow = function() {
+		const rect = this.statusWindowRect();
+		this._statusWindow = new Window_MenuStatus(rect);
+		this.addWindow(this._statusWindow);
+		this._statusWindow.hide();
 	};
 	
 	// Sprite Character
@@ -196,5 +290,46 @@
 			this._upperBody.visible = false;
 			this._lowerBody.visible = false;
 		}
+	};
+	
+	// Window Base
+	Window_Base.prototype.lineHeight = function() {
+		return $gameMap.tileHeight();
+	};
+	
+	Window_Base.prototype.itemPadding = function() {
+		return 4;
+	};
+	
+	// Window Selectable
+	Window_Selectable.prototype.colSpacing = function() {
+		return 0;
+	};
+
+	Window_Selectable.prototype.rowSpacing = function() {
+		return 0;
+	};
+	
+	Window_Selectable.prototype.itemHeight = function() {
+		return Window_Scrollable.prototype.itemHeight.call(this);
+	};
+	
+	const _Window_Selectable_itemRect = Window_Selectable.prototype.itemRect;
+	Window_Selectable.prototype.itemRect = function(index) {
+		const rect = _Window_Selectable_itemRect.call(this, index);
+		rect.y += $gameSystem.windowPadding()*2;
+		return rect;
+	};
+	
+	Window_Selectable.prototype.drawItemBackground = function(index) {
+		// do nothing
+	};
+	
+	// Window Command
+	Window_Command.prototype.drawItem = function(index) {
+		const rect = this.itemLineRect(index);
+		this.resetTextColor();
+		this.changePaintOpacity(this.isCommandEnabled(index));
+		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
 })();

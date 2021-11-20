@@ -514,6 +514,11 @@
 		}
 	};
 	
+	const _Game_CharacterBase_shiftY = Game_CharacterBase.prototype.shiftY;
+	Game_CharacterBase.prototype.shiftY = function() {
+		return ScaleResY(_Game_CharacterBase_shiftY.call(this));
+	};
+	
 	// Scene Base
 	const _Scene_Base_mainCommandWidth = Scene_Base.prototype.mainCommandWidth;
 	Scene_Base.prototype.mainCommandWidth = function() {

@@ -169,16 +169,6 @@
 		}
 	};
 	
-	Window.prototype._refreshCursor = function() {
-		const drect = this._cursorRect.clone();
-		const srect = { x: 32, y: 32, width: 16, height: 16 };
-		const m = 8;
-		for (const child of this._cursorSprite.children) {
-			child.bitmap = this._windowskin;
-		}
-		this._setRectPartsGeometry(this._cursorSprite, srect, drect, m);
-	};
-	
 	Window.prototype._makeCursorAlpha = function() {
 		const blinkCount = this._animationCount % 2;
 		const baseAlpha = 1;
@@ -223,7 +213,7 @@
 	
 	// Game Character Base
 	Game_CharacterBase.prototype.shiftY = function() {
-		return 0;
+		return this.isObjectCharacter() ? 0 : 2;
 	};
 	
 	Game_CharacterBase.prototype.refreshBushDepth = function() {
@@ -248,18 +238,6 @@
 	};
 	
 	// Scene Base
-	Scene_Base.prototype.mainCommandWidth = function() {
-		return $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-	};
-	
-	Scene_MenuBase.prototype.mainAreaHeight = function() {
-		return $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
-	};
-	
-	Scene_MenuBase.prototype.mainAreaTop = function() {
-		return $gameMap.tileHeight()/2*8;
-	};
-	
 	Scene_MenuBase.prototype.createBackground = function() {
 		this._backgroundSprite = new Sprite();
 		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
@@ -285,10 +263,10 @@
 	};
 	
 	Scene_Menu.prototype.commandWindowRect = function() {
-		const ww = this.mainCommandWidth();
-		const wh = this.mainAreaHeight();
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
 		const wx = this.isRightInputMode() ? Graphics.boxWidth - ww : 0;
-		const wy = this.mainAreaTop();
+		const wy = $gameMap.tileHeight()/2*8;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	

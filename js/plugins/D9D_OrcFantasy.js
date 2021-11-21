@@ -373,6 +373,14 @@
 	};
 	
 	// Window Status Base
+	Window_StatusBase.prototype.placeBasicGauges = function(actor, x, y) {
+		this.placeGauge(actor, "hp", x, y);
+		this.placeGauge(actor, "mp", x, y + this.gaugeLineHeight());
+		if ($dataSystem.optDisplayTp) {
+			this.placeGauge(actor, "tp", x, y + this.gaugeLineHeight() * 2);
+		}
+	};
+	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
 		width = width || $gameMap.tileWidth()/2*8;
 		//this.changeTextColor(ColorManager.hpColor(actor));

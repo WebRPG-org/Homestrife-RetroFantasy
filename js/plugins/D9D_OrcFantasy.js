@@ -246,6 +246,13 @@
 	};
 	
 	// Scene Menu
+	Scene_Menu.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createStatusWindow();
+		this.createCommandWindow();
+		this.createGoldWindow();
+	};
+	
 	Scene_Menu.prototype.createCommandWindow = function() {
 		const rect = this.commandWindowRect();
 		const commandWindow = new Window_MenuCommand(rect);
@@ -265,7 +272,7 @@
 	Scene_Menu.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
-		const wx = this.isRightInputMode() ? Graphics.boxWidth - ww : 0;
+		const wx = Graphics.boxWidth - this._statusWindow.width - ww;
 		const wy = $gameMap.tileHeight()/2*8;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -281,7 +288,14 @@
 		const rect = this.statusWindowRect();
 		this._statusWindow = new Window_MenuStatus(rect);
 		this.addWindow(this._statusWindow);
-		this._statusWindow.hide();
+	};
+	
+	Scene_Menu.prototype.statusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*16;
+		const wh = this.mainAreaHeight();
+		const wx = Graphics.boxWidth - ww;
+		const wy = this.mainAreaTop();
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	// Sprite Character
@@ -356,5 +370,48 @@
 		this.resetTextColor();
 		this.changePaintOpacity(this.isCommandEnabled(index));
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
+	};
+	
+	// Window Status Base
+	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
+		width = width || $gameMap.tileWidth()/2*8;
+		//this.changeTextColor(ColorManager.hpColor(actor));
+		this.drawText(actor.name(), x, y, width);
+	};
+	
+	Window_StatusBase.prototype.drawActorClass = function(actor, x, y, width) {
+		width = width || $gameMap.tileWidth()/2*8;
+		this.resetTextColor();
+		this.drawText(actor.currentClass().name, x, y, width);
+	};
+	
+	Window_StatusBase.prototype.drawActorLevel = function(actor, x, y) {
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(TextManager.levelA, x, y, 48);
+		this.resetTextColor();
+		this.drawText(actor.level, x + 84, y, 36, "right");
+	};
+	
+	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
+		const lineHeight = this.lineHeight();
+		const x2 = x + $gameMap.tileWidth()/2*9;
+		this.drawActorName(actor, x, y);
+		this.drawActorLevel(actor, x, y + lineHeight/2);
+		this.drawActorIcons(actor, x, y + lineHeight);
+		this.drawActorClass(actor, x2, y);
+		this.placeBasicGauges(actor, x2, y + lineHeight/2);
+	};
+	
+	// Window Menu Status
+	Window_MenuStatus.prototype.drawItemImage = function(index) {
+		// do nothing
+	};
+	
+	Window_MenuStatus.prototype.drawItemStatus = function(index) {
+		const actor = this.actor(index);
+		const rect = this.itemRect(index);
+		const x = rect.x;
+		const y = rect.y;
+		this.drawActorSimpleStatus(actor, x, y);
 	};
 })();

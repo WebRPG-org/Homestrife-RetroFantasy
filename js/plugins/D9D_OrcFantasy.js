@@ -211,6 +211,17 @@
 		return 4;
 	};
 	
+	// Game Actor
+	Game_Actor.prototype.changeExp = function(exp, show) {
+		this._exp[this._classId] = Math.max(exp, 0);
+		const lastLevel = this._level;
+		const lastSkills = this.skills();
+		if (show && this._level > lastLevel) {
+			this.displayLevelUp(this.findNewSkills(lastSkills));
+		}
+		this.refresh();
+	};
+	
 	// Game Character Base
 	Game_CharacterBase.prototype.shiftY = function() {
 		return this.isObjectCharacter() ? 0 : 2;
@@ -248,9 +259,9 @@
 	// Scene Menu
 	Scene_Menu.prototype.create = function() {
 		Scene_MenuBase.prototype.create.call(this);
-		this.createStatusWindow();
-		this.createCommandWindow();
 		this.createGoldWindow();
+		this.createCommandWindow();
+		this.createStatusWindow();
 	};
 	
 	Scene_Menu.prototype.createCommandWindow = function() {
@@ -272,8 +283,8 @@
 	Scene_Menu.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
-		const wx = Graphics.boxWidth - this._statusWindow.width - ww;
-		const wy = $gameMap.tileHeight()/2*8;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._goldWindow.y - $gameMap.tileHeight()*9;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
@@ -281,7 +292,14 @@
 		const rect = this.goldWindowRect();
 		this._goldWindow = new Window_Gold(rect);
 		this.addWindow(this._goldWindow);
-		this._goldWindow.hide();
+	};
+	
+	Scene_Menu.prototype.goldWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight();
+		const wx = Graphics.boxWidth - ww;
+		const wy = $gameMap.tileHeight()*11;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	Scene_Menu.prototype.createStatusWindow = function() {
@@ -291,10 +309,10 @@
 	};
 	
 	Scene_Menu.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*16;
-		const wh = this.mainAreaHeight();
-		const wx = Graphics.boxWidth - ww;
-		const wy = this.mainAreaTop();
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*17;
+		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
+		const wx = Graphics.boxWidth - ww - this._commandWindow.width;
+		const wy = $gameMap.tileHeight()*4;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
@@ -340,6 +358,22 @@
 		return 4;
 	};
 	
+	Window_Base.prototype.textWidth = function(text) {
+		return this.contents.measureTextWidth(text);
+	};
+	
+	Window_Base.prototype.textWidthFromImage = function(text) {
+		return this.contents.measureTextWidthFromImage(text);
+	};
+	
+	Window_Base.prototype.drawCurrencyValue = function(value, unit, x, y, width) {
+		const unitWidth = this.textWidthFromImage(unit);
+		this.resetTextColor();
+		this.drawText(value+"", x, y, width - unitWidth - this.textWidthFromImage("0"), "right");
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(unit, x + width - unitWidth, y, unitWidth, "right");
+	};
+	
 	// Window Selectable
 	Window_Selectable.prototype.colSpacing = function() {
 		return 0;
@@ -372,13 +406,23 @@
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
 	
+	// Window Gold
+	Window_Gold.prototype.refresh = function() {
+		const x = $gameSystem.windowPadding();
+		const y = $gameSystem.windowPadding()+$gameMap.tileHeight()/2;
+		const width = this.textWidthFromImage("00000000");
+		this.contents.clear();
+		this.drawCurrencyValue(this.value(), this.currencyUnit(), x, y, width);
+	};
+	
 	// Window Status Base
-	Window_StatusBase.prototype.placeBasicGauges = function(actor, x, y) {
-		this.placeGauge(actor, "hp", x, y);
-		this.placeGauge(actor, "mp", x, y + this.gaugeLineHeight());
-		if ($dataSystem.optDisplayTp) {
-			this.placeGauge(actor, "tp", x, y + this.gaugeLineHeight() * 2);
-		}
+	Window_StatusBase.prototype.drawActorHpMp = function(actor, x, y, width) {
+		width = width || $gameMap.tileWidth()/2*8;
+		const lineHeight = this.lineHeight();
+		this.drawText("HL", x, y, width);
+		this.drawText(actor.hp + " %", x, y, width, "right");
+		this.drawText("ST", x, y + lineHeight/2, width);
+		this.drawText((actor.mp-100) + " %", x, y + lineHeight/2, width, "right");
 	};
 	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
@@ -397,20 +441,41 @@
 		this.changeTextColor(ColorManager.systemColor());
 		this.drawText(TextManager.levelA, x, y, 48);
 		this.resetTextColor();
-		this.drawText(actor.level, x + 84, y, 36, "right");
+		this.drawText(actor.level+"", x + 84, y, 36, "right");
+	};
+	
+	Window_StatusBase.prototype.drawActorSkillPoints = function(actor, x, y) {
+		const width = this.textWidthFromImage("00000000");
+		this.drawText("SP", x, y, width);
+		this.drawText(actor.currentExp()+"", x, y, width, "right");
+	};
+	
+	Window_StatusBase.prototype.drawActorIcons = function(actor, x, y, width) {
+		width = width || 144;
+		const iconWidth = ImageManager.iconWidth;
+		const icons = actor.allIcons().slice(0, Math.floor(width / iconWidth));
+		let iconX = x;
+		for (const icon of icons) {
+			this.drawIcon(icon, iconX, y);
+			iconX += iconWidth;
+		}
 	};
 	
 	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
 		const lineHeight = this.lineHeight();
 		const x2 = x + $gameMap.tileWidth()/2*9;
 		this.drawActorName(actor, x, y);
-		this.drawActorLevel(actor, x, y + lineHeight/2);
+		this.drawActorSkillPoints(actor, x, y + lineHeight/2);
 		this.drawActorIcons(actor, x, y + lineHeight);
 		this.drawActorClass(actor, x2, y);
-		this.placeBasicGauges(actor, x2, y + lineHeight/2);
+		this.drawActorHpMp(actor, x2, y + lineHeight/2);
 	};
 	
 	// Window Menu Status
+	Window_MenuStatus.prototype.itemHeight = function() {
+		return $gameMap.tileHeight()/2*4;
+	};
+	
 	Window_MenuStatus.prototype.drawItemImage = function(index) {
 		// do nothing
 	};
@@ -420,6 +485,6 @@
 		const rect = this.itemRect(index);
 		const x = rect.x;
 		const y = rect.y;
-		this.drawActorSimpleStatus(actor, x, y);
+		this.drawActorSimpleStatus(actor, x + $gameSystem.windowPadding(), y + $gameSystem.windowPadding());
 	};
 })();

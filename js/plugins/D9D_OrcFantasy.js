@@ -309,7 +309,7 @@
 	};
 	
 	Scene_Menu.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*17;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*20;
 		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
 		const wx = Graphics.boxWidth - ww - this._commandWindow.width;
 		const wy = $gameMap.tileHeight()*4;
@@ -347,6 +347,31 @@
 			this._upperBody.visible = false;
 			this._lowerBody.visible = false;
 		}
+	};
+	
+	// Sprite Battler
+	Sprite_Battler.prototype.startMove = function(x, y, duration) {
+		if (
+			this._targetOffsetX !== x || this._targetOffsetY !== y ||
+			(duration === 0 && (this._offsetX !== x || this._offsetY !== y))
+		) {
+			this._targetOffsetX = x;
+			this._targetOffsetY = y;
+			this._movementDuration = duration;
+			if (duration === 0) {
+				this._offsetX = x;
+				this._offsetY = y;
+			}
+		}
+	};
+	
+	// Sprite Actor
+	Sprite_Actor.prototype.createShadowSprite = function() {
+		// do nothing
+	};
+	
+	Sprite_Actor.prototype.updateShadow = function() {
+		// do nothing
 	};
 	
 	// Window Base
@@ -461,14 +486,31 @@
 		}
 	};
 	
+	Window_StatusBase.prototype.drawSvActor = function(actor, x, y) {
+		width = 16;
+		height = 24;
+		const bitmap = ImageManager.loadSvActor(actor.battlerName());
+		const pw = 16
+		const ph = 24;
+		const sw = Math.min(width, pw);
+		const sh = Math.min(height, ph);
+		const dx = Math.floor(x + Math.max(width - pw, 0) / 2);
+		const dy = Math.floor(y + Math.max(height - ph, 0) / 2);
+		const sx = Math.floor((pw - sw) / 2);
+		const sy = Math.floor((ph - sh) / 2);
+		this.contents.blt(bitmap, sx, sy, sw, sh, dx, dy);
+	};
+	
 	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
 		const lineHeight = this.lineHeight();
 		const x2 = x + $gameMap.tileWidth()/2*9;
+		const x3 = x2 + $gameMap.tileWidth()/2*8;
 		this.drawActorName(actor, x, y);
 		this.drawActorSkillPoints(actor, x, y + lineHeight/2);
 		this.drawActorIcons(actor, x, y + lineHeight);
 		this.drawActorClass(actor, x2, y);
 		this.drawActorHpMp(actor, x2, y + lineHeight/2);
+		this.drawSvActor(actor, x3, y);
 	};
 	
 	// Window Menu Status

@@ -148,9 +148,9 @@
 	// Window
 	const _Window_initialize = Window.prototype.initialize;
 	Window.prototype.initialize = function() {
-		_Window_initialize.call(this);
 		this._padding = 4;
 		this._margin = 0;
+		_Window_initialize.call(this);
 	};
 	
 	Window.prototype.move = function(x, y, width, height) {
@@ -211,6 +211,21 @@
 		return 4;
 	};
 	
+	// Game Battler Base
+	const _Game_BattlerBase_initMembers = Game_BattlerBase.prototype.initMembers;
+	Game_BattlerBase.prototype.initMembers = function() {
+		_Game_BattlerBase_initMembers.call(this);
+		this._backRow = false;
+	};
+	
+	Game_BattlerBase.prototype.toggleRow = function() {
+		this._backRow = !this._backRow;
+	};
+	
+	Game_BattlerBase.prototype.backRow = function() {
+		return this._backRow;
+	};
+	
 	// Game Actor
 	Game_Actor.prototype.changeExp = function(exp, show) {
 		this._exp[this._classId] = Math.max(exp, 0);
@@ -220,6 +235,18 @@
 			this.displayLevelUp(this.findNewSkills(lastSkills));
 		}
 		this.refresh();
+	};
+	
+	// Game Party
+	Game_Party.prototype.swapOrder = function(index1, index2) {
+		if(index1 === index2) {
+			$gameActors.actor(this._actors[index1]).toggleRow();
+		} else {
+			const temp = this._actors[index1];
+			this._actors[index1] = this._actors[index2];
+			this._actors[index2] = temp;
+		}
+		$gamePlayer.refresh();
 	};
 	
 	// Game Character Base
@@ -487,6 +514,7 @@
 	};
 	
 	Window_StatusBase.prototype.drawSvActor = function(actor, x, y) {
+		x += actor.backRow() ? 0 : $gameMap.tileWidth()/2;
 		width = 16;
 		height = 24;
 		const bitmap = ImageManager.loadSvActor(actor.battlerName());
@@ -516,6 +544,17 @@
 	// Window Menu Status
 	Window_MenuStatus.prototype.itemHeight = function() {
 		return $gameMap.tileHeight()/2*4;
+	};
+	
+	Window_MenuStatus.prototype.drawPendingItemBackground = function(index) {
+		if (index === this._pendingIndex) {
+			const rect = this.itemRect(index);
+			const bitmap = ImageManager.loadSystem("Window");
+			this.contents.blt(bitmap, 32, 32, 8, 8, rect.x, rect.y);
+			this.contents.blt(bitmap, 40, 32, 8, 8, rect.x+rect.width-8, rect.y);
+			this.contents.blt(bitmap, 32, 40, 8, 8, rect.x, rect.y+rect.height-8);
+			this.contents.blt(bitmap, 40, 40, 8, 8, rect.x+rect.width-8, rect.y+rect.height-8);
+		}
 	};
 	
 	Window_MenuStatus.prototype.drawItemImage = function(index) {

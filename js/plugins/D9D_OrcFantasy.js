@@ -156,15 +156,9 @@
 	Window.prototype.move = function(x, y, width, height) {
 		this.x = x || 0;
 		this.y = y || 0;
-		const spriteW = $gameMap.tileWidth() / 2;
-		const spriteH = $gameMap.tileHeight() / 2;
-		this.x = Math.round(this.x / spriteW) * spriteW;
-		this.y = Math.round(this.y / spriteH) * spriteH;
 		if (this._width !== width || this._height !== height) {
 			this._width = width || 0;
 			this._height = height || 0;
-			this._width = Math.round(this._width / spriteW) * spriteW;
-			this._height = Math.round(this._height / spriteH) * spriteH;
 			this._refreshAllParts();
 		}
 	};
@@ -275,12 +269,20 @@
 		Graphics.boxHeight = Graphics._height;
 	};
 	
-	// Scene Base
+	// Scene Menu Base
 	Scene_MenuBase.prototype.createBackground = function() {
 		this._backgroundSprite = new Sprite();
 		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
 		this.addChild(this._backgroundSprite);
 		this.setBackgroundOpacity(255);
+	};
+	
+	Scene_MenuBase.prototype.helpWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
+		const wx = 0;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	// Scene Menu
@@ -309,37 +311,42 @@
 	
 	Scene_Menu.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
 		const wx = Graphics.boxWidth - ww;
-		const wy = this._goldWindow.y - $gameMap.tileHeight()*9;
+		const wy = this._goldWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
-	};
-	
-	Scene_Menu.prototype.createGoldWindow = function() {
-		const rect = this.goldWindowRect();
-		this._goldWindow = new Window_Gold(rect);
-		this.addWindow(this._goldWindow);
 	};
 	
 	Scene_Menu.prototype.goldWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight();
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
 		const wx = Graphics.boxWidth - ww;
-		const wy = $gameMap.tileHeight()*11;
+		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
-	};
-	
-	Scene_Menu.prototype.createStatusWindow = function() {
-		const rect = this.statusWindowRect();
-		this._statusWindow = new Window_MenuStatus(rect);
-		this.addWindow(this._statusWindow);
 	};
 	
 	Scene_Menu.prototype.statusWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*20;
-		const wh = $gameSystem.windowPadding()*3 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
 		const wx = Graphics.boxWidth - ww - this._commandWindow.width;
-		const wy = $gameMap.tileHeight()*4;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Item
+	Scene_Item.prototype.categoryWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*4;
+		const wx = Graphics.boxWidth - ww - ($gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22);
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+
+	Scene_Item.prototype.itemWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
@@ -418,6 +425,17 @@
 		return this.contents.measureTextWidthFromImage(text);
 	};
 	
+	Window_Base.prototype.drawItemName = function(item, x, y, width) {
+		if (item) {
+			const iconY = y;
+			const textMargin = ImageManager.iconWidth;
+			const itemWidth = Math.max(0, width - textMargin);
+			this.resetTextColor();
+			this.drawIcon(item.iconIndex, x, iconY);
+			this.drawText(item.name, x + textMargin, y, itemWidth);
+		}
+	};
+	
 	Window_Base.prototype.drawCurrencyValue = function(value, unit, x, y, width) {
 		const unitWidth = this.textWidthFromImage(unit);
 		this.resetTextColor();
@@ -442,6 +460,9 @@
 	const _Window_Selectable_itemRect = Window_Selectable.prototype.itemRect;
 	Window_Selectable.prototype.itemRect = function(index) {
 		const rect = _Window_Selectable_itemRect.call(this, index);
+		rect.x -= this.colSpacing() / 2;
+		const spriteW = $gameMap.tileWidth()/2;
+		rect.x = Math.floor(rect.x / spriteW) * spriteW;
 		rect.y += $gameSystem.windowPadding()*2;
 		return rect;
 	};
@@ -567,5 +588,33 @@
 		const x = rect.x;
 		const y = rect.y;
 		this.drawActorSimpleStatus(actor, x + $gameSystem.windowPadding(), y + $gameSystem.windowPadding());
+	};
+	
+	// Window Item List
+	Window_ItemList.prototype.colSpacing = function() {
+		return 4;
+	};
+	
+	Window_ItemList.prototype.drawItem = function(index) {
+		const item = this.itemAt(index);
+		if (item) {
+			const numberWidth = this.numberWidth();
+			const rect = this.itemLineRect(index);
+			rect.y += $gameSystem.windowPadding();
+			this.changePaintOpacity(this.isEnabled(item));
+			this.drawItemName(item, rect.x, rect.y, rect.width - numberWidth);
+			this.drawItemNumber(item, rect.x, rect.y, rect.width);
+			this.changePaintOpacity(1);
+		}
+	};
+	
+	Window_ItemList.prototype.numberWidth = function() {
+		return this.textWidth("00");
+	};
+	
+	Window_ItemList.prototype.drawItemNumber = function(item, x, y, width) {
+		if (this.needsNumber()) {
+			this.drawText($gameParty.numItems(item)+"", x, y, width, "right");
+		}
 	};
 })();

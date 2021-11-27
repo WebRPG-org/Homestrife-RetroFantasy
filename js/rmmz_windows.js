@@ -2098,19 +2098,15 @@ function Window_ItemCategory() {
     this.initialize(...arguments);
 }
 
-Window_ItemCategory.prototype = Object.create(Window_HorzCommand.prototype);
+Window_ItemCategory.prototype = Object.create(Window_Command.prototype);
 Window_ItemCategory.prototype.constructor = Window_ItemCategory;
 
 Window_ItemCategory.prototype.initialize = function(rect) {
-    Window_HorzCommand.prototype.initialize.call(this, rect);
-};
-
-Window_ItemCategory.prototype.maxCols = function() {
-    return 4;
+    Window_Command.prototype.initialize.call(this, rect);
 };
 
 Window_ItemCategory.prototype.update = function() {
-    Window_HorzCommand.prototype.update.call(this);
+    Window_Command.prototype.update.call(this);
     if (this._itemWindow) {
         this._itemWindow.setCategory(this.currentSymbol());
     }

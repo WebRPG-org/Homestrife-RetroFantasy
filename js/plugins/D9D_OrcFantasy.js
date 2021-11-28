@@ -333,6 +333,15 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	// Scene Item Base
+	Scene_ItemBase.prototype.actorWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*20;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh - Scene_MenuBase.prototype.helpWindowRect().height;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Scene Item
 	Scene_Item.prototype.categoryWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
@@ -502,7 +511,7 @@
 		this.drawText("HL", x, y, width);
 		this.drawText(actor.hp + " %", x, y, width, "right");
 		this.drawText("ST", x, y + lineHeight/2, width);
-		this.drawText((actor.mp-100) + " %", x, y + lineHeight/2, width, "right");
+		this.drawText((100-actor.mp) + " %", x, y + lineHeight/2, width, "right");
 	};
 	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
@@ -608,7 +617,7 @@
 			const numberWidth = this.numberWidth();
 			const rect = this.itemLineRect(index);
 			rect.y += $gameSystem.windowPadding();
-			this.changePaintOpacity(this.isEnabled(item));
+			//this.changePaintOpacity(this.isEnabled(item));
 			this.drawItemName(item, rect.x, rect.y, rect.width - numberWidth);
 			this.drawItemNumber(item, rect.x, rect.y, rect.width);
 			this.changePaintOpacity(1);

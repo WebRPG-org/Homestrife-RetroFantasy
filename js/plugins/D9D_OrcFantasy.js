@@ -359,6 +359,31 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	// Scene Skill
+	Scene_Skill.prototype.skillTypeWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wx = Graphics.boxWidth - ww - ($gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22);
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Skill.prototype.statusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*20;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh - ($gameSystem.windowPadding()*4 + $gameMap.tileHeight()*6);
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Skill.prototype.itemWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*6;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Sprite Character
 	Sprite_Character.prototype.updateCharacterFrame = function() {
 		const pw = this.patternWidth();
@@ -631,6 +656,50 @@
 	Window_ItemList.prototype.drawItemNumber = function(item, x, y, width) {
 		if (this.needsNumber()) {
 			this.drawText($gameParty.numItems(item)+"", x, y, width, "right");
+		}
+	};
+	
+	// Window Skill Status
+	Window_SkillStatus.prototype.refresh = function() {
+		Window_StatusBase.prototype.refresh.call(this);
+		if (this._actor) {
+			const w = this.innerWidth;
+			const h = this.innerHeight;
+			const x = this.itemPadding();
+			const y = $gameSystem.windowPadding() + $gameMap.tileHeight()/2;
+			this.drawActorSimpleStatus(this._actor, x, y);
+		}
+	};
+	
+	// Window Skill List
+	Window_SkillList.prototype.colSpacing = function() {
+		return 4;
+	};
+
+	Window_SkillList.prototype.drawItem = function(index) {
+		const skill = this.itemAt(index);
+		if (skill) {
+			const costWidth = this.costWidth();
+			const rect = this.itemLineRect(index);
+			rect.y += $gameSystem.windowPadding();
+			//this.changePaintOpacity(this.isEnabled(skill));
+			this.drawItemName(skill, rect.x, rect.y, rect.width - costWidth);
+			this.drawSkillCost(skill, rect.x, rect.y, rect.width);
+			this.changePaintOpacity(1);
+		}
+	};
+
+	Window_SkillList.prototype.costWidth = function() {
+		return this.textWidth("00");
+	};
+
+	Window_SkillList.prototype.drawSkillCost = function(skill, x, y, width) {
+		if (this._actor.skillTpCost(skill) > 0) {
+			this.changeTextColor(ColorManager.tpCostColor());
+			this.drawText(this._actor.skillTpCost(skill)+"", x, y, width, "right");
+		} else if (this._actor.skillMpCost(skill) > 0) {
+			this.changeTextColor(ColorManager.mpCostColor());
+			this.drawText(this._actor.skillMpCost(skill)+"", x, y, width, "right");
 		}
 	};
 })();

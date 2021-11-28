@@ -479,6 +479,13 @@
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
 	
+	// Window Help
+	Window_Help.prototype.refresh = function() {
+		const rect = this.baseTextRect();
+		this.contents.clear();
+		this.drawTextEx(this._text, rect.x, rect.y+$gameSystem.windowPadding()*3, rect.width);
+	};
+	
 	// Window Gold
 	Window_Gold.prototype.refresh = function() {
 		const x = $gameSystem.windowPadding();

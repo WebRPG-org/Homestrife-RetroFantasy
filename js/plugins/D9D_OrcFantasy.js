@@ -782,9 +782,9 @@
 		this.drawText("TYP", x2, y+lineHeight*4, textWidth);
 		
 		this.drawNameAndValue(x3, y, "DEF", this._actor.param(3), tempActor.param(3));
-		this.drawNameAndValue(x3, y+lineHeight, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
-		this.drawNameAndValue(x3, y+lineHeight*2, "CVR", Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
-		this.drawText("RES", x3, y+lineHeight*3, textWidth);
+		this.drawNameAndValue(x3, y+lineHeight*2, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
+		this.drawNameAndValue(x3, y+lineHeight*3, "CVR", Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
+		this.drawText("RES", x3, y+lineHeight*4, textWidth);
 	};
 	
 	Window_EquipStatus.prototype.drawNameAndValue = function(x, y, name, curValue, newValue) {

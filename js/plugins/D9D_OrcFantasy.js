@@ -384,6 +384,39 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	// Scene Equip
+	Scene_Equip.prototype.statusWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wx = 0;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Equip.prototype.commandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wx = Graphics.boxWidth - ww - ($gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*18);
+		const wy = this._statusWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Equip.prototype.slotWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*18;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*5;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._statusWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Equip.prototype.itemWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*5;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._statusWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Sprite Character
 	Sprite_Character.prototype.updateCharacterFrame = function() {
 		const pw = this.patternWidth();
@@ -631,6 +664,11 @@
 		this.drawActorSimpleStatus(actor, x + $gameSystem.windowPadding(), y + $gameSystem.windowPadding());
 	};
 	
+	// Window Item Category
+	Window_ItemCategory.prototype.maxCols = function() {
+		return 1;
+	};
+	
 	// Window Item List
 	Window_ItemList.prototype.colSpacing = function() {
 		return 4;
@@ -701,5 +739,128 @@
 			this.changeTextColor(ColorManager.mpCostColor());
 			this.drawText(this._actor.skillMpCost(skill)+"", x, y, width, "right");
 		}
+	};
+	
+	// Window Equip Status
+	Window_EquipStatus.prototype.colSpacing = function() {
+		return 4;
+	};
+	
+	Window_EquipStatus.prototype.refresh = function() {
+		this.contents.clear();
+		if (this._actor) {
+			const nameRect = this.itemLineRect(0);
+			const x = $gameSystem.windowPadding();
+			const y = $gameSystem.windowPadding();
+			const textWidth = $gameMap.tileWidth()/2*8;
+			const lineHeight = this.lineHeight()/2;
+			this.drawActorName(this._actor, x, y, textWidth);
+			//this.drawSvActor(this._actor, x+$gameMap.tileWidth(), y + lineHeight);
+			this.drawAllParams(x, y);
+		}
+	};
+	
+	Window_EquipStatus.prototype.drawAllParams = function(x, y) {
+		const textWidth = $gameMap.tileWidth()/2*8;
+		x2 = x + $gameMap.tileWidth()/2*9;
+		x3 = x2 + $gameMap.tileWidth()/2*9;
+		x4 = x3 + $gameMap.tileWidth()/2*9;
+		const lineHeight = this.lineHeight()/2;
+		this.drawText("Strength", x, y+lineHeight*2, textWidth);
+		
+		this.drawText("Toughnes", x, y+lineHeight*4, textWidth);
+		
+		this.drawText("Defense", x2, y, textWidth);
+		
+		this.drawText("Evasion", x2, y+lineHeight*2, textWidth);
+		
+		this.drawText("Resists", x2, y+lineHeight*4, textWidth);
+		
+		this.drawText("Attack", x3, y, textWidth);
+		
+		this.drawText("Accuracy", x3, y+lineHeight*3, textWidth);
+		
+		this.drawText("Types", x4, y, textWidth);
+	};
+	
+	Window_EquipStatus.prototype.drawItem = function(x, y, paramId) {
+		const paramX = this.paramX();
+		const paramWidth = this.paramWidth();
+		const rightArrowWidth = this.rightArrowWidth();
+		this.drawParamName(x, y, paramId);
+		if (this._actor) {
+			this.drawCurrentParam(paramX, y, paramId);
+		}
+		this.drawRightArrow(paramX + paramWidth, y);
+		if (this._tempActor) {
+			this.drawNewParam(paramX + paramWidth + rightArrowWidth, y, paramId);
+		}
+	};
+
+	Window_EquipStatus.prototype.drawParamName = function(x, y, paramId) {
+		const width = this.paramX() - this.itemPadding() * 2;
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText(TextManager.param(paramId), x, y, width);
+	};
+
+	Window_EquipStatus.prototype.drawCurrentParam = function(x, y, paramId) {
+		const paramWidth = this.paramWidth();
+		this.resetTextColor();
+		this.drawText(this._actor.param(paramId), x, y, paramWidth, "right");
+	};
+
+	Window_EquipStatus.prototype.drawRightArrow = function(x, y) {
+		const rightArrowWidth = this.rightArrowWidth();
+		this.changeTextColor(ColorManager.systemColor());
+		this.drawText("\u2192", x, y, rightArrowWidth, "center");
+	};
+
+	Window_EquipStatus.prototype.drawNewParam = function(x, y, paramId) {
+		const paramWidth = this.paramWidth();
+		const newValue = this._tempActor.param(paramId);
+		const diffvalue = newValue - this._actor.param(paramId);
+		this.changeTextColor(ColorManager.paramchangeTextColor(diffvalue));
+		this.drawText(newValue, x, y, paramWidth, "right");
+	};
+	
+	// Window Equip Command
+	Window_EquipCommand.prototype.maxCols = function() {
+		return 1;
+	};
+	
+	// Window Equip Slot
+	Window_EquipSlot.prototype.maxCols = function() {
+		return 2;
+	};
+	
+	Window_EquipSlot.prototype.colSpacing = function() {
+		return 4;
+	};
+	
+	Window_EquipSlot.prototype.drawItem = function(index) {
+		if (this._actor) {
+			const item = this.itemAt(index);
+			const rect = this.itemLineRect(index);
+			rect.y += $gameSystem.windowPadding();
+			//this.changeTextColor(ColorManager.systemColor());
+			//this.changePaintOpacity(this.isEnabled(index));
+			if(item === null) {
+				const slotName = this.actorSlotName(this._actor, index);
+				this.drawText(slotName, rect.x, rect.y, rect.width);
+			} else {
+				this.drawItemName(item, rect.x, rect.y, rect.width);
+			}
+			this.changePaintOpacity(true);
+		}
+	};
+	
+	
+	// Window Equip Item
+	Window_EquipItem.prototype.maxCols = function() {
+		return 2;
+	};
+
+	Window_EquipItem.prototype.colSpacing = function() {
+		return 4;
 	};
 })();

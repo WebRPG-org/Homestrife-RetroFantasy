@@ -608,8 +608,10 @@
 		}
 	};
 	
-	Window_StatusBase.prototype.drawSvActor = function(actor, x, y) {
-		x += actor.backRow() ? 0 : $gameMap.tileWidth()/2;
+	Window_StatusBase.prototype.drawSvActor = function(actor, x, y, ignoreRow) {
+		if(!ignoreRow) {
+			x += actor.backRow() ? 0 : $gameMap.tileWidth()/2;
+		}
 		width = 16;
 		height = 24;
 		const bitmap = ImageManager.loadSvActor(actor.battlerName());
@@ -755,32 +757,51 @@
 			const textWidth = $gameMap.tileWidth()/2*8;
 			const lineHeight = this.lineHeight()/2;
 			this.drawActorName(this._actor, x, y, textWidth);
-			//this.drawSvActor(this._actor, x+$gameMap.tileWidth(), y + lineHeight);
-			this.drawAllParams(x, y);
+			this.drawSvActor(this._actor, x+$gameMap.tileWidth()/2*2, y + lineHeight*2, true);
+			this.drawAllParams(x+$gameMap.tileWidth()/2*6, y);
 		}
 	};
 	
 	Window_EquipStatus.prototype.drawAllParams = function(x, y) {
 		const textWidth = $gameMap.tileWidth()/2*8;
-		x2 = x + $gameMap.tileWidth()/2*9;
-		x3 = x2 + $gameMap.tileWidth()/2*9;
-		x4 = x3 + $gameMap.tileWidth()/2*9;
+		const x2 = x + $gameMap.tileWidth()/2*9;
+		const x3 = x2 + $gameMap.tileWidth()/2*9;
+		const x4 = x3 + $gameMap.tileWidth()/2*9;
+		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
 		const lineHeight = this.lineHeight()/2;
-		this.drawText("Strength", x, y+lineHeight*2, textWidth);
 		
-		this.drawText("Toughnes", x, y+lineHeight*4, textWidth);
+		const tempActor = this._tempActor ? this._tempActor : this._actor;
 		
-		this.drawText("Defense", x2, y, textWidth);
+		this.drawNameAndValue(x, y+lineHeight*2, "TGH", this._actor.param(5), tempActor.param(5));
+		this.drawNameAndValue(x, y+lineHeight*3, "MGC", this._actor.param(4), tempActor.param(4));
+		this.drawNameAndValue(x, y+lineHeight*4, "SPD", this._actor.param(6), tempActor.param(6));
+		this.drawNameAndValue(x, y+lineHeight*5, "RCV", this._actor.param(7), tempActor.param(7));
 		
-		this.drawText("Evasion", x2, y+lineHeight*2, textWidth);
+		this.drawNameAndValue(x2, y, "ATK", this._actor.param(2), tempActor.param(2));
+		this.drawNameAndValue(x2, y+lineHeight*2, "ACC", Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
+		this.drawText("TYP", x2, y+lineHeight*4, textWidth);
 		
-		this.drawText("Resists", x2, y+lineHeight*4, textWidth);
-		
-		this.drawText("Attack", x3, y, textWidth);
-		
-		this.drawText("Accuracy", x3, y+lineHeight*3, textWidth);
-		
-		this.drawText("Types", x4, y, textWidth);
+		this.drawNameAndValue(x3, y, "DEF", this._actor.param(3), tempActor.param(3));
+		this.drawNameAndValue(x3, y+lineHeight, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
+		this.drawNameAndValue(x3, y+lineHeight*2, "CVR", Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
+		this.drawText("RES", x3, y+lineHeight*3, textWidth);
+	};
+	
+	Window_EquipStatus.prototype.drawNameAndValue = function(x, y, name, curValue, newValue) {
+		const textWidth = $gameMap.tileWidth()/2*8;
+		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
+		this.drawText(name, x, y, textWidth);
+		this.drawText(newValue+"", x, y, textWidth, "right");
+		if (this._tempActor) {
+			let symbol = "";
+			if(newValue > curValue) {
+				symbol = "+";
+			} else if(newValue < curValue) {
+				symbol = "-";
+			}				
+			this.drawText(symbol, x, y, plusMinusWidth, "right");
+			this.drawText(newValue+"", x, y, textWidth, "right");
+		}
 	};
 	
 	Window_EquipStatus.prototype.drawItem = function(x, y, paramId) {

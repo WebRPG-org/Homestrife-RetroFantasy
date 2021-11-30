@@ -231,6 +231,10 @@
 		this.refresh();
 	};
 	
+	Game_Actor.prototype.weaponTypes = function() {
+		return this.weapons().map(weapon => weapon.wtypeId).filter((value, index, self) => self.indexOf(value) === index);
+	};
+	
 	// Game Party
 	Game_Party.prototype.swapOrder = function(index1, index2) {
 		if(index1 === index2) {
@@ -638,6 +642,39 @@
 		this.drawSvActor(actor, x3, y);
 	};
 	
+	Window_StatusBase.prototype.iconForElementType = function(type) {
+		let returnVal = 0;
+		switch(type) {
+			case  1: returnVal =  32; break;
+			case  2: returnVal =  33; break;
+			case  3: returnVal =  34; break;
+			case  4: returnVal =  35; break;
+			case  5: returnVal =  36; break;
+			case  6: returnVal =  37; break;
+			case  7: returnVal =  38; break;
+			case  8: returnVal =  39; break;
+			case  9: returnVal =  40; break;
+			case 10: returnVal =  41; break;
+			case 11: returnVal =  42; break;
+			case 12: returnVal =  43; break;
+			case 13: returnVal =  44; break;
+			case 14: returnVal =  45; break;
+		}
+		return returnVal;
+	};
+	
+	Window_StatusBase.prototype.iconForWeaponType = function(type) {
+		let returnVal = 0;
+		switch(type) {
+			case  4: case  5: case  6: returnVal =  49; break;
+			case  7: case  8: case  9: returnVal =  50; break;
+			case 10: case 11: case 12: returnVal =  51; break;
+			case 13: case 14: case 15: returnVal =  52; break;
+			case 16: case 17: case 18: returnVal =  53; break;
+		}
+		return returnVal;
+	};
+	
 	// Window Menu Status
 	Window_MenuStatus.prototype.itemHeight = function() {
 		return $gameMap.tileHeight()/2*4;
@@ -780,6 +817,15 @@
 		this.drawNameAndValue(x2, y, "ATK", this._actor.param(2), tempActor.param(2));
 		this.drawNameAndValue(x2, y+lineHeight*2, "ACC", Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
 		this.drawText("TYP", x2, y+lineHeight*4, textWidth);
+		let typeIcons = [];
+		if(this._tempActor) {
+			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
+			typeIcons = typeIcons.concat(this._tempActor.weaponTypes().map(type => this.iconForWeaponType(type)));
+		} else {
+			typeIcons = typeIcons.concat(this._actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
+			typeIcons = typeIcons.concat(this._actor.weaponTypes().map(type => this.iconForWeaponType(type)));
+		}
+		this.drawIconList(x2, y+lineHeight*4, "TYP", typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, "DEF", this._actor.param(3), tempActor.param(3));
 		this.drawNameAndValue(x3, y+lineHeight*2, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
@@ -804,44 +850,22 @@
 		}
 	};
 	
-	Window_EquipStatus.prototype.drawItem = function(x, y, paramId) {
-		const paramX = this.paramX();
-		const paramWidth = this.paramWidth();
-		const rightArrowWidth = this.rightArrowWidth();
-		this.drawParamName(x, y, paramId);
-		if (this._actor) {
-			this.drawCurrentParam(paramX, y, paramId);
+	Window_EquipStatus.prototype.drawIconList = function(x, y, name, icons, width) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const firstX = x + (name.length + 1) * spriteW;
+		this.drawText(name, x, y, width);
+		let curX = x + width - spriteW;
+		let curY = y;
+		for(let i = icons.length-1; i >= 0; i--) {
+			if(icons[i] === 0) { continue; }
+			this.drawIcon(icons[i], curX, curY);
+			curX -= spriteW;
+			if(curX < (y === curY ? firstX : x)) {
+				curX = x + width - spriteW;
+				curY += lineHeight;
+			}
 		}
-		this.drawRightArrow(paramX + paramWidth, y);
-		if (this._tempActor) {
-			this.drawNewParam(paramX + paramWidth + rightArrowWidth, y, paramId);
-		}
-	};
-
-	Window_EquipStatus.prototype.drawParamName = function(x, y, paramId) {
-		const width = this.paramX() - this.itemPadding() * 2;
-		this.changeTextColor(ColorManager.systemColor());
-		this.drawText(TextManager.param(paramId), x, y, width);
-	};
-
-	Window_EquipStatus.prototype.drawCurrentParam = function(x, y, paramId) {
-		const paramWidth = this.paramWidth();
-		this.resetTextColor();
-		this.drawText(this._actor.param(paramId), x, y, paramWidth, "right");
-	};
-
-	Window_EquipStatus.prototype.drawRightArrow = function(x, y) {
-		const rightArrowWidth = this.rightArrowWidth();
-		this.changeTextColor(ColorManager.systemColor());
-		this.drawText("\u2192", x, y, rightArrowWidth, "center");
-	};
-
-	Window_EquipStatus.prototype.drawNewParam = function(x, y, paramId) {
-		const paramWidth = this.paramWidth();
-		const newValue = this._tempActor.param(paramId);
-		const diffvalue = newValue - this._actor.param(paramId);
-		this.changeTextColor(ColorManager.paramchangeTextColor(diffvalue));
-		this.drawText(newValue, x, y, paramWidth, "right");
 	};
 	
 	// Window Equip Command

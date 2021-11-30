@@ -856,14 +856,14 @@
 		const firstX = x + (name.length + 1) * spriteW;
 		this.drawText(name, x, y, width);
 		let curX = x + width - spriteW;
-		let curY = y;
+		let curY = y+lineHeight;
 		for(let i = icons.length-1; i >= 0; i--) {
 			if(icons[i] === 0) { continue; }
 			this.drawIcon(icons[i], curX, curY);
 			curX -= spriteW;
 			if(curX < (y === curY ? firstX : x)) {
 				curX = x + width - spriteW;
-				curY += lineHeight;
+				curY -= lineHeight;
 			}
 		}
 	};

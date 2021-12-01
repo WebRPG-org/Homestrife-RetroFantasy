@@ -303,6 +303,7 @@
 		commandWindow.setHandler("item", this.commandItem.bind(this));
 		commandWindow.setHandler("skill", this.commandPersonal.bind(this));
 		commandWindow.setHandler("equip", this.commandPersonal.bind(this));
+		commandWindow.setHandler("skillLevels", this.commandPersonal.bind(this));
 		commandWindow.setHandler("status", this.commandPersonal.bind(this));
 		commandWindow.setHandler("formation", this.commandFormation.bind(this));
 		commandWindow.setHandler("options", this.commandOptions.bind(this));
@@ -315,7 +316,7 @@
 	
 	Scene_Menu.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._goldWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -335,6 +336,23 @@
 		const wx = Graphics.boxWidth - ww - this._commandWindow.width;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Menu.prototype.onPersonalOk = function() {
+		switch (this._commandWindow.currentSymbol()) {
+			case "skill":
+				SceneManager.push(Scene_Skill);
+				break;
+			case "equip":
+				SceneManager.push(Scene_Equip);
+				break;
+			case "skillLevels":
+				SceneManager.push(Scene_SkillLevels);
+				break;
+			case "status":
+				SceneManager.push(Scene_Status);
+				break;
+		}
 	};
 	
 	// Scene Item Base
@@ -419,6 +437,57 @@
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._statusWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Skill Levels
+	function Scene_SkillLevels() {
+		this.initialize(...arguments);
+	}
+
+	Scene_SkillLevels.prototype = Object.create(Scene_MenuBase.prototype);
+	Scene_SkillLevels.prototype.constructor = Scene_SkillLevels;
+
+	Scene_SkillLevels.prototype.initialize = function() {
+		Scene_MenuBase.prototype.initialize.call(this);
+	};
+	
+	Scene_SkillLevels.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createSkillsWindow();
+		this.refreshActor();
+	};
+	
+	Scene_SkillLevels.prototype.createSkillsWindow = function() {
+		const rect = this.skillsWindowRect();
+		this._skillsWindow = new Window_SkillLevels(rect);
+		this._skillsWindow.setHandler("ok", this.onSkillOk.bind(this));
+		this._skillsWindow.setHandler("cancel", this.popScene.bind(this));
+		this._skillsWindow.setHandler("pagedown", this.nextActor.bind(this));
+		this._skillsWindow.setHandler("pageup", this.previousActor.bind(this));
+		this.addWindow(this._skillsWindow);
+	};
+
+	Scene_SkillLevels.prototype.skillsWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_SkillLevels.prototype.refreshActor = function() {
+		const actor = this.actor();
+		this._skillsWindow.setActor(actor);
+	};
+	
+	Scene_SkillLevels.prototype.onSkillOk = function() {
+		
+	};
+	
+	Scene_SkillLevels.prototype.onActorChange = function() {
+		Scene_MenuBase.prototype.onActorChange.call(this);
+		this.refreshActor();
+		this._skillsWindow.activate();
 	};
 	
 	// Sprite Character
@@ -568,12 +637,12 @@
 	
 	// Window Status Base
 	Window_StatusBase.prototype.drawActorHpMp = function(actor, x, y, width) {
-		width = width || $gameMap.tileWidth()/2*8;
+		width = width || $gameMap.tileWidth()/2*7;
 		const lineHeight = this.lineHeight();
 		this.drawText("HL", x, y, width);
-		this.drawText(actor.hp + " %", x, y, width, "right");
-		this.drawText("ST", x, y + lineHeight/2, width);
-		this.drawText((100-actor.mp) + " %", x, y + lineHeight/2, width, "right");
+		this.drawText(actor.hp + "%", x, y, width, "right");
+		this.drawText("EN", x, y + lineHeight/2, width);
+		this.drawText(actor.mp + "%", x, y + lineHeight/2, width, "right");
 	};
 	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
@@ -673,6 +742,24 @@
 			case 16: case 17: case 18: returnVal =  53; break;
 		}
 		return returnVal;
+	};
+	
+	// Window Menu Command
+	Window_MenuCommand.prototype.addMainCommands = function() {
+		const enabled = this.areMainCommandsEnabled();
+		if (this.needsCommand("item")) {
+			this.addCommand(TextManager.item, "item", enabled);
+		}
+		if (this.needsCommand("skill")) {
+			this.addCommand(TextManager.skill, "skill", enabled);
+		}
+		if (this.needsCommand("equip")) {
+			this.addCommand(TextManager.equip, "equip", enabled);
+		}
+		this.addCommand("Skills", "skillLevels", enabled);
+		if (this.needsCommand("status")) {
+			this.addCommand(TextManager.status, "status", enabled);
+		}
 	};
 	
 	// Window Menu Status
@@ -899,7 +986,6 @@
 		}
 	};
 	
-	
 	// Window Equip Item
 	Window_EquipItem.prototype.maxCols = function() {
 		return 2;
@@ -907,5 +993,108 @@
 
 	Window_EquipItem.prototype.colSpacing = function() {
 		return 4;
+	};
+	
+	// Window Skill Levels
+	function Window_SkillLevels() {
+		this.initialize(...arguments);
+	}
+
+	Window_SkillLevels.prototype = Object.create(Window_StatusBase.prototype);
+	Window_SkillLevels.prototype.constructor = Window_SkillLevels;
+
+	Window_SkillLevels.prototype.initialize = function(rect) {
+		Window_StatusBase.prototype.initialize.call(this, rect);
+		this._actor = null;
+		this.refresh();
+		this.select(0);
+		this.activate();
+	};
+	
+	Window_SkillLevels.prototype.maxCols = function() {
+		return 2;
+	};
+	
+	Window_SkillLevels.prototype.colSpacing = function() {
+		return 4;
+	};
+	
+	Window_SkillLevels.prototype.setActor = function(actor) {
+		if (this._actor !== actor) {
+			this._actor = actor;
+			this.refresh();
+		}
+	};
+	
+	Window_SkillLevels.prototype.maxItems = function() {
+		return this._actor ? (this._actor.currentClass().id <= 6 ? 12 : 14) : 10;
+	};
+	
+	Window_SkillLevels.prototype.refresh = function() {
+		Window_StatusBase.prototype.refresh.call(this);
+		this.drawStaticElements();
+	};
+	
+	Window_SkillLevels.prototype.drawStaticElements = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight();
+		const x = $gameSystem.windowPadding()
+		const y = $gameSystem.windowPadding() + $gameMap.tileHeight()/2;
+		this.drawText("Performance", x, y, spriteW*11);
+		const y2 = y + $gameMap.tileHeight()*4;
+		this.drawText("Ability", x, y2, spriteW*7);
+	};
+	
+	Window_SkillLevels.prototype.itemRect = function(index) {
+		const rect = Window_StatusBase.prototype.itemRect.call(this, index);
+		rect.x += $gameMap.tileWidth()/2;
+		rect.y += $gameMap.tileHeight();
+		if(index > 5) {
+			rect.y += $gameMap.tileHeight();
+		}
+		return rect;
+	};
+	
+	Window_SkillLevels.prototype.drawItem = function(index) {
+		if (this._actor) {
+			const skillName = this.skillName(index);
+			const rect = this.itemLineRect(index);
+			rect.y += $gameMap.tileHeight()/4;
+			this.drawText(skillName, rect.x, rect.y, rect.width);
+			this.drawText(this.skillLevel(index)+"", rect.x, rect.y, rect.width, "right");
+		}
+	};
+	
+	Window_SkillLevels.prototype.skillName = function(index) {
+		const classSkillStartsAt = 10;
+		if(index >= classSkillStartsAt) { return this.classSkillName(index-classSkillStartsAt); }
+		let name = "UNKNOWN";
+		switch(index) {
+			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
+			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
+			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
+			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
+			case  8: name = "FiredWpn"; break; case  9: name =  "Shields"; break; 
+		}
+		return name;
+	};
+	
+	Window_SkillLevels.prototype.classSkillName = function(skillNum) {
+		const stypes = this._actor.addedSkillTypes();
+		let reduceType = 0;
+		for(let i = 0; i < stypes.length; i++) {
+			if(stypes[i] === 1) {
+				reduceType++;
+				continue;
+			}
+			if(i - reduceType === skillNum) {
+				return $dataSystem.skillTypes[stypes[i]];
+			}
+		}
+		return "UNKNOWN";
+	};
+	
+	Window_SkillLevels.prototype.skillLevel = function(index) {
+		return 1;
 	};
 })();

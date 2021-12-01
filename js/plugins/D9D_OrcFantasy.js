@@ -453,6 +453,7 @@
 	
 	Scene_SkillLevels.prototype.create = function() {
 		Scene_MenuBase.prototype.create.call(this);
+		this.createHelpWindow();
 		this.createSkillsWindow();
 		this.refreshActor();
 	};
@@ -460,6 +461,7 @@
 	Scene_SkillLevels.prototype.createSkillsWindow = function() {
 		const rect = this.skillsWindowRect();
 		this._skillsWindow = new Window_SkillLevels(rect);
+		this._skillsWindow.setHelpWindow(this._helpWindow);
 		this._skillsWindow.setHandler("ok", this.onSkillOk.bind(this));
 		this._skillsWindow.setHandler("cancel", this.popScene.bind(this));
 		this._skillsWindow.setHandler("pagedown", this.nextActor.bind(this));
@@ -469,9 +471,9 @@
 
 	Scene_SkillLevels.prototype.skillsWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
 		const wx = Graphics.boxWidth - ww;
-		const wy = Graphics.boxHeight - wh;
+		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
@@ -1037,9 +1039,8 @@
 	
 	Window_SkillLevels.prototype.drawStaticElements = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		const lineHeight = this.lineHeight();
 		const x = $gameSystem.windowPadding()
-		const y = $gameSystem.windowPadding() + $gameMap.tileHeight()/2;
+		const y = $gameSystem.windowPadding() + $gameMap.tileHeight()/2*3;
 		this.drawText("Performance", x, y, spriteW*11);
 		const y2 = y + $gameMap.tileHeight()*4;
 		this.drawText("Ability", x, y2, spriteW*7);
@@ -1048,7 +1049,7 @@
 	Window_SkillLevels.prototype.itemRect = function(index) {
 		const rect = Window_StatusBase.prototype.itemRect.call(this, index);
 		rect.x += $gameMap.tileWidth()/2;
-		rect.y += $gameMap.tileHeight();
+		rect.y += $gameMap.tileHeight()*2;
 		if(index > 5) {
 			rect.y += $gameMap.tileHeight();
 		}
@@ -1065,8 +1066,12 @@
 		}
 	};
 	
+	Window_SkillLevels.prototype.classSkillStartsAt = function() {
+		return 10;
+	};
+	
 	Window_SkillLevels.prototype.skillName = function(index) {
-		const classSkillStartsAt = 10;
+		const classSkillStartsAt = this.classSkillStartsAt();
 		if(index >= classSkillStartsAt) { return this.classSkillName(index-classSkillStartsAt); }
 		let name = "UNKNOWN";
 		switch(index) {
@@ -1096,5 +1101,112 @@
 	
 	Window_SkillLevels.prototype.skillLevel = function(index) {
 		return 1;
+	};
+	
+	Window_SkillLevels.prototype.updateHelp = function() {
+		this.setHelpWindowItem(this.item());
+	};
+	
+	Window_SkillLevels.prototype.item = function() {
+		return this.itemAt(this.index());
+	};
+	
+	Window_SkillLevels.prototype.itemAt = function(index) {
+		const classSkillStartsAt = this.classSkillStartsAt();
+		if(index >= classSkillStartsAt) { return this.classItemAt(index-classSkillStartsAt); }
+		let desc = "";
+		switch(index) {
+			case  0:
+				desc = "Increase chances of striking\nwith melee attacks.";
+				break;
+			case  1:
+				desc = "Increase chances of striking\nwith thrown and fired attacks.";
+				break; 
+			case  2:
+				desc = "Increase chances of avoiding\nattacks.";
+				break;
+			case  3:
+				desc = "Resist stress inflicted by\nshoves, tripping, and impacts.";
+				break; 
+			case  4:
+				desc = "Decrease wait time between\nactions in combat.";
+				break;
+			case  5:
+				desc = "Increase stress recovery and\nfocus gain.";
+				break; 
+			case  6:
+				desc = "Unlock melee weapon techniques.";
+				break;
+			case  7:
+				desc = "Unlock thrown weapon\ntechniques.";
+				break; 
+			case  8:
+				desc = "Unlock techniques for bows and\nguns.";
+				break;
+			case  9:
+				desc = "Unlock shield techniques.";
+				break; 
+		}
+		const item = {};
+		item.description = desc;
+		return item;
+	};
+	
+	Window_SkillLevels.prototype.classItemAt = function(skillNum) {
+		const stypes = this._actor.addedSkillTypes();
+		let reduceType = 0;
+		let skillType = 0;
+		for(let i = 0; i < stypes.length; i++) {
+			if(stypes[i] === 1) {
+				reduceType++;
+				continue;
+			}
+			if(i - reduceType === skillNum) {
+				skillType = stypes[i];
+				break;
+			}
+		}
+		let desc = "";
+		switch(skillType) {
+			case  2:
+				desc = "Unlock abilities that reposition\nparty members.";
+				break;
+			case  3:
+				desc = "Unlock abilities that utilize\ndevices in and out of battle.";
+				break;
+			case  4:
+				desc = "Unlock abilities for avoiding\nbattles, striking from behind.";
+				break;
+			case  5:
+				desc = "Unlock abilities for finding\ntraps and paths, opening locks.";
+				break;
+			case  6:
+				desc = "Unlock healing and weather\nmagic, and reduce stress costs.";
+				break;
+			case  7:
+				desc = "Unlock abilities that see the\netheral and predict events.";
+				break;
+			case  8:
+				desc = "Unlock both white and black\nmagic, and reduce stress costs.";
+				break;
+			case  9:
+				desc = "Unlock attack and cast in same\nturn, and reduce stress costs.";
+				break;
+			case 10:
+				desc = "Unlock attack and infernal\nmagic, and reduce stress costs.";
+				break;
+			case 11:
+				desc = "Unlock abilities for seeing the\nhidden, and uncanny aim.";
+				break;
+			case 12:
+				desc = "Unlock abilities for incredible\ntoughness and body purity.";
+				break;
+			case 13:
+				desc = "Unlock abilities that reduce\nstress, add focus, purify mind.";
+				break;
+		}
+		const item = {};
+		item.description = desc;
+		return item;
 	};
 })();

@@ -210,6 +210,67 @@
 	Game_BattlerBase.prototype.initMembers = function() {
 		_Game_BattlerBase_initMembers.call(this);
 		this._backRow = false;
+		this._skillLevels = {};
+		// performance
+		this._skillLevels.MeleeAcc = 0;
+		this._skillLevels.RangeAcc = 0;
+		this._skillLevels.Evasion  = 0;
+		this._skillLevels.Balance  = 0;
+		this._skillLevels.Agility  = 0;
+		this._skillLevels.Focus    = 0;
+		// universal ability
+		this._skillLevels.MeleeWpn = 0;
+		this._skillLevels.ThrowWpn = 0;
+		this._skillLevels.RangeWpn = 0;
+		this._skillLevels.Shields  = 0;
+		// unique ability
+		this._skillLevels.Tactics  = 0;
+		this._skillLevels.Engineer = 0;
+		this._skillLevels.Stealth  = 0;
+		this._skillLevels.Wayfind  = 0;
+		this._skillLevels.WhiteMgc = 0;
+		this._skillLevels.Clairvoy = 0;
+		this._skillLevels.GrayMagc = 0;
+		this._skillLevels.SpellSwd = 0;
+		this._skillLevels.BlackMgc = 0;
+		this._skillLevels.DevilEye = 0;
+		this._skillLevels.IronBody = 0;
+		this._skillLevels.Spirit   = 0;
+	};
+	
+	Game_BattlerBase.prototype.skillLevel = function(skillName) {
+		const returnVal = this._skillLevels[skillName];
+		return returnVal === undefined ? 0 : returnVal;
+	};
+	
+	Game_BattlerBase.prototype.nextSkillLevelCost = function(skillName) {
+		const nextSkillLevel = this.skillLevel(skillName) + 1;
+		if(nextSkillLevel > 9) { return 0; }
+		return nextSkillLevel * nextSkillLevel * 10;
+	};
+	
+	Game_BattlerBase.prototype.setSkillLevel = function(skillName, newLevel) {
+		if(this._skillLevels[skillName] !== undefined) { this._skillLevels[skillName] = Math.max(0, Math.min(9, newLevel)); }
+	};
+	
+	Game_BattlerBase.prototype.incrementSkillLevel = function(skillName) {
+		if(this._skillLevels[skillName] !== undefined) { this.setSkillLevel(skillName, this._skillLevels[skillName]+1); }
+	};
+	
+	Game_BattlerBase.prototype.decrementSkillLevel = function(skillName) {
+		if(this._skillLevels[skillName] !== undefined) { this.setSkillLevel(skillName, this._skillLevels[skillName]-1); }
+	};
+	
+	Game_BattlerBase.prototype.canPurchaseNextSkillLevel = function(skillName) {
+		return false;
+	};
+	
+	Game_BattlerBase.prototype.purchaseNextSkillLevel = function(skillName) {
+		this.incrementSkillLevel(skillName);
+	};
+	
+	Game_BattlerBase.prototype.refundSkillLevels = function(skillName) {
+		this.setSkillLevel(skillName, 0);
 	};
 	
 	Game_BattlerBase.prototype.toggleRow = function() {
@@ -233,6 +294,24 @@
 	
 	Game_Actor.prototype.weaponTypes = function() {
 		return this.weapons().map(weapon => weapon.wtypeId).filter((value, index, self) => self.indexOf(value) === index);
+	};
+	
+	Game_Actor.prototype.canPurchaseNextSkillLevel = function() {
+		const nextSkillLevelCost = this.nextSkillLevelCost(skillName);
+		return nextSkillLevelCost > 0 && this._exp[this._classId] >= nextSkillLevelCost;
+	};
+	
+	Game_Actor.prototype.purchaseNextSkillLevel = function(skillName) {
+		if(!this.canPurchaseNextSkillLevel()) { return; }
+		this._exp[this._classId] -= this.nextSkillLevelCost(skillName);
+		Game_BattlerBase.prototype.purchaseNextSkillLevel.call(this, skillName);
+	};
+	
+	Game_Actor.prototype.refundSkillLevels = function(skillName) {
+		while (this.skillLevel(skillName) > 0) {
+			this.decrementSkillLevel(skillName);
+			this._exp[this._classId] += this.nextSkillLevelCost(skillName);
+		}
 	};
 	
 	// Game Party
@@ -1035,15 +1114,40 @@
 	Window_SkillLevels.prototype.refresh = function() {
 		Window_StatusBase.prototype.refresh.call(this);
 		this.drawStaticElements();
+		this.drawActorSkillLevelsStatus();
 	};
 	
 	Window_SkillLevels.prototype.drawStaticElements = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		const x = $gameSystem.windowPadding()
-		const y = $gameSystem.windowPadding() + $gameMap.tileHeight()/2*3;
-		this.drawText("Performance", x, y, spriteW*11);
-		const y2 = y + $gameMap.tileHeight()*4;
-		this.drawText("Ability", x, y2, spriteW*7);
+		const lineHeight = this.lineHeight();
+		const lineHalfHeight = lineHeight/2;
+		const x = $gameSystem.windowPadding();
+		const y = $gameSystem.windowPadding();
+		const y2 = y + lineHalfHeight;
+		const x2 = x + spriteW * 9;
+		const x3 = x2 + spriteW * 2;
+		const y3 = y2 + lineHeight;
+		const y4 = y3 + $gameMap.tileHeight()*4;
+		this.drawText("Cost", x2, y2, spriteW*4);
+		this.drawText("Performance", x, y3, spriteW*11);
+		this.drawText("Ability", x, y4, spriteW*7);
+	};
+	
+	Window_SkillLevels.prototype.drawActorSkillLevelsStatus = function() {
+		if(this._actor) {
+			const x = $gameSystem.windowPadding();
+			const y = $gameSystem.windowPadding();
+			const spriteW = $gameMap.tileWidth()/2;
+			const textWidth = $gameMap.tileWidth()/2*8;
+			const lineHeight = this.lineHeight()/2;
+			const x2 = x + spriteW * 11;
+			const y2 = y + lineHeight;
+			const x3 = x2 + spriteW * 2;
+			this.drawActorName(this._actor, x, y, textWidth);
+			this.drawActorClass(this._actor, x, y2, textWidth);
+			this.drawActorSkillPoints(this._actor, x2, y);
+			this.drawText(this.nextSkillLevelCost()+"", x3, y2, spriteW*6, "right");
+		}
 	};
 	
 	Window_SkillLevels.prototype.itemRect = function(index) {
@@ -1100,7 +1204,22 @@
 	};
 	
 	Window_SkillLevels.prototype.skillLevel = function(index) {
-		return 1;
+		return this._actor.skillLevel(this.skillName(index));
+	};
+	
+	Window_SkillLevels.prototype.nextSkillLevelCost = function() {
+		if(!this._actor) { return 0; }
+		return this._actor.nextSkillLevelCost(this.skillName(this.index()));
+	};
+	
+	Window_SkillLevels.prototype.canPurchaseNextSkillLevel = function() {
+		if(!this._actor) { return false; }
+		return this._actor.canPurchaseNextSkillLevel(this.skillName(this.index()));
+	};
+	
+	Window_SkillLevels.prototype.purchaseNextSkillLevel = function() {
+		if(!this._actor) { return; }
+		this._actor.purchaseNextSkillLevel(this.skillName(this.index()));
 	};
 	
 	Window_SkillLevels.prototype.updateHelp = function() {

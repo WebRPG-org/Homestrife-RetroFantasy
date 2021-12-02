@@ -1019,7 +1019,8 @@
 			const textWidth = $gameMap.tileWidth()/2*8;
 			const lineHeight = this.lineHeight()/2;
 			this.drawActorName(this._actor, x, y, textWidth);
-			this.drawSvActor(this._actor, x+$gameMap.tileWidth()/2*2, y + lineHeight*2, true);
+			this.drawActorClass(this._actor, x, y+lineHeight, textWidth);
+			this.drawSvActor(this._actor, x+$gameMap.tileWidth()/2*2, y + lineHeight*3, true);
 			this.drawAllParams(x+$gameMap.tileWidth()/2*6, y);
 		}
 	};

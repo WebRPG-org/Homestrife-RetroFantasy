@@ -552,7 +552,7 @@
 
 	Scene_SkillLevels.prototype.skillsWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -626,6 +626,25 @@
 		this._skillsWindow.activate();
 		this._skillsConfirmWindow.deactivate();
 		this._skillsConfirmWindow.hide();
+	};
+	
+	// Scene Status
+	Scene_Status.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createStatusWindow();
+	};
+	
+	Scene_Status.prototype.statusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*26;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*10;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Status.prototype.refreshActor = function() {
+		const actor = this.actor();
+		this._statusWindow.setActor(actor);
 	};
 	
 	// Sprite Character
@@ -882,6 +901,90 @@
 		return returnVal;
 	};
 	
+	Window_StatusBase.prototype.drawIconList = function(x, y, name, icons, width) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const firstX = x + (name.length + 1) * spriteW;
+		this.drawText(name, x, y, width);
+		let curX = x + width - spriteW;
+		let curY = y+lineHeight;
+		for(let i = icons.length-1; i >= 0; i--) {
+			if(icons[i] === 0) { continue; }
+			this.drawIcon(icons[i], curX, curY);
+			curX -= spriteW;
+			if(curX < (y === curY ? firstX : x)) {
+				curX = x + width - spriteW;
+				curY -= lineHeight;
+			}
+		}
+	};
+	
+	Window_StatusBase.prototype.drawSkillLevel = function(actor, skillNum, x, y, width) {
+		if(!this._actor) { return; }
+		const skillName = this.skillName(skillNum);
+		this.drawText(skillName, x, y, width);
+		this.drawText(this.skillLevel(actor, skillNum)+"", x, y, width, "right");
+	};
+	
+	Window_StatusBase.prototype.classSkillStartsAt = function() {
+		return 10;
+	};
+	
+	Window_StatusBase.prototype.skillName = function(skillNum) {
+		const classSkillStartsAt = this.classSkillStartsAt();
+		if(skillNum >= classSkillStartsAt) { return this.classSkillName(skillNum-classSkillStartsAt); }
+		let name = "UNKNOWN";
+		switch(skillNum) {
+			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
+			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
+			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
+			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
+			case  8: name = "FiredWpn"; break; case  9: name =  "Shields"; break; 
+		}
+		return name;
+	};
+	
+	Window_StatusBase.prototype.classSkillName = function(skillNum) {
+		const stypes = this._actor.addedSkillTypes();
+		let reduceType = 0;
+		for(let i = 0; i < stypes.length; i++) {
+			if(stypes[i] === 1) {
+				reduceType++;
+				continue;
+			}
+			if(i - reduceType === skillNum) {
+				return $dataSystem.skillTypes[stypes[i]];
+			}
+		}
+		return "UNKNOWN";
+	};
+	
+	Window_StatusBase.prototype.skillLevel = function(actor, index) {
+		if(!this._actor) { return 0; }
+		return actor.skillLevel(this.skillName(index));
+	};
+	
+	Window_StatusBase.prototype.skillCount = function(actor) {
+		return actor ? (actor.currentClass().id <= 6 ? 12 : 14) : 10;
+	};
+	
+	Window_StatusBase.prototype.drawNameAndValue = function(x, y, name, curValue, newValue) {
+		const textWidth = $gameMap.tileWidth()/2*8;
+		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
+		this.drawText(name, x, y, textWidth);
+		this.drawText((newValue ? newValue : curValue)+"", x, y, textWidth, "right");
+		if (newValue) {
+			let symbol = "";
+			if(newValue > curValue) {
+				symbol = "+";
+			} else if(newValue < curValue) {
+				symbol = "-";
+			}				
+			this.drawText(symbol, x, y, plusMinusWidth, "right");
+			this.drawText(newValue+"", x, y, textWidth, "right");
+		}
+	};
+	
 	// Window Menu Command
 	Window_MenuCommand.prototype.addMainCommands = function() {
 		const enabled = this.areMainCommandsEnabled();
@@ -1030,7 +1133,6 @@
 		const x2 = x + $gameMap.tileWidth()/2*9;
 		const x3 = x2 + $gameMap.tileWidth()/2*9;
 		const x4 = x3 + $gameMap.tileWidth()/2*9;
-		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
 		const lineHeight = this.lineHeight()/2;
 		
 		const tempActor = this._tempActor ? this._tempActor : this._actor;
@@ -1040,9 +1142,8 @@
 		this.drawNameAndValue(x, y+lineHeight*4, "SPD", this._actor.param(6), tempActor.param(6));
 		this.drawNameAndValue(x, y+lineHeight*5, "RCV", this._actor.param(7), tempActor.param(7));
 		
-		this.drawNameAndValue(x2, y, "ATK", this._actor.param(2), tempActor.param(2));
+		this.drawNameAndValue(x2, y, "DMG", this._actor.param(2), tempActor.param(2));
 		this.drawNameAndValue(x2, y+lineHeight*2, "ACC", Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
-		this.drawText("TYP", x2, y+lineHeight*4, textWidth);
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -1053,45 +1154,10 @@
 		}
 		this.drawIconList(x2, y+lineHeight*4, "TYP", typeIcons, textWidth);
 		
-		this.drawNameAndValue(x3, y, "DEF", this._actor.param(3), tempActor.param(3));
+		this.drawNameAndValue(x3, y, "AMR", this._actor.param(3), tempActor.param(3));
 		this.drawNameAndValue(x3, y+lineHeight*2, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
 		this.drawNameAndValue(x3, y+lineHeight*3, "CVR", Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
 		this.drawText("RES", x3, y+lineHeight*4, textWidth);
-	};
-	
-	Window_EquipStatus.prototype.drawNameAndValue = function(x, y, name, curValue, newValue) {
-		const textWidth = $gameMap.tileWidth()/2*8;
-		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
-		this.drawText(name, x, y, textWidth);
-		this.drawText(newValue+"", x, y, textWidth, "right");
-		if (this._tempActor) {
-			let symbol = "";
-			if(newValue > curValue) {
-				symbol = "+";
-			} else if(newValue < curValue) {
-				symbol = "-";
-			}				
-			this.drawText(symbol, x, y, plusMinusWidth, "right");
-			this.drawText(newValue+"", x, y, textWidth, "right");
-		}
-	};
-	
-	Window_EquipStatus.prototype.drawIconList = function(x, y, name, icons, width) {
-		const spriteW = $gameMap.tileWidth()/2;
-		const lineHeight = this.lineHeight()/2;
-		const firstX = x + (name.length + 1) * spriteW;
-		this.drawText(name, x, y, width);
-		let curX = x + width - spriteW;
-		let curY = y+lineHeight;
-		for(let i = icons.length-1; i >= 0; i--) {
-			if(icons[i] === 0) { continue; }
-			this.drawIcon(icons[i], curX, curY);
-			curX -= spriteW;
-			if(curX < (y === curY ? firstX : x)) {
-				curX = x + width - spriteW;
-				curY -= lineHeight;
-			}
-		}
 	};
 	
 	// Window Equip Command
@@ -1174,7 +1240,7 @@
 	};
 	
 	Window_SkillLevels.prototype.maxItems = function() {
-		return this._actor ? (this._actor.currentClass().id <= 6 ? 12 : 14) : 10;
+		return this.skillCount(this._actor);
 	};
 	
 	Window_SkillLevels.prototype.refresh = function() {
@@ -1212,49 +1278,10 @@
 	
 	Window_SkillLevels.prototype.drawItem = function(index) {
 		if (this._actor) {
-			const skillName = this.skillName(index);
 			const rect = this.itemLineRect(index);
 			rect.y += $gameMap.tileHeight()/4;
-			this.drawText(skillName, rect.x, rect.y, rect.width);
-			this.drawText(this.skillLevel(index)+"", rect.x, rect.y, rect.width, "right");
+			this.drawSkillLevel(this._actor, index, rect.x, rect.y, rect.width);
 		}
-	};
-	
-	Window_SkillLevels.prototype.classSkillStartsAt = function() {
-		return 10;
-	};
-	
-	Window_SkillLevels.prototype.skillName = function(index) {
-		const classSkillStartsAt = this.classSkillStartsAt();
-		if(index >= classSkillStartsAt) { return this.classSkillName(index-classSkillStartsAt); }
-		let name = "UNKNOWN";
-		switch(index) {
-			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
-			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
-			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
-			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
-			case  8: name = "FiredWpn"; break; case  9: name =  "Shields"; break; 
-		}
-		return name;
-	};
-	
-	Window_SkillLevels.prototype.classSkillName = function(skillNum) {
-		const stypes = this._actor.addedSkillTypes();
-		let reduceType = 0;
-		for(let i = 0; i < stypes.length; i++) {
-			if(stypes[i] === 1) {
-				reduceType++;
-				continue;
-			}
-			if(i - reduceType === skillNum) {
-				return $dataSystem.skillTypes[stypes[i]];
-			}
-		}
-		return "UNKNOWN";
-	};
-	
-	Window_SkillLevels.prototype.skillLevel = function(index) {
-		return this._actor.skillLevel(this.skillName(index));
 	};
 	
 	Window_SkillLevels.prototype.nextSkillLevelCost = function() {
@@ -1452,5 +1479,81 @@
 	Window_SkillLevelsConfirm.prototype.makeCommandList = function() {
 		this.addCommand("Cancel", "cancel", true);
 		this.addCommand("Upgrade", "upgrade", true);
+	};
+	
+	// Window Status
+	Window_Status.prototype.refresh = function() {
+		Window_StatusBase.prototype.refresh.call(this);
+		if (this._actor) {
+			const spriteW = $gameMap.tileWidth()/2;
+			const lineHeight = this.lineHeight()/2;
+			const x = $gameSystem.windowPadding();
+			const x2 = x + spriteW *2;
+			const x3 = x2 + spriteW;
+			const y = $gameSystem.windowPadding();
+			const y2 = y + lineHeight*4;
+			const y3 = y2 + lineHeight*7;
+			this.drawActorSimpleStatus(this._actor, x3, y);
+			this.drawEquipParams(this._actor, x, y2);
+			this.drawSkillLevels(this._actor, x2, y3);
+		}
+	};
+	
+	Window_Status.prototype.drawSkillLevels = function(actor, x, y) {
+		if (!actor) { return; }
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const textWidth = spriteW * 10;
+		const skillCount = this.skillCount(actor);
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight*3;
+		this.drawText("Performance", x, y, spriteW*11);
+		this.drawText("Ability", x, y3, spriteW*11);
+		const x2 = x + spriteW;
+		const x3 = x2 + textWidth + spriteW;
+		let curX = x2;
+		let curY = y2;
+		for(let i = 0; i < skillCount; i++) {
+			this.drawSkillLevel(actor, i, curX, curY, textWidth);
+			if(curX > x2) {
+				curX = x2;
+				curY += lineHeight;
+				if(curY === y3) {
+					curY += lineHeight;
+				}
+			} else {
+				curX = x3;
+			}
+		}
+	};
+	
+	Window_Status.prototype.drawEquipParams = function(actor, x, y) {
+		if (!actor) { return; }
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const textWidth = spriteW*8;
+		const x2 = x + textWidth + spriteW;
+		const x3 = x2 + textWidth + spriteW;
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight;
+		const y4 = y3 + lineHeight;
+		const y5 = y4 + lineHeight;
+		
+		this.drawNameAndValue(x, y, "TGH", actor.param(5));
+		this.drawNameAndValue(x, y2, "MGC", actor.param(4));
+		this.drawNameAndValue(x, y3, "SPD", actor.param(6));
+		this.drawNameAndValue(x, y4, "RCV", actor.param(7));
+		
+		this.drawNameAndValue(x2, y, "DMG", actor.param(2));
+		this.drawNameAndValue(x2, y3, "ACC", Math.floor(actor.xparam(0)*100));
+		let typeIcons = [];
+		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
+		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
+		this.drawIconList(x2, y5, "TYP", typeIcons, textWidth);
+		
+		this.drawNameAndValue(x3, y, "AMR", actor.param(3));
+		this.drawNameAndValue(x3, y3, "EVA", Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y4, "CVR", Math.floor(actor.xparam(3)*100));
+		this.drawText("RES", x3, y5, textWidth);
 	};
 })();

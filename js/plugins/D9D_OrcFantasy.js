@@ -534,6 +534,7 @@
 		Scene_MenuBase.prototype.create.call(this);
 		this.createHelpWindow();
 		this.createSkillsWindow();
+		this.createSkillsStatusWindow();
 		this.createSkillsConfirmWindow();
 		this.refreshActor();
 	};
@@ -551,8 +552,23 @@
 
 	Scene_SkillLevels.prototype.skillsWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
 		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_SkillLevels.prototype.createSkillsStatusWindow = function() {
+		const rect = this.skillsStatusWindowRect();
+		this._skillsStatusWindow = new Window_SkillLevelsStatus(rect);
+		this.addWindow(this._skillsStatusWindow);
+		this._skillsWindow.setSkillsStatusWindow(this._skillsStatusWindow);
+	};
+
+	Scene_SkillLevels.prototype.skillsStatusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*4;
+		const wx = Graphics.boxWidth - ww - this._skillsWindow.width;
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -570,13 +586,14 @@
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
 		const wx = Graphics.boxWidth - ww - this._skillsWindow.width;
-		const wy = this._helpWindow.y - wh;
+		const wy = this._skillsStatusWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	Scene_SkillLevels.prototype.refreshActor = function() {
 		const actor = this.actor();
 		this._skillsWindow.setActor(actor);
+		this._skillsStatusWindow.setActor(actor);
 	};
 	
 	Scene_SkillLevels.prototype.onSkillOk = function() {
@@ -1127,6 +1144,7 @@
 	Window_SkillLevels.prototype.initialize = function(rect) {
 		Window_StatusBase.prototype.initialize.call(this, rect);
 		this._actor = null;
+		this._skillsStatusWindow = null;
 		this.refresh();
 		this.select(0);
 		this.activate();
@@ -1147,6 +1165,13 @@
 		}
 	};
 	
+	Window_SkillLevels.prototype.setSkillsStatusWindow = function(skillsStatusWindow) {
+		if (this._skillsStatusWindow !== skillsStatusWindow) {
+			this._skillsStatusWindow = skillsStatusWindow;
+			this._skillsStatusWindow.setSkillLevelCost(this.nextSkillLevelCost());
+		}
+	};
+	
 	Window_SkillLevels.prototype.maxItems = function() {
 		return this._actor ? (this._actor.currentClass().id <= 6 ? 12 : 14) : 10;
 	};
@@ -1154,12 +1179,13 @@
 	Window_SkillLevels.prototype.refresh = function() {
 		Window_StatusBase.prototype.refresh.call(this);
 		this.drawStaticElements();
-		this.drawActorSkillLevelsStatus();
 	};
 	
-	Window_SkillLevels.prototype.select = function(index) {
-		Window_Selectable.prototype.select.call(this, index);
-		this.refreshSkillLevelCost();
+	Window_SkillLevels.prototype.update = function() {
+		Window_Selectable.prototype.update.call(this);
+		if (this._skillsStatusWindow) {
+			this._skillsStatusWindow.setSkillLevelCost(this.nextSkillLevelCost());
+		}
 	};
 	
 	Window_SkillLevels.prototype.drawStaticElements = function() {
@@ -1167,52 +1193,16 @@
 		const lineHeight = this.lineHeight();
 		const lineHalfHeight = lineHeight/2;
 		const x = $gameSystem.windowPadding();
-		const y = $gameSystem.windowPadding();
-		const y2 = y + lineHalfHeight;
-		const x2 = x + spriteW * 9;
-		const x3 = x2 + spriteW * 2;
-		const y3 = y2 + lineHeight;
-		const y4 = y3 + $gameMap.tileHeight()*4;
-		this.drawText("Cost", x2, y2, spriteW*4);
-		this.drawText("Performance", x, y3, spriteW*11);
-		this.drawText("Ability", x, y4, spriteW*7);
-	};
-	
-	Window_SkillLevels.prototype.drawActorSkillLevelsStatus = function() {
-		if(this._actor) {
-			const x = $gameSystem.windowPadding();
-			const y = $gameSystem.windowPadding();
-			const spriteW = $gameMap.tileWidth()/2;
-			const textWidth = $gameMap.tileWidth()/2*8;
-			const lineHeight = this.lineHeight()/2;
-			const x2 = x + spriteW * 11;
-			const y2 = y + lineHeight;
-			const x3 = x2 + spriteW * 2;
-			this.drawActorName(this._actor, x, y, textWidth);
-			this.drawActorClass(this._actor, x, y2, textWidth);
-			this.drawActorSkillPoints(this._actor, x2, y);
-			this.drawSkillLevelCost(x3, y2, spriteW*6);
-		}
-	};
-	
-	Window_SkillLevels.prototype.refreshSkillLevelCost = function() {
-		const spriteW = $gameMap.tileWidth()/2;
-		const lineHeight = this.lineHeight()/2;
-		const textWidth = spriteW*6;
-		const x = $gameSystem.windowPadding() + spriteW * 13;
-		const y = $gameSystem.windowPadding() + lineHeight;
-		this.contents.clearRect(x, y, textWidth, lineHeight);
-		this.drawSkillLevelCost(x, y, textWidth);
-	};
-	
-	Window_SkillLevels.prototype.drawSkillLevelCost = function(x, y, width) {
-		this.drawText(this.nextSkillLevelCost()+"", x, y, width, "right");
+		const y = $gameSystem.windowPadding() + lineHalfHeight;
+		const y2 = y + lineHeight*4;
+		this.drawText("Performance", x, y, spriteW*11);
+		this.drawText("Ability", x, y2, spriteW*7);
 	};
 	
 	Window_SkillLevels.prototype.itemRect = function(index) {
 		const rect = Window_StatusBase.prototype.itemRect.call(this, index);
 		rect.x += $gameMap.tileWidth()/2;
-		rect.y += $gameMap.tileHeight()*2;
+		rect.y += $gameMap.tileHeight()*1;
 		if(index > 5) {
 			rect.y += $gameMap.tileHeight();
 		}
@@ -1391,6 +1381,57 @@
 		const item = {};
 		item.description = desc;
 		return item;
+	};
+	
+	// Window Skill Levels Status
+	function Window_SkillLevelsStatus() {
+		this.initialize(...arguments);
+	}
+
+	Window_SkillLevelsStatus.prototype = Object.create(Window_StatusBase.prototype);
+	Window_SkillLevelsStatus.prototype.constructor = Window_SkillLevelsStatus;
+
+	Window_SkillLevelsStatus.prototype.initialize = function(rect) {
+		Window_StatusBase.prototype.initialize.call(this, rect);
+		this._actor = null;
+		this._skillLevelCost = 0;
+		this.refresh();
+	};
+	
+	Window_SkillLevelsStatus.prototype.setActor = function(actor) {
+		if (this._actor !== actor) {
+			this._actor = actor;
+			this.refresh();
+		}
+	};
+	
+	Window_SkillLevelsStatus.prototype.setSkillLevelCost = function(skillLevelCost) {
+		if (this._skillLevelCost !== skillLevelCost) {
+			this._skillLevelCost = skillLevelCost;
+			this.refresh();
+		}
+	};
+	
+	Window_SkillLevelsStatus.prototype.refresh = function() {
+		this.contents.clear();
+		if (this._actor) {
+			const spriteW = $gameMap.tileWidth()/2;
+			const textWidth = spriteW*8;
+			const lineHeight = this.lineHeight()/2;
+			const x = $gameSystem.windowPadding();
+			const x2 = x + spriteW*3;
+			const y = $gameSystem.windowPadding();
+			const y2 = y + lineHeight;
+			const y3 = y2 + lineHeight*2;
+			const y4 = y3 + lineHeight*3;
+			const y5 = y4 + lineHeight;
+			this.drawActorName(this._actor, x, y, textWidth);
+			this.drawActorClass(this._actor, x, y2, textWidth);
+			this.drawSvActor(this._actor, x2, y3, true);
+			this.drawActorSkillPoints(this._actor, x, y4);
+			this.drawText("Cost", x, y5, textWidth);
+			this.drawText(this._skillLevelCost+"", x, y5, textWidth, "right");
+		}
 	};
 	
 	// Window Skill Levels Confirm

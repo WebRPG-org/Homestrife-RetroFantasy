@@ -296,7 +296,7 @@
 		return this.weapons().map(weapon => weapon.wtypeId).filter((value, index, self) => self.indexOf(value) === index);
 	};
 	
-	Game_Actor.prototype.canPurchaseNextSkillLevel = function() {
+	Game_Actor.prototype.canPurchaseNextSkillLevel = function(skillName) {
 		const nextSkillLevelCost = this.nextSkillLevelCost(skillName);
 		return nextSkillLevelCost > 0 && this._exp[this._classId] >= nextSkillLevelCost;
 	};
@@ -534,6 +534,7 @@
 		Scene_MenuBase.prototype.create.call(this);
 		this.createHelpWindow();
 		this.createSkillsWindow();
+		this.createSkillsConfirmWindow();
 		this.refreshActor();
 	};
 	
@@ -556,19 +557,58 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	Scene_SkillLevels.prototype.createSkillsConfirmWindow = function() {
+		const rect = this.skillsConfirmWindowRect();
+		this._skillsConfirmWindow = new Window_SkillLevelsConfirm(rect);
+		this._skillsConfirmWindow.setHandler("cancel", this.onSkillUpgradeCancel.bind(this));
+		this._skillsConfirmWindow.setHandler("upgrade", this.onSkillUpgrade.bind(this));
+		this.addWindow(this._skillsConfirmWindow);
+		this._skillsConfirmWindow.hide();
+	};
+
+	Scene_SkillLevels.prototype.skillsConfirmWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
+		const wx = Graphics.boxWidth - ww - this._skillsWindow.width;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	Scene_SkillLevels.prototype.refreshActor = function() {
 		const actor = this.actor();
 		this._skillsWindow.setActor(actor);
 	};
 	
 	Scene_SkillLevels.prototype.onSkillOk = function() {
-		
+		if(this._skillsWindow.canPurchaseNextSkillLevel()) {
+			this._skillsWindow.deactivate();
+			this._skillsConfirmWindow.activate();
+			this._skillsConfirmWindow.show();
+			this._skillsConfirmWindow.select(0);
+		}
+	};
+	
+	Scene_SkillLevels.prototype.onSkillUpgradeCancel = function() {
+		this.exitSkillsCofirmWindow();
+	};
+	
+	Scene_SkillLevels.prototype.onSkillUpgrade = function() {
+		this._skillsWindow.purchaseNextSkillLevel();
+		this.exitSkillsCofirmWindow();
+	};
+	
+	Scene_SkillLevels.prototype.exitSkillsCofirmWindow = function() {
+		this._skillsWindow.activate();
+		this._skillsConfirmWindow.deactivate();
+		this._skillsConfirmWindow.hide();
 	};
 	
 	Scene_SkillLevels.prototype.onActorChange = function() {
 		Scene_MenuBase.prototype.onActorChange.call(this);
 		this.refreshActor();
 		this._skillsWindow.activate();
+		this._skillsConfirmWindow.deactivate();
+		this._skillsConfirmWindow.hide();
 	};
 	
 	// Sprite Character
@@ -1117,6 +1157,11 @@
 		this.drawActorSkillLevelsStatus();
 	};
 	
+	Window_SkillLevels.prototype.select = function(index) {
+		Window_Selectable.prototype.select.call(this, index);
+		this.refreshSkillLevelCost();
+	};
+	
 	Window_SkillLevels.prototype.drawStaticElements = function() {
 		const spriteW = $gameMap.tileWidth()/2;
 		const lineHeight = this.lineHeight();
@@ -1146,8 +1191,22 @@
 			this.drawActorName(this._actor, x, y, textWidth);
 			this.drawActorClass(this._actor, x, y2, textWidth);
 			this.drawActorSkillPoints(this._actor, x2, y);
-			this.drawText(this.nextSkillLevelCost()+"", x3, y2, spriteW*6, "right");
+			this.drawSkillLevelCost(x3, y2, spriteW*6);
 		}
+	};
+	
+	Window_SkillLevels.prototype.refreshSkillLevelCost = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const textWidth = spriteW*6;
+		const x = $gameSystem.windowPadding() + spriteW * 13;
+		const y = $gameSystem.windowPadding() + lineHeight;
+		this.contents.clearRect(x, y, textWidth, lineHeight);
+		this.drawSkillLevelCost(x, y, textWidth);
+	};
+	
+	Window_SkillLevels.prototype.drawSkillLevelCost = function(x, y, width) {
+		this.drawText(this.nextSkillLevelCost()+"", x, y, width, "right");
 	};
 	
 	Window_SkillLevels.prototype.itemRect = function(index) {
@@ -1217,9 +1276,14 @@
 		return this._actor.canPurchaseNextSkillLevel(this.skillName(this.index()));
 	};
 	
+	Window_SkillLevels.prototype.isCurrentItemEnabled = function() {
+		return this.canPurchaseNextSkillLevel();
+	};
+	
 	Window_SkillLevels.prototype.purchaseNextSkillLevel = function() {
 		if(!this._actor) { return; }
 		this._actor.purchaseNextSkillLevel(this.skillName(this.index()));
+		this.refresh();
 	};
 	
 	Window_SkillLevels.prototype.updateHelp = function() {
@@ -1327,5 +1391,24 @@
 		const item = {};
 		item.description = desc;
 		return item;
+	};
+	
+	// Window Skill Levels Confirm
+	function Window_SkillLevelsConfirm() {
+		this.initialize(...arguments);
+	}
+
+	Window_SkillLevelsConfirm.prototype = Object.create(Window_Command.prototype);
+	Window_SkillLevelsConfirm.prototype.constructor = Window_SkillLevelsConfirm;
+
+	Window_SkillLevelsConfirm.prototype.initialize = function(rect) {
+		Window_Command.prototype.initialize.call(this, rect);
+		this.select(0);
+		this._canRepeat = false;
+	};
+	
+	Window_SkillLevelsConfirm.prototype.makeCommandList = function() {
+		this.addCommand("Cancel", "cancel", true);
+		this.addCommand("Upgrade", "upgrade", true);
 	};
 })();

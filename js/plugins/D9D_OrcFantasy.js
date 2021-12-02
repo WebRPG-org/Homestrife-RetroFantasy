@@ -647,6 +647,15 @@
 		this._statusWindow.setActor(actor);
 	};
 	
+	// Scene Options
+	Scene_Options.prototype.optionsWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*7;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Sprite Character
 	Sprite_Character.prototype.updateCharacterFrame = function() {
 		const pw = this.patternWidth();
@@ -1555,5 +1564,19 @@
 		this.drawNameAndValue(x3, y3, "EVA", Math.floor(actor.xparam(1)*100));
 		this.drawNameAndValue(x3, y4, "CVR", Math.floor(actor.xparam(3)*100));
 		this.drawText("RES", x3, y5, textWidth);
+	};
+	
+	// Window Options
+	Window_Options.prototype.drawItem = function(index) {
+		const title = this.commandName(index);
+		const status = this.statusText(index);
+		const rect = this.itemLineRect(index);
+		rect.y += $gameSystem.windowPadding();
+		const statusWidth = this.statusWidth();
+		const titleWidth = rect.width - statusWidth;
+		this.resetTextColor();
+		this.changePaintOpacity(this.isCommandEnabled(index));
+		this.drawText(title, rect.x, rect.y, titleWidth, "left");
+		this.drawText(status, rect.x + titleWidth, rect.y, statusWidth, "right");
 	};
 })();

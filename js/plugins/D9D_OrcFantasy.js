@@ -364,6 +364,41 @@
 		Graphics.boxHeight = Graphics._height;
 	};
 	
+	// Scene Title
+	Scene_Title.prototype.update = function() {
+		if (!this.isBusy() && !this._commandWindow.visible) {
+			this._commandWindow.show();
+			this._commandWindow.refresh();
+		}
+		Scene_Base.prototype.update.call(this);
+	};
+
+	Scene_Title.prototype.isBusy = function() {
+		return Scene_Base.prototype.isBusy.call(this);
+	};
+	
+	Scene_Title.prototype.commandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Title.prototype.commandNewGame = function() {
+		DataManager.setupNewGame();
+		this.fadeOutAll();
+		SceneManager.goto(Scene_Map);
+	};
+
+	Scene_Title.prototype.commandContinue = function() {
+		SceneManager.push(Scene_Load);
+	};
+
+	Scene_Title.prototype.commandOptions = function() {
+		SceneManager.push(Scene_Options);
+	};
+	
 	// Scene Menu Base
 	Scene_MenuBase.prototype.createBackground = function() {
 		this._backgroundSprite = new Sprite();
@@ -851,8 +886,6 @@
 	// Window Command
 	Window_Command.prototype.drawItem = function(index) {
 		const rect = this.itemLineRect(index);
-		this.resetTextColor();
-		this.changePaintOpacity(this.isCommandEnabled(index));
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
 	
@@ -1663,5 +1696,12 @@
 				characterX += spriteW*3;
 			}
 		}
+	};
+	
+	// Window Title Command
+	Window_TitleCommand.prototype.initialize = function(rect) {
+		Window_Command.prototype.initialize.call(this, rect);
+		this.hide();
+		this.selectLast();
 	};
 })();

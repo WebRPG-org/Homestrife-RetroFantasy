@@ -399,6 +399,15 @@
 		SceneManager.push(Scene_Options);
 	};
 	
+	// Scene Map
+	Scene_Map.prototype.createMenuButton = function() {
+		this._menuButton = new Sprite_Button("menu");
+		this._menuButton.x = Graphics.boxWidth - this._menuButton.width;
+		this._menuButton.y = this.buttonY();
+		this._menuButton.visible = false;
+		this.addWindow(this._menuButton);
+	};
+	
 	// Scene Menu Base
 	Scene_MenuBase.prototype.createBackground = function() {
 		this._backgroundSprite = new Sprite();
@@ -413,6 +422,27 @@
 		const wx = 0;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_MenuBase.prototype.createCancelButton = function() {
+		this._cancelButton = new Sprite_Button("cancel");
+		this._cancelButton.x = Graphics.boxWidth - this._cancelButton.width;
+		this._cancelButton.y = this.buttonY();
+		this.addWindow(this._cancelButton);
+	};
+
+	Scene_MenuBase.prototype.createPageButtons = function() {
+		this._pageupButton = new Sprite_Button("pageup");
+		this._pageupButton.x = 0;
+		this._pageupButton.y = this.buttonY();
+		const pageupRight = this._pageupButton.x + this._pageupButton.width;
+		this._pagedownButton = new Sprite_Button("pagedown");
+		this._pagedownButton.x = pageupRight;
+		this._pagedownButton.y = this.buttonY();
+		this.addWindow(this._pageupButton);
+		this.addWindow(this._pagedownButton);
+		this._pageupButton.setClickHandler(this.previousActor.bind(this));
+		this._pagedownButton.setClickHandler(this.nextActor.bind(this));
 	};
 	
 	// Scene Menu
@@ -741,6 +771,11 @@
 		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Sprite Button
+	Sprite_Button.prototype.updateOpacity = function() {
+		this.opacity = 255;
 	};
 	
 	// Sprite Character

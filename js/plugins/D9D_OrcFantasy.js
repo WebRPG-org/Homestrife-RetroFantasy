@@ -721,9 +721,26 @@
 		return "Choose a file to save the game\nto.";
 	};
 	
+	Scene_GameEnd.prototype.createBackground = function() {
+		Scene_MenuBase.prototype.createBackground.call(this);
+	};
+	
 	// Scene Load
 	Scene_Load.prototype.helpWindowText = function() {
 		return "Choose a file to load the game\nfrom.";
+	};
+	
+	// Scene Game End
+	Scene_GameEnd.prototype.stop = function() {
+		Scene_MenuBase.prototype.stop.call(this);
+	};
+	
+	Scene_GameEnd.prototype.commandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	// Sprite Character
@@ -1703,5 +1720,10 @@
 		Window_Command.prototype.initialize.call(this, rect);
 		this.hide();
 		this.selectLast();
+	};
+	
+	// Window Game End
+	Window_GameEnd.prototype.initialize = function(rect) {
+		Window_Command.prototype.initialize.call(this, rect);
 	};
 })();

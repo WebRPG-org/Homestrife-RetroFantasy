@@ -176,6 +176,14 @@
 		return baseAlpha;
 	};
 	
+	// Data Manager
+	const _DataManager_makeSavefileInfo = DataManager.makeSavefileInfo;
+	DataManager.makeSavefileInfo = function() {
+		const info = _DataManager_makeSavefileInfo.call(this);
+		info.svActors = $gameParty.svActorsForSavefile();
+		return info;
+	};
+	
 	// Audio Manager
 	const _AudioManager_playSe = AudioManager.playSe;
 	AudioManager.playSe = function(se) {
@@ -324,6 +332,10 @@
 			this._actors[index2] = temp;
 		}
 		$gamePlayer.refresh();
+	};
+	
+	Game_Party.prototype.svActorsForSavefile = function() {
+		return this.battleMembers().map(actor => actor.battlerName());
 	};
 	
 	// Game Character Base
@@ -656,6 +668,29 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	// Scene File
+	Scene_File.prototype.helpWindowRect = function() {
+		return Scene_MenuBase.prototype.helpWindowRect.call(this);
+	};
+	
+	Scene_File.prototype.listWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wx = 0;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Save
+	Scene_Save.prototype.helpWindowText = function() {
+		return "Choose a file to save the game\nto.";
+	};
+	
+	// Scene Load
+	Scene_Load.prototype.helpWindowText = function() {
+		return "Choose a file to load the game\nfrom.";
+	};
+	
 	// Sprite Character
 	Sprite_Character.prototype.updateCharacterFrame = function() {
 		const pw = this.patternWidth();
@@ -750,6 +785,21 @@
 		this.drawText(unit, x + width - unitWidth, y, unitWidth, "right");
 	};
 	
+	Window_Base.prototype.drawBattler = function(battlerName, x, y) {
+		width = 16;
+		height = 24;
+		const bitmap = ImageManager.loadSvActor(battlerName);
+		const pw = 16
+		const ph = 24;
+		const sw = Math.min(width, pw);
+		const sh = Math.min(height, ph);
+		const dx = Math.floor(x + Math.max(width - pw, 0) / 2);
+		const dy = Math.floor(y + Math.max(height - ph, 0) / 2);
+		const sx = Math.floor((pw - sw) / 2);
+		const sy = Math.floor((ph - sh) / 2);
+		this.contents.blt(bitmap, sx, sy, sw, sh, dx, dy);
+	};
+	
 	// Window Selectable
 	Window_Selectable.prototype.colSpacing = function() {
 		return 0;
@@ -775,6 +825,27 @@
 	
 	Window_Selectable.prototype.drawItemBackground = function(index) {
 		// do nothing
+	};
+	
+	Window_Selectable.prototype.overallHeight = function() {
+		return (this.maxRows()+1) * this.itemHeight();
+	};
+	
+	Window_Selectable.prototype.ensureCursorVisible = function(smooth) {
+		if (this._cursorAll) {
+			this.scrollTo(0, 0);
+		} else if (this.innerHeight > 0 && this.row() >= 0) {
+			const scrollY = this.scrollY();
+			const itemHeight = this.itemHeight();
+			const spriteH = $gameMap.tileHeight()/2;
+			const itemTop = this.row() * itemHeight;
+			const itemBottom = itemTop + itemHeight;
+			if (scrollY > itemTop) {
+				this.scrollTo(0, itemTop);
+			} else if (itemBottom > scrollY + this.innerHeight) {
+				this.scrollTo(0, itemBottom-this.innerHeight+this.innerHeight%itemHeight);
+			}
+		}
 	};
 	
 	// Window Command
@@ -851,18 +922,7 @@
 		if(!ignoreRow) {
 			x += actor.backRow() ? 0 : $gameMap.tileWidth()/2;
 		}
-		width = 16;
-		height = 24;
-		const bitmap = ImageManager.loadSvActor(actor.battlerName());
-		const pw = 16
-		const ph = 24;
-		const sw = Math.min(width, pw);
-		const sh = Math.min(height, ph);
-		const dx = Math.floor(x + Math.max(width - pw, 0) / 2);
-		const dy = Math.floor(y + Math.max(height - ph, 0) / 2);
-		const sx = Math.floor((pw - sw) / 2);
-		const sy = Math.floor((ph - sh) / 2);
-		this.contents.blt(bitmap, sx, sy, sw, sh, dx, dy);
+		this.drawBattler(actor.battlerName(), x, y);
 	};
 	
 	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
@@ -1578,5 +1638,30 @@
 		this.changePaintOpacity(this.isCommandEnabled(index));
 		this.drawText(title, rect.x, rect.y, titleWidth, "left");
 		this.drawText(status, rect.x + titleWidth, rect.y, statusWidth, "right");
+	};
+	
+	// Window Savefile List
+	Window_SavefileList.prototype.itemHeight = function() {
+		return Window_Selectable.prototype.itemHeight.call(this)/2 * 5;
+	};
+	
+	Window_SavefileList.prototype.drawContents = function(info, rect) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const y = rect.y + lineHeight + lineHeight/2
+		this.drawPartySvActors(info, rect.x + spriteW*8, y);
+		const y2 = y + lineHeight*2;
+		this.drawPlaytime(info, rect.x, y2, rect.width);
+	};
+
+	Window_SavefileList.prototype.drawPartySvActors = function(info, x, y) {
+		if (info.svActors) {
+			const spriteW = $gameMap.tileWidth()/2;
+			let characterX = x;
+			for(let i = info.svActors.length-1; i >= 0; i--) {
+				this.drawBattler(info.svActors[i], characterX, y);
+				characterX += spriteW*3;
+			}
+		}
 	};
 })();

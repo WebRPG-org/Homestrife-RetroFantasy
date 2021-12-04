@@ -782,12 +782,12 @@
 		Scene_MenuBase.prototype.create.call(this);
 		this.createHelpWindow();
 		this.createStatusWindow();
-		this.createNumberWindow();
 		this.createBuyWindow();
 		this.createGoldWindow();
 		this.createCommandWindow();
 		this.createCategoryWindow();
 		this.createSellWindow();
+		this.createNumberWindow();
 	};
 	
 	Scene_Shop.prototype.createStatusWindow = function() {
@@ -831,7 +831,7 @@
 	Scene_Shop.prototype.goldWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
-		const wx = this._numberWindow.x - ww;
+		const wx = this._buyWindow.x - ww;
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -849,7 +849,7 @@
 	Scene_Shop.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
-		const wx = this._numberWindow.x - ww;
+		const wx = this._buyWindow.x - ww;
 		const wy = this._goldWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -888,6 +888,14 @@
 		} else {
 			this.onCategoryOk();
 		}
+	};
+	
+	Scene_Shop.prototype.onBuyOk = function() {
+		this._item = this._buyWindow.item();
+		this._numberWindow.setup(this._item, this.maxBuy(), this.buyingPrice());
+		this._numberWindow.setCurrencyUnit(this.currencyUnit());
+		this._numberWindow.show();
+		this._numberWindow.activate();
 	};
 	
 	Scene_Shop.prototype.onBuyCancel = function() {
@@ -1929,6 +1937,207 @@
 	// Window Shop Command
 	Window_ShopCommand.prototype.maxCols = function() {
 		return 1;
+	};
+	
+	// Window Shop Buy
+	Window_ShopBuy.prototype.itemHeight = function() {
+		return Window_Selectable.prototype.itemHeight.call(this)/2 * 3;
+	};
+	
+	Window_ShopBuy.prototype.drawItem = function(index) {
+		const item = this.itemAt(index);
+		const price = this.price(item);
+		const rect = this.itemLineRect(index);
+		//this.changePaintOpacity(this.isEnabled(item));
+		this.drawItemName(item, rect.x, rect.y, rect.width);
+		this.drawText(price+"", rect.x, rect.y+$gameMap.tileHeight()/2, rect.width, "right");
+		//this.changePaintOpacity(true);
+	};
+	
+	// Window Shop Number
+	
+	// Window Shop Status
+	Window_ShopStatus.prototype.initialize = function(rect) {
+		Window_StatusBase.prototype.initialize.call(this, rect);
+		this._item = null;
+		this._pageIndex = 0;
+		this._firstRefresh = true;
+		this.refresh();
+	};
+
+	Window_ShopStatus.prototype.refresh = function() {
+		const lineHeight = $gameMap.tileHeight()/2;
+		const x = this.itemPadding();
+		const y = this.itemPadding();
+		const y2 = y + lineHeight*2;
+		if(this._firstRefresh) {
+			// doing this because for some reason it just refuses to draw the first time and I'm tired of trying to figure out why
+			this.drawSvActors(x, y2);
+			this._firstRefresh = false;
+		}
+		this.contents.clear();
+		if (this._item) {
+			const spriteW = $gameMap.tileWidth()/2;
+			this.drawPossession(x, y);
+			this.drawSvActors(x, y2);
+			if (this.isEquipItem()) {
+				const x2 = x + spriteW*3;
+				const y = Math.floor(this.lineHeight() * 1.5);
+				this.drawEquipInfo(x2, y2);
+			}
+		}
+	};
+	
+	Window_ShopStatus.prototype.drawSvActors = function(x, y) {
+		let curY = y;
+		const members = this.statusMembers();
+		for (let i = 0; i < members.length; i++) {
+			this.drawSvActor(members[i], x, curY, true);
+			curY += this.actorInfoHeight();
+		}
+	};
+	
+	Window_ShopStatus.prototype.actorInfoHeight = function() {
+		return $gameMap.tileHeight()/2*4;
+	};
+	
+	Window_ShopStatus.prototype.drawPossession = function(x, y) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const width = spriteW*12;
+		//this.changeTextColor(ColorManager.systemColor());
+		this.drawText("# Owned", x, y, width);
+		//this.resetTextColor();
+		this.drawText($gameParty.numItems(this._item)+"", x, y, width, "right");
+	};
+	
+	Window_ShopStatus.prototype.drawEquipInfo = function(x, y) {
+		let curY = y;
+		const members = this.statusMembers();
+		for (let i = 0; i < members.length; i++) {
+			this.drawActorEquipInfo(x, curY, members[i]);
+			curY += this.actorInfoHeight();
+		}
+	};
+	
+	Window_ShopStatus.prototype.drawActorEquipInfo = function(x, y, actor) {
+		const item1 = this.currentEquippedItem(actor, this._item.etypeId);
+		const width = this.textWidth("00000000");
+		const enabled = actor.canEquip(this._item);
+		const lineHeight = $gameMap.tileHeight()/2;
+		const y2 = y + lineHeight;
+		//this.changePaintOpacity(enabled);
+		//this.resetTextColor();
+		if (enabled) {
+			if(item1 && this._item.id === item1.id && this._item.eTypeId === item1.eTypeId) {
+				this.drawText("Already", x, y, width);
+				this.drawText("equipped", x, y2, width);
+			} else {
+				this.drawActorParamChange(x, y, actor, item1);
+			}
+		} else {
+			this.drawText("Can't", x, y, width);
+			this.drawText("equip", x, y2, width);
+		}
+		//this.changePaintOpacity(true);
+	};
+	
+	// prettier-ignore
+	Window_ShopStatus.prototype.drawActorParamChange = function(
+		x, y, actor, item1
+	) {
+		const width = this.textWidth("00000000");
+		const lineHeight = $gameMap.tileHeight()/2;
+		const paramId = this.paramId();
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight;
+		if(paramId === 2) {
+			this.drawNameAndValueChange(x, y, this.powerSymbol(), this._item.params[2], (item1 ? item1.params[2] : 0));
+			this.drawNameAndValueChange(x, y2, this.accuracySymbol(), this.getItemXParam(this._item, 0, true), this.getItemXParam(item1, 0, true));
+			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
+		} else {
+			this.drawNameAndValueChange(x, y, this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));
+			const coverage = this.getItemXParam(this._item, 3, true);
+			if(coverage > 0) {
+				this.drawNameAndValueChange(x, y2, this.coverageSymbol(), coverage, this.getItemXParam(item1, 3, true));
+			} else {
+				this.drawNameAndValueChange(x, y2, this.evadeSymbol(), this.getItemXParam(this._item, 1, true), this.getItemXParam(item1, 1, true));
+			}
+			//this.drawText(this.resistSymbol(), x, y3, textWidth);
+		}
+	};
+	
+	Window_ShopStatus.prototype.getItemXParam = function(item, dataId, isPercent) {
+		if(!item) { return 0; }
+		const traits = item.traits
+			.filter(trait => trait.code === Game_BattlerBase.TRAIT_XPARAM && trait.dataId === dataId);
+		if(!traits || traits.length === 0) { return 0; }
+		const total = traits.reduce((prevVal, curTrait) => prevVal + curTrait.value, 0);
+		return isPercent? Math.floor(total*100) : total;
+	};
+	
+	Window_ShopStatus.prototype.getItemTypeIcons = function(item) {
+		if(!item) { return []; }
+		const pendingTypeIcons = item.traits
+			.filter(trait => trait.code === Game_BattlerBase.TRAIT_ATTACK_ELEMENT)
+			.map(trait => this.iconForElementType(trait.dataId));
+		pendingTypeIcons.push(this.iconForWeaponType(item.wtypeId));
+		const typeIcons = [];
+		for(let i = 0; i < pendingTypeIcons.length; i++) {
+			if(typeIcons.indexOf(pendingTypeIcons[i]) >= 0) { continue; }
+			typeIcons.push(pendingTypeIcons[i]);
+		}
+		return typeIcons;
+	};
+	
+	Window_ShopStatus.prototype.drawNameAndValueChange = function(x, y, name, itemValue, actorValue) {
+		let change = itemValue - (actorValue ? actorValue : 0);
+		if(change === 0) { return; }
+		const textWidth = $gameMap.tileWidth()/2*8;
+		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
+		const changeSymbol = change > 0 ? "+" : "-";
+		change = Math.abs(change);
+		this.drawText(name, x, y, textWidth);
+		this.drawText(changeSymbol, x, y, plusMinusWidth, "right");
+		this.drawText(change+"", x, y, textWidth, "right");
+	};
+	
+	Window_StatusBase.prototype.drawIconListChange = function(x, y, name, itemIcons, actorIcons) {
+		const addedIcons = [];
+		const removedIcons = [];
+		for(let i = 0; i < itemIcons.length; i++) {
+			if(actorIcons.indexOf(itemIcons[i]) >= 0) { continue; }
+			addedIcons.push(itemIcons[i]);
+		}
+		for(let i = 0; i < actorIcons.length; i++) {
+			if(itemIcons.indexOf(actorIcons[i]) >= 0) { continue; }
+			removedIcons.push(actorIcons[i]);
+		}
+		if(addedIcons.length === 0 && removedIcons.length === 0) { return; }
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const width = spriteW*8;
+		const x2 = x + spriteW*3;
+		const y2 = y + lineHeight;
+		this.drawText(name, x, y, width);
+		if(addedIcons.length > 0) {
+			this.drawText("+", x2, y, spriteW);
+			this.drawSingleIconList(x, y, addedIcons);
+		}
+		if(removedIcons.length > 0) {
+			this.drawText("-", x2, y2, spriteW);
+			this.drawSingleIconList(x, y2, removedIcons);
+		}
+	};
+	
+	Window_StatusBase.prototype.drawSingleIconList = function(x, y, icons) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const width = spriteW*9;
+		let curX = x + width - spriteW;
+		for(let i = icons.length-1; i >= 0; i--) {
+			if(icons[i] === 0) { continue; }
+			this.drawIcon(icons[i], curX, y);
+			curX -= spriteW;
+		}
 	};
 	
 	// Window Title Command

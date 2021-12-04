@@ -540,7 +540,7 @@
 	// Scene Skill
 	Scene_Skill.prototype.skillTypeWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*5;
 		const wx = Graphics.boxWidth - ww - ($gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22);
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);

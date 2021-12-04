@@ -531,7 +531,7 @@
 
 	Scene_Item.prototype.itemWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -771,6 +771,139 @@
 		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	// Scene Shop
+	Scene_Shop.prototype.initialize = function() {
+		Scene_MenuBase.prototype.initialize.call(this);
+	};
+	
+	Scene_Shop.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createHelpWindow();
+		this.createStatusWindow();
+		this.createNumberWindow();
+		this.createBuyWindow();
+		this.createGoldWindow();
+		this.createCommandWindow();
+		this.createCategoryWindow();
+		this.createSellWindow();
+	};
+	
+	Scene_Shop.prototype.createStatusWindow = function() {
+		const rect = this.statusWindowRect();
+		this._statusWindow = new Window_ShopStatus(rect);
+		this.addWindow(this._statusWindow);
+	};
+	
+	Scene_Shop.prototype.statusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*12;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Shop.prototype.numberWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wx = this._statusWindow.x - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Shop.prototype.createBuyWindow = function() {
+		const rect = this.buyWindowRect();
+		this._buyWindow = new Window_ShopBuy(rect);
+		this._buyWindow.setupGoods(this._goods);
+		this._buyWindow.setHelpWindow(this._helpWindow);
+		this._buyWindow.setStatusWindow(this._statusWindow);
+		this._buyWindow.setHandler("ok", this.onBuyOk.bind(this));
+		this._buyWindow.setHandler("cancel", this.onBuyCancel.bind(this));
+		this.addWindow(this._buyWindow);
+		this._buyWindow.deselect();
+	};
+	
+	Scene_Shop.prototype.buyWindowRect = function() {
+		return this.numberWindowRect();
+	};
+	
+	Scene_Shop.prototype.goldWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
+		const wx = this._numberWindow.x - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Shop.prototype.createCommandWindow = function() {
+		const rect = this.commandWindowRect();
+		this._commandWindow = new Window_ShopCommand(rect);
+		this._commandWindow.setPurchaseOnly(this._purchaseOnly);
+		this._commandWindow.setHandler("buy", this.commandBuy.bind(this));
+		this._commandWindow.setHandler("sell", this.commandSell.bind(this));
+		this._commandWindow.setHandler("cancel", this.popScene.bind(this));
+		this.addWindow(this._commandWindow);
+	};
+	
+	Scene_Shop.prototype.commandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wx = this._numberWindow.x - ww;
+		const wy = this._goldWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Shop.prototype.categoryWindowRect = function() {
+		return this.commandWindowRect();
+	};
+	
+	Scene_Shop.prototype.sellWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._helpWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Shop.prototype.activateBuyWindow = function() {
+		this._buyWindow.setMoney(this.money());
+		this._buyWindow.activate();
+	};
+	
+	Scene_Shop.prototype.commandBuy = function() {
+		this.activateBuyWindow();
+		this._buyWindow.select(0);
+	};
+
+	Scene_Shop.prototype.commandSell = function() {
+		this._buyWindow.hide();
+		this._statusWindow.hide();
+		this._sellWindow.show();
+		this._sellWindow.deselect();
+		this._sellWindow.refresh();
+		if (this._categoryWindow.needsSelection()) {
+			this._categoryWindow.show();
+			this._categoryWindow.activate();
+		} else {
+			this.onCategoryOk();
+		}
+	};
+	
+	Scene_Shop.prototype.onBuyCancel = function() {
+		this._commandWindow.activate();
+		this._statusWindow.setItem(null);
+		this._helpWindow.clear();
+		this._buyWindow.deselect();
+		this._buyWindow.scrollTo(0, 0);
+	};
+	
+	Scene_Shop.prototype.onCategoryCancel = function() {
+		this._commandWindow.activate();
+		this._categoryWindow.hide();
+		this._sellWindow.hide();
+		this._buyWindow.show();
+		this._statusWindow.show();
 	};
 	
 	// Sprite Button
@@ -1748,6 +1881,11 @@
 				characterX += spriteW*3;
 			}
 		}
+	};
+	
+	// Window Shop Command
+	Window_ShopCommand.prototype.maxCols = function() {
+		return 1;
 	};
 	
 	// Window Title Command

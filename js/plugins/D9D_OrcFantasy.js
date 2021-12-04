@@ -547,7 +547,7 @@
 	};
 	
 	Scene_Skill.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*20;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._helpWindow.y - wh - ($gameSystem.windowPadding()*4 + $gameMap.tileHeight()*6);
@@ -998,11 +998,10 @@
 	};
 	
 	Window_Base.prototype.drawCurrencyValue = function(value, unit, x, y, width) {
-		const unitWidth = this.textWidthFromImage(unit);
-		this.resetTextColor();
-		this.drawText(value+"", x, y, width - unitWidth - this.textWidthFromImage("0"), "right");
-		this.changeTextColor(ColorManager.systemColor());
-		this.drawText(unit, x + width - unitWidth, y, unitWidth, "right");
+		//this.resetTextColor();
+		this.drawText(unit, x, y, width);
+		this.drawText(value+"", x, y+$gameMap.tileHeight()/2, width, "right");
+		//this.changeTextColor(ColorManager.systemColor());
 	};
 	
 	Window_Base.prototype.drawBattler = function(battlerName, x, y) {
@@ -1084,7 +1083,7 @@
 	// Window Gold
 	Window_Gold.prototype.refresh = function() {
 		const x = $gameSystem.windowPadding();
-		const y = $gameSystem.windowPadding()+$gameMap.tileHeight()/2;
+		const y = $gameSystem.windowPadding();
 		const width = this.textWidthFromImage("00000000");
 		this.contents.clear();
 		this.drawCurrencyValue(this.value(), this.currencyUnit(), x, y, width);
@@ -1272,6 +1271,50 @@
 		}
 	};
 	
+	Window_StatusBase.prototype.toughnessSymbol = function() {
+		return "TGH";
+	};
+	
+	Window_StatusBase.prototype.magicSymbol = function() {
+		return "MGC";
+	};
+	
+	Window_StatusBase.prototype.speedSymbol = function() {
+		return "SPD";
+	};
+	
+	Window_StatusBase.prototype.recoverySymbol = function() {
+		return "RCV";
+	};
+	
+	Window_StatusBase.prototype.powerSymbol = function() {
+		return "PWR";
+	};
+	
+	Window_StatusBase.prototype.accuracySymbol = function() {
+		return "ACR";
+	};
+	
+	Window_StatusBase.prototype.typeSymbol = function() {
+		return "TYP";
+	};
+	
+	Window_StatusBase.prototype.armorSymbol = function() {
+		return "AMR";
+	};
+	
+	Window_StatusBase.prototype.evadeSymbol = function() {
+		return "EVD";
+	};
+	
+	Window_StatusBase.prototype.coverageSymbol = function() {
+		return "CVG";
+	};
+	
+	Window_StatusBase.prototype.resistSymbol = function() {
+		return "RST";
+	};
+	
 	// Window Menu Command
 	Window_MenuCommand.prototype.addMainCommands = function() {
 		const enabled = this.areMainCommandsEnabled();
@@ -1424,13 +1467,13 @@
 		
 		const tempActor = this._tempActor ? this._tempActor : this._actor;
 		
-		this.drawNameAndValue(x, y+lineHeight*2, "TGH", this._actor.param(5), tempActor.param(5));
-		this.drawNameAndValue(x, y+lineHeight*3, "MGC", this._actor.param(4), tempActor.param(4));
-		this.drawNameAndValue(x, y+lineHeight*4, "SPD", this._actor.param(6), tempActor.param(6));
-		this.drawNameAndValue(x, y+lineHeight*5, "RCV", this._actor.param(7), tempActor.param(7));
+		this.drawNameAndValue(x, y+lineHeight*2, this.toughnessSymbol(), this._actor.param(5), tempActor.param(5));
+		this.drawNameAndValue(x, y+lineHeight*3, this.magicSymbol(), this._actor.param(4), tempActor.param(4));
+		this.drawNameAndValue(x, y+lineHeight*4, this.speedSymbol(), this._actor.param(6), tempActor.param(6));
+		this.drawNameAndValue(x, y+lineHeight*5, this.recoverySymbol(), this._actor.param(7), tempActor.param(7));
 		
-		this.drawNameAndValue(x2, y, "DMG", this._actor.param(2), tempActor.param(2));
-		this.drawNameAndValue(x2, y+lineHeight*2, "ACC", Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
+		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2));
+		this.drawNameAndValue(x2, y+lineHeight*2, this.accuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -1439,12 +1482,12 @@
 			typeIcons = typeIcons.concat(this._actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 			typeIcons = typeIcons.concat(this._actor.weaponTypes().map(type => this.iconForWeaponType(type)));
 		}
-		this.drawIconList(x2, y+lineHeight*4, "TYP", typeIcons, textWidth);
+		this.drawIconList(x2, y+lineHeight*4, this.typeSymbol(), typeIcons, textWidth);
 		
-		this.drawNameAndValue(x3, y, "AMR", this._actor.param(3), tempActor.param(3));
-		this.drawNameAndValue(x3, y+lineHeight*2, "EVA", Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
-		this.drawNameAndValue(x3, y+lineHeight*3, "CVR", Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
-		this.drawText("RES", x3, y+lineHeight*4, textWidth);
+		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3));
+		this.drawNameAndValue(x3, y+lineHeight*2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
+		this.drawNameAndValue(x3, y+lineHeight*3, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
+		this.drawText(this.resistSymbol(), x3, y+lineHeight*4, textWidth);
 	};
 	
 	// Window Equip Command
@@ -1826,22 +1869,22 @@
 		const y4 = y3 + lineHeight;
 		const y5 = y4 + lineHeight;
 		
-		this.drawNameAndValue(x, y, "TGH", actor.param(5));
-		this.drawNameAndValue(x, y2, "MGC", actor.param(4));
-		this.drawNameAndValue(x, y3, "SPD", actor.param(6));
-		this.drawNameAndValue(x, y4, "RCV", actor.param(7));
+		this.drawNameAndValue(x, y, this.toughnessSymbol(), actor.param(5));
+		this.drawNameAndValue(x, y2, this.magicSymbol(), actor.param(4));
+		this.drawNameAndValue(x, y3, this.speedSymbol(), actor.param(6));
+		this.drawNameAndValue(x, y4, this.recoverySymbol(), actor.param(7));
 		
-		this.drawNameAndValue(x2, y, "DMG", actor.param(2));
-		this.drawNameAndValue(x2, y3, "ACC", Math.floor(actor.xparam(0)*100));
+		this.drawNameAndValue(x2, y, this.powerSymbol(), actor.param(2));
+		this.drawNameAndValue(x2, y3, this.accuracySymbol(), Math.floor(actor.xparam(0)*100));
 		let typeIcons = [];
 		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
-		this.drawIconList(x2, y5, "TYP", typeIcons, textWidth);
+		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
-		this.drawNameAndValue(x3, y, "AMR", actor.param(3));
-		this.drawNameAndValue(x3, y3, "EVA", Math.floor(actor.xparam(1)*100));
-		this.drawNameAndValue(x3, y4, "CVR", Math.floor(actor.xparam(3)*100));
-		this.drawText("RES", x3, y5, textWidth);
+		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
+		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
+		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
 	
 	// Window Options

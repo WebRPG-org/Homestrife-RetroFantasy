@@ -2591,6 +2591,113 @@
 		this.hide();
 	};
 	
+	// Window Number Input
+	Window_NumberInput.prototype.initialize = function() {
+		Window_Selectable.prototype.initialize.call(this, new Rectangle());
+		this._number = 0;
+		this._maxDigits = 1;
+		this.hide();
+		this.createButtons();
+		this.deactivate();
+		this._canRepeat = false;
+	};
+	
+	Window_NumberInput.prototype.start = function() {
+		this._maxDigits = $gameMessage.numInputMaxDigits();
+		this._number = $gameVariables.value($gameMessage.numInputVariableId());
+		this._number = this._number.clamp(0, Math.pow(10, this._maxDigits) - 1);
+		this.updatePlacement();
+		this.placeButtons();
+		this.createContents();
+		this.refresh();
+		this.show();
+		this.activate();
+		this.select(0);
+	};
+	
+	Window_NumberInput.prototype.updatePlacement = function() {
+		const spacing = 0;
+		this.width = this.windowWidth();
+		this.height = this.windowHeight();
+		this.x = (Graphics.boxWidth - this.width);
+		if(this._messageWindow.visible) {
+			const messageY = this._messageWindow.y;
+			if (messageY >= Graphics.boxHeight / 2) {
+				this.y = messageY - this.height - spacing;
+			} else {
+				this.y = messageY + this._messageWindow.height + spacing;
+			}
+		} else {
+			this.y = Graphics.boxHeight - this.height;
+		}
+	};
+
+	Window_NumberInput.prototype.windowWidth = function() {
+		const totalItemWidth = this.maxCols() * this.itemWidth();
+		const totalButtonWidth = this.totalButtonWidth();
+		return Math.max(totalItemWidth, totalButtonWidth) + $gameSystem.windowPadding()*2 + this.itemPadding()*2;
+	};
+
+	Window_NumberInput.prototype.windowHeight = function() {
+		const lineHeight = this.lineHeight();
+		const baseHeight = $gameSystem.windowPadding()*2 + this.itemPadding()*2 + lineHeight;
+		if (ConfigManager.touchUI) {
+			return baseHeight + lineHeight + $gameMap.tileHeight();
+		} else {
+			return baseHeight;
+		}
+	};
+	
+	Window_NumberInput.prototype.itemWidth = function() {
+		return $gameMap.tileWidth();
+	};
+
+	Window_NumberInput.prototype.itemRect = function(index) {
+		const rect = Window_Selectable.prototype.itemRect.call(this, index);
+		return rect;
+	};
+	
+	Window_NumberInput.prototype.placeButtons = function() {
+		const sp = this.buttonSpacing();
+		const totalWidth = this.totalButtonWidth();
+		let x = this.itemPadding();
+		for (const button of this._buttons) {
+			button.x = x;
+			button.y = this.buttonY();
+			x += button.width + sp;
+		}
+	};
+	
+	Window_NumberInput.prototype.totalButtonWidth = function() {
+		return this._buttons.reduce((r, button) => r + button.width, 0);
+	};
+	
+	Window_NumberInput.prototype.buttonSpacing = function() {
+		return 0;
+	};
+	
+	Window_NumberInput.prototype.buttonY = function() {
+		return this.lineHeight()*2 + this.itemPadding();
+	};
+	
+	Window_NumberInput.prototype.drawItem = function(index) {
+		const rect = this.itemLineRect(index);
+		const s = this._number.padZero(this._maxDigits);
+		const c = s.slice(index, index + 1);
+		rect.y += this.itemPadding();
+		//this.resetTextColor();
+		this.drawText(c, rect.x, rect.y, rect.width);
+	};
+	
+	Window_NumberInput.prototype.processOk = function() {
+		this.playOkSound();
+		$gameVariables.setValue($gameMessage.numInputVariableId(), this._number);
+		this._messageWindow.terminateMessage();
+		this.updateInputData();
+		this.deactivate();
+		this.hide();
+	};
+	
 	// Window Message
 	Window_Message.prototype.initialize = function(rect) {
 		Window_Base.prototype.initialize.call(this, rect);

@@ -331,7 +331,7 @@
 	Game_Actor.prototype.changeEquip = function(slotId, item) {
 		if (
 			this.tradeItemWithParty(item, this.equips()[slotId]) &&
-			(!item || this.equipSlots()[slotId] === item.etypeId)
+			(!item || this.correctEType(item, this.equipSlots()[slotId]))
 		) {
 			this._equips[slotId].setObject(item);
 			this._justEquipped = item;
@@ -353,7 +353,7 @@
 			let changed = false;
 			for (let i = 0; i < equips.length; i++) {
 				const item = equips[i];
-				if (item && (!this.canEquip(item) || item.etypeId !== slots[i] || this.shouldReleaseEquipDueToOtherItem(item))) {
+				if (item && (!this.canEquip(item) || !this.correctEType(item, slots[i]) || this.shouldReleaseEquipDueToOtherItem(item))) {
 					if (!forcing) {
 						this.tradeItemWithParty(null, item);
 					}
@@ -366,6 +366,12 @@
 			}
 		}
 		this._justEquipped = null;
+	};
+	
+	Game_Actor.prototype.correctEType = function(item, slot) {
+		return item.etypeId === slot ||
+			(item.etypeId === 9 && slot === 10) ||
+			(item.etypeId === 10 && slot === 9);
 	};
 	
 	Game_Actor.prototype.shouldReleaseEquipDueToOtherItem = function(item) {
@@ -1683,6 +1689,24 @@
 
 	Window_EquipItem.prototype.colSpacing = function() {
 		return 4;
+	};
+	
+	Window_EquipItem.prototype.includes = function(item) {
+		if (item === null) {
+			return true;
+		}
+		return (
+			this._actor &&
+			this._actor.canEquip(item) &&
+			this.correctEType(item)
+		);
+	};
+	
+	Window_EquipItem.prototype.correctEType = function(item) {
+		const slot = this.etypeId();
+		return item.etypeId === slot ||
+			(item.etypeId === 9 && slot === 10) ||
+			(item.etypeId === 10 && slot === 9);
 	};
 	
 	// Window Skill Levels

@@ -926,6 +926,45 @@
 		this._statusWindow.show();
 	};
 	
+	// Scene name
+	Scene_Name.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this._actor = $gameActors.actor(this._actorId);
+		this.createInputWindow();
+		this.createEditWindow();
+	};
+	
+	Scene_Name.prototype.createInputWindow = function() {
+		const rect = this.inputWindowRect();
+		this._inputWindow = new Window_NameInput(rect);
+		this._inputWindow.setHandler("ok", this.onInputOk.bind(this));
+		this.addWindow(this._inputWindow);
+	};
+	
+	Scene_Name.prototype.inputWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*10;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*9;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Name.prototype.createEditWindow = function() {
+		const rect = this.editWindowRect();
+		this._editWindow = new Window_NameEdit(rect);
+		this._editWindow.setup(this._actor, this._maxLength);
+		this.addWindow(this._editWindow);
+		this._inputWindow.setEditWindow(this._editWindow);
+	};
+	
+	Scene_Name.prototype.editWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
+		const wx = Graphics.boxWidth - ww;
+		const wy = this._inputWindow.y - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Sprite Button
 	Sprite_Button.prototype.updateOpacity = function() {
 		this.opacity = 255;
@@ -2294,6 +2333,51 @@
 			this.drawIcon(icons[i], curX, y);
 			curX -= spriteW;
 		}
+	};
+	
+	// Window Name Edit
+	Window_NameEdit.prototype.add = function(ch) {
+		if (this._index < this._maxLength) {
+			this._name += ch;
+			this._index++;
+			this.refresh();
+		} else {
+			this._name = this._name.substring(0, this._maxLength-1)+ch;
+			this.refresh();
+		}
+		return true;
+	};
+	
+	Window_NameEdit.prototype.charWidth = function() {
+		return this.textWidth("0");
+	};
+	
+	Window_NameEdit.prototype.itemRect = function(index) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const itemPadding = this.itemPadding();
+		const x = this.itemPadding() + spriteW*2*index;
+		const y = this.itemPadding() + lineHeight;
+		const width = this.charWidth()*2;
+		const height = lineHeight*2;
+		return new Rectangle(x, y, width, height);
+	};
+	
+	Window_NameEdit.prototype.refresh = function() {
+		this.contents.clear();
+		for (let j = 0; j < this._name.length; j++) {
+			this.drawChar(j);
+		}
+		let rect = null;
+		if(this._name.length < this._maxLength) {
+			rect = this.itemRect(this._index);
+		} else {
+			rect = this.itemRect(this._maxLength-1);
+		}
+		const itemPadding = this.itemPadding();
+		rect.x -= itemPadding;
+		rect.y -= itemPadding;
+		this.setCursorRect(rect.x, rect.y, rect.width, rect.height);
 	};
 	
 	// Window Title Command

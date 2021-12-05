@@ -1242,7 +1242,7 @@
 		let name = "UNKNOWN";
 		switch(skillNum) {
 			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
-			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
+			case  2: name =  "Defense"; break; case  3: name =  "Balance"; break; 
 			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
 			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
 			case  8: name = "FiredWpn"; break; case  9: name =  "Shields"; break; 
@@ -1674,7 +1674,7 @@
 				desc = "Increase chances of striking\nwith thrown and fired attacks.";
 				break; 
 			case  2:
-				desc = "Increase chances of avoiding\nattacks.";
+				desc = "Increase chances of dodging,\nblocking, and parrying attacks.";
 				break;
 			case  3:
 				desc = "Resist stress inflicted by\nshoves, tripping, and impacts.";

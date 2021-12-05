@@ -290,6 +290,12 @@
 	};
 	
 	// Game Actor
+	const _Game_Actor_initMembers = Game_Actor.prototype.initMembers;
+	Game_Actor.prototype.initMembers = function() {
+		_Game_Actor_initMembers.call(this);
+		this._justEquipped = null;
+	};
+	
 	Game_Actor.prototype.changeExp = function(exp, show) {
 		this._exp[this._classId] = Math.max(exp, 0);
 		const lastLevel = this._level;
@@ -320,6 +326,62 @@
 			this.decrementSkillLevel(skillName);
 			this._exp[this._classId] += this.nextSkillLevelCost(skillName);
 		}
+	};
+	
+	Game_Actor.prototype.changeEquip = function(slotId, item) {
+		if (
+			this.tradeItemWithParty(item, this.equips()[slotId]) &&
+			(!item || this.equipSlots()[slotId] === item.etypeId)
+		) {
+			this._equips[slotId].setObject(item);
+			this._justEquipped = item;
+			this.refresh();
+		}
+	};
+	
+	Game_Actor.prototype.forceChangeEquip = function(slotId, item) {
+		this._equips[slotId].setObject(item);
+		this._justEquipped = item;
+		this.releaseUnequippableItems(true);
+		this.refresh();
+	};
+	
+	Game_Actor.prototype.releaseUnequippableItems = function(forcing) {
+		for (;;) {
+			const slots = this.equipSlots();
+			const equips = this.equips();
+			let changed = false;
+			for (let i = 0; i < equips.length; i++) {
+				const item = equips[i];
+				if (item && (!this.canEquip(item) || item.etypeId !== slots[i] || this.shouldReleaseEquipDueToOtherItem(item))) {
+					if (!forcing) {
+						this.tradeItemWithParty(null, item);
+					}
+					this._equips[i].setObject(null);
+					changed = true;
+				}
+			}
+			if (!changed) {
+				break;
+			}
+		}
+		this._justEquipped = null;
+	};
+	
+	Game_Actor.prototype.shouldReleaseEquipDueToOtherItem = function(item) {
+		if(
+			this._justEquipped &&
+			((item.etypeId === 1 && this._justEquipped.etypeId === 1) || (item.etypeId > 1 && this._justEquipped.etypeId > 1))
+			&& item.id === this._justEquipped.id
+		) {
+			return false;
+		}
+		const equips = this.equips();
+		return (this.isTwoHanded(item) && equips[1]) || (item.etypeId === 2 && this.isTwoHanded(equips[0]));
+	};
+	
+	Game_Actor.prototype.isTwoHanded = function(item) {
+		return item && item.wtypeId && item.wtypeId % 3 != 1;
 	};
 	
 	// Game Party

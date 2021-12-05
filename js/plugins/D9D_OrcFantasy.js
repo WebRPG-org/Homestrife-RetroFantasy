@@ -399,6 +399,15 @@
 		SceneManager.push(Scene_Options);
 	};
 	
+	// Scene Message
+	Scene_Message.prototype.messageWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*4;
+		const wx = Graphics.boxWidth - ww;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	// Scene Map
 	Scene_Map.prototype.createMenuButton = function() {
 		this._menuButton = new Sprite_Button("menu");
@@ -1045,6 +1054,15 @@
 		return this.contents.measureTextWidthFromImage(text);
 	};
 	
+	Window_Base.prototype.baseTextRect = function() {
+		const itemPadding = this.itemPadding();
+		const lineHeight = this.lineHeight()/2;
+		const x = itemPadding;
+		const y = itemPadding + lineHeight;
+		const rect = new Rectangle(x, y, this.innerWidth, this.innerHeight);
+		return rect;
+	};
+	
 	Window_Base.prototype.drawItemName = function(item, x, y, width) {
 		if (item) {
 			const iconY = y;
@@ -1076,6 +1094,13 @@
 		const sx = Math.floor((pw - sw) / 2);
 		const sy = Math.floor((ph - sh) / 2);
 		this.contents.blt(bitmap, sx, sy, sw, sh, dx, dy);
+	};
+	
+	Window_Base.prototype.processDrawIcon = function(iconIndex, textState) {
+		if (textState.drawing) {
+			this.drawIcon(iconIndex, textState.x, textState.y);
+		}
+		textState.x += ImageManager.iconWidth;
 	};
 	
 	// Window Selectable
@@ -2449,6 +2474,222 @@
 	
 	Window_NameInput.prototype.drawOk = function(x, y) {
 		this.drawIcon(95, x, y);
+	};
+	
+	// Window Name Box
+	Window_NameBox.prototype.initialize = function() {
+		Window_Base.prototype.initialize.call(this, new Rectangle());
+		this.hide();
+		this._name = "";
+	};
+	
+	Window_NameBox.prototype.windowWidth = function() {
+		if (this._name) {
+			const tileWidth = $gameMap.tileWidth();
+			const textWidth = this.textSizeEx(this._name).width;
+			const padding = this.padding + this.itemPadding();
+			let width = Math.ceil(textWidth) + padding * 2;
+			width = Math.ceil(width / tileWidth) * tileWidth;
+			return Math.min(width, Graphics.boxWidth);
+		} else {
+			return 0;
+		}
+	};
+
+	Window_NameBox.prototype.windowHeight = function() {
+		return $gameSystem.windowPadding()*2 + this.itemPadding()*2 + this.lineHeight();
+	};
+	
+	// Window Choice List
+	Window_ChoiceList.prototype.initialize = function() {
+		Window_Command.prototype.initialize.call(this, new Rectangle());
+		this.createCancelButton();
+		this.hide();
+		this.deactivate();
+		this._background = 0;
+		this._canRepeat = false;
+	};
+	
+	Window_ChoiceList.prototype.start = function() {
+		this.updatePlacement();
+		this.updateBackground();
+		this.placeCancelButton();
+		this.createContents();
+		this.refresh();
+		this.scrollTo(0, 0);
+		this.selectDefault();
+		this.show();
+		this.activate();
+	};
+	
+	Window_ChoiceList.prototype.placeCancelButton = function() {
+		if (this._cancelButton) {
+			const spacing = 8;
+			const button = this._cancelButton;
+			const right = this.x + this.width;
+			if (right < Graphics.boxWidth - button.width + spacing) {
+				button.x = this.width + spacing;
+			} else {
+				button.x = -button.width - spacing;
+			}
+			button.y = this.height / 2 - button.height / 2;
+		}
+	};
+
+	Window_ChoiceList.prototype.windowY = function() {
+		if(this._messageWindow.visible && this._messageWindow.isOpen()) {
+			const messageY = this._messageWindow.y;
+			if (messageY >= Graphics.boxHeight / 2) {
+				return messageY - this.windowHeight();
+			} else {
+				return messageY + this._messageWindow.height;
+			}
+		} else {
+			return Graphics.boxHeight - this.windowHeight();
+		}
+	};
+
+	Window_ChoiceList.prototype.windowWidth = function() {
+		const width = this.maxChoiceWidth() + this.colSpacing() + this.padding * 2;
+		return Math.min(width, Graphics.boxWidth);
+	};
+
+	Window_ChoiceList.prototype.windowHeight = function() {
+		return $gameSystem.windowPadding()*2 + this.itemPadding()*2 + this.numVisibleRows()*$gameMap.tileHeight();
+	};
+	
+	Window_ChoiceList.prototype.maxChoiceWidth = function() {
+		const baseWidth = $gameSystem.windowPadding()*2 + this.itemPadding()*2;
+		const tileWidth = $gameMap.tileWidth();
+		let maxWidth = 96;
+		const choices = $gameMessage.choices();
+		for (const choice of choices) {
+			const textWidth = this.textSizeEx(choice).width;
+			const choiceWidth = baseWidth + Math.ceil(textWidth);
+			if (maxWidth < choiceWidth) {
+				maxWidth = choiceWidth;
+			}
+		}
+		return Math.ceil(maxWidth/tileWidth)*tileWidth;
+	};
+	
+	Window_ChoiceList.prototype.drawItem = function(index) {
+		const rect = this.itemLineRect(index);
+		rect.y += this.itemPadding();
+		this.drawTextEx(this.commandName(index), rect.x, rect.y, rect.width);
+	};
+	
+	Window_ChoiceList.prototype.callOkHandler = function() {
+		$gameMessage.onChoice(this.index());
+		this._messageWindow.terminateMessage();
+		this.hide();
+	};
+
+	Window_ChoiceList.prototype.callCancelHandler = function() {
+		$gameMessage.onChoice($gameMessage.choiceCancelType());
+		this._messageWindow.terminateMessage();
+		this.hide();
+	};
+	
+	// Window Message
+	Window_Message.prototype.initialize = function(rect) {
+		Window_Base.prototype.initialize.call(this, rect);
+		this.hide();
+		this.initMembers();
+	};
+	
+	Window_Message.prototype.checkToNotClose = function() {
+		if (!this.visibility && this.doesContinue()) {
+			this.show();
+		}
+	};
+	
+	Window_Message.prototype.synchronizeNameBox = function() {
+		if(this.visible) {
+			this._nameBoxWindow.show();
+		} else {
+			this._nameBoxWindow.hide();
+		}
+	};
+	
+	Window_Message.prototype.startMessage = function() {
+		const text = $gameMessage.allText();
+		const textState = this.createTextState(text, 0, 0, 0);
+		textState.x = this.newLineX(textState);
+		textState.startX = textState.x;
+		textState.y = this.itemPadding() + $gameMap.tileHeight()/2;
+		textState.startY = textState.y;
+		this._textState = textState;
+		this.newPage(this._textState);
+		this.updatePlacement();
+		this.updateBackground();
+		this.show();
+		this._nameBoxWindow.start();
+	};
+	
+	Window_Message.prototype.newLineX = function(textState) {
+		const faceExists = $gameMessage.faceName() !== "";
+		const faceWidth = ImageManager.faceWidth;
+		const spacing = 20;
+		const margin = faceExists ? faceWidth + spacing : this.itemPadding();
+		return textState.rtl ? this.innerWidth - margin : margin;
+	};
+	
+	Window_Message.prototype.terminateMessage = function() {
+		this.hide();
+		this._goldWindow.hide();
+		$gameMessage.clear();
+	};
+	
+	Window_Message.prototype.newPage = function(textState) {
+		this.contents.clear();
+		this.resetFontSettings();
+		this.clearFlags();
+		this.updateSpeakerName();
+		this.loadMessageFace();
+		textState.x = textState.startX;
+		textState.y = textState.startY;
+		textState.height = this.calcTextHeight(textState);
+	};
+	
+	Window_Message.prototype.needsNewPage = function(textState) {
+		return (
+			!this.isEndOfText(textState) &&
+			textState.y + textState.height > this.lineHeight()*5
+		);
+	};
+	
+	Window_Message.prototype.processEscapeCharacter = function(code, textState) {
+		switch (code) {
+			case "$":
+				this._goldWindow.show();
+				break;
+			case ".":
+				this.startWait(15);
+				break;
+			case "|":
+				this.startWait(60);
+				break;
+			case "!":
+				this.startPause();
+				break;
+			case ">":
+				this._lineShowFast = true;
+				break;
+			case "<":
+				this._lineShowFast = false;
+				break;
+			case "^":
+				this._pauseSkip = true;
+				break;
+			default:
+				Window_Base.prototype.processEscapeCharacter.call(
+					this,
+					code,
+					textState
+				);
+				break;
+		}
 	};
 	
 	// Window Title Command

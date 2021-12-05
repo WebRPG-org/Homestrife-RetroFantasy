@@ -721,7 +721,7 @@
 	};
 	
 	Scene_Status.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*26;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*13;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*10;
 		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
@@ -735,7 +735,7 @@
 	
 	// Scene Options
 	Scene_Options.prototype.optionsWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*11;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*7;
 		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
@@ -1157,13 +1157,6 @@
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
 	
-	// Window Help
-	Window_Help.prototype.refresh = function() {
-		const rect = this.baseTextRect();
-		this.contents.clear();
-		this.drawTextEx(this._text, rect.x, rect.y+$gameSystem.windowPadding()*3, rect.width);
-	};
-	
 	// Window Gold
 	Window_Gold.prototype.refresh = function() {
 		const x = $gameSystem.windowPadding();
@@ -1338,19 +1331,30 @@
 		return actor ? (actor.currentClass().id <= 6 ? 12 : 14) : 10;
 	};
 	
-	Window_StatusBase.prototype.drawNameAndValue = function(x, y, name, curValue, newValue) {
-		const textWidth = $gameMap.tileWidth()/2*8;
-		const plusMinusWidth = textWidth - $gameMap.tileWidth()/2*3;
+	Window_StatusBase.prototype.drawNameAndValue = function(x, y, name, curValue, newValue, useArrows) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const textWidth = spriteW*8;
+		const plusMinusWidth = textWidth - spriteW*3;
 		this.drawText(name, x, y, textWidth);
 		this.drawText((newValue ? newValue : curValue)+"", x, y, textWidth, "right");
 		if (newValue) {
-			let symbol = "";
-			if(newValue > curValue) {
-				symbol = "+";
-			} else if(newValue < curValue) {
-				symbol = "-";
-			}				
-			this.drawText(symbol, x, y, plusMinusWidth, "right");
+			if(useArrows) {
+				let icon = 0;
+				if(newValue > curValue) {
+					icon = 92;
+				} else if(newValue < curValue) {
+					icon = 93;
+				}
+				this.drawIcon(icon, x+plusMinusWidth-spriteW, y);
+			} else {
+				let symbol = "";
+				if(newValue > curValue) {
+					symbol = "+";
+				} else if(newValue < curValue) {
+					symbol = "-";
+				}				
+				this.drawText(symbol, x, y, plusMinusWidth, "right");
+			}
 			this.drawText(newValue+"", x, y, textWidth, "right");
 		}
 	};
@@ -1548,16 +1552,21 @@
 		const x3 = x2 + $gameMap.tileWidth()/2*9;
 		const x4 = x3 + $gameMap.tileWidth()/2*9;
 		const lineHeight = this.lineHeight()/2;
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight;
+		const y4 = y3 + lineHeight;
+		const y5 = y4 + lineHeight;
+		const y6 = y5 + lineHeight;
 		
 		const tempActor = this._tempActor ? this._tempActor : this._actor;
 		
-		this.drawNameAndValue(x, y+lineHeight*2, this.toughnessSymbol(), this._actor.param(5), tempActor.param(5));
-		this.drawNameAndValue(x, y+lineHeight*3, this.magicSymbol(), this._actor.param(4), tempActor.param(4));
-		this.drawNameAndValue(x, y+lineHeight*4, this.speedSymbol(), this._actor.param(6), tempActor.param(6));
-		this.drawNameAndValue(x, y+lineHeight*5, this.recoverySymbol(), this._actor.param(7), tempActor.param(7));
+		this.drawNameAndValue(x, y3, this.toughnessSymbol(), this._actor.param(5), tempActor.param(5), true);
+		this.drawNameAndValue(x, y4, this.magicSymbol(), this._actor.param(4), tempActor.param(4), true);
+		this.drawNameAndValue(x, y5, this.speedSymbol(), this._actor.param(6), tempActor.param(6), true);
+		this.drawNameAndValue(x, y6, this.recoverySymbol(), this._actor.param(7), tempActor.param(7), true);
 		
-		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2));
-		this.drawNameAndValue(x2, y+lineHeight*2, this.accuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100));
+		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2), true);
+		this.drawNameAndValue(x2, y2, this.accuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100), true);
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -1566,12 +1575,12 @@
 			typeIcons = typeIcons.concat(this._actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 			typeIcons = typeIcons.concat(this._actor.weaponTypes().map(type => this.iconForWeaponType(type)));
 		}
-		this.drawIconList(x2, y+lineHeight*4, this.typeSymbol(), typeIcons, textWidth);
+		this.drawIconList(x2, y4, this.typeSymbol(), typeIcons, textWidth);
 		
-		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3));
-		this.drawNameAndValue(x3, y+lineHeight*2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100));
-		this.drawNameAndValue(x3, y+lineHeight*3, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100));
-		this.drawText(this.resistSymbol(), x3, y+lineHeight*4, textWidth);
+		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3), true);
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
+		this.drawNameAndValue(x3, y3, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100), true);
+		this.drawText(this.resistSymbol(), x3, y4, textWidth);
 	};
 	
 	// Window Equip Command
@@ -1906,7 +1915,7 @@
 			const x3 = x2 + spriteW;
 			const y = $gameSystem.windowPadding();
 			const y2 = y + lineHeight*4;
-			const y3 = y2 + lineHeight*7;
+			const y3 = y2 + lineHeight*6;
 			this.drawActorSimpleStatus(this._actor, x3, y);
 			this.drawEquipParams(this._actor, x, y2);
 			this.drawSkillLevels(this._actor, x2, y3);
@@ -1959,16 +1968,16 @@
 		this.drawNameAndValue(x, y4, this.recoverySymbol(), actor.param(7));
 		
 		this.drawNameAndValue(x2, y, this.powerSymbol(), actor.param(2));
-		this.drawNameAndValue(x2, y3, this.accuracySymbol(), Math.floor(actor.xparam(0)*100));
+		this.drawNameAndValue(x2, y2, this.accuracySymbol(), Math.floor(actor.xparam(0)*100));
 		let typeIcons = [];
 		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
-		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
+		this.drawIconList(x2, y4, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
-		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
-		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
-		this.drawText(this.resistSymbol(), x3, y5, textWidth);
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y3, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
+		this.drawText(this.resistSymbol(), x3, y4, textWidth);
 	};
 	
 	// Window Options
@@ -2240,6 +2249,7 @@
 	Window_ShopStatus.prototype.drawActorEquipInfo = function(x, y, actor) {
 		const item1 = this.currentEquippedItem(actor, this._item.etypeId);
 		const width = this.textWidth("00000000");
+		const warningWidth = width + this.textWidth("0");
 		const enabled = actor.canEquip(this._item);
 		const lineHeight = $gameMap.tileHeight()/2;
 		const y2 = y + lineHeight;
@@ -2247,14 +2257,12 @@
 		//this.resetTextColor();
 		if (enabled) {
 			if(item1 && this._item.id === item1.id && this._item.eTypeId === item1.eTypeId) {
-				this.drawText("Already", x, y, width);
-				this.drawText("equipped", x, y2, width);
+				this.drawText("Equipped", x, y2, warningWidth);
 			} else {
 				this.drawActorParamChange(x, y, actor, item1);
 			}
 		} else {
-			this.drawText("Can't", x, y, width);
-			this.drawText("equip", x, y2, width);
+			this.drawText("Can't use", x, y2, warningWidth);
 		}
 		//this.changePaintOpacity(true);
 	};

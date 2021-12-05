@@ -892,7 +892,7 @@
 	
 	Scene_Shop.prototype.onBuyOk = function() {
 		this._item = this._buyWindow.item();
-		this._numberWindow.setup(this._item, this.maxBuy(), this.buyingPrice());
+		this._numberWindow.setup(this._item, this.maxBuy(), this.buyingPrice(), this.money());
 		this._numberWindow.setCurrencyUnit(this.currencyUnit());
 		this._numberWindow.show();
 		this._numberWindow.activate();
@@ -911,6 +911,18 @@
 		this._categoryWindow.hide();
 		this._sellWindow.hide();
 		this._buyWindow.show();
+		this._statusWindow.show();
+	};
+	
+	Scene_Shop.prototype.onSellOk = function() {
+		this._item = this._sellWindow.item();
+		this._categoryWindow.hide();
+		this._sellWindow.hide();
+		this._numberWindow.setup(this._item, this.maxSell(), this.sellingPrice(), this.money(), true);
+		this._numberWindow.setCurrencyUnit(this.currencyUnit());
+		this._numberWindow.show();
+		this._numberWindow.activate();
+		this._statusWindow.setItem(this._item);
 		this._statusWindow.show();
 	};
 	
@@ -1955,6 +1967,150 @@
 	};
 	
 	// Window Shop Number
+	Window_ShopNumber.prototype.initialize = function(rect) {
+		Window_Selectable.prototype.initialize.call(this, rect);
+		this._item = null;
+		this._max = 1;
+		this._price = 0;
+		this._number = 1;
+		this._partyGold = 0;
+		this._selling = false;
+		this._currencyUnit = TextManager.currencyUnit;
+		this.createButtons();
+		this.select(0);
+		this._canRepeat = false;
+	};
+
+	Window_ShopNumber.prototype.setup = function(item, max, price, partyGold, selling) {
+		this._item = item;
+		this._max = Math.floor(max);
+		this._price = price;
+		this._number = 1;
+		this._partyGold = partyGold;
+		this._selling = selling;
+		this.placeButtons();
+		this.refresh();
+	};
+	
+	Window_ShopNumber.prototype.createButtons = function() {
+		this._buttons = [];
+		if (ConfigManager.touchUI) {
+			for (const type of ["ok", "up2", "up", "down2", "down"]) {
+				const button = new Sprite_Button(type);
+				this._buttons.push(button);
+				this.addInnerChild(button);
+			}
+			this._buttons[0].setClickHandler(this.onButtonOk.bind(this));
+			this._buttons[1].setClickHandler(this.onButtonUp2.bind(this));
+			this._buttons[2].setClickHandler(this.onButtonUp.bind(this));
+			this._buttons[3].setClickHandler(this.onButtonDown2.bind(this));
+			this._buttons[4].setClickHandler(this.onButtonDown.bind(this));
+		}
+	};
+
+	Window_ShopNumber.prototype.placeButtons = function() {
+		const padding = this.itemPadding();
+		const lineHeight = this.lineHeight();
+		let x = padding;
+		let y = padding;
+		for (let i = 0; i < this._buttons.length; i++) {
+			this._buttons[i].x = x;
+			this._buttons[i].y = y;
+			if(i === 2) {
+				x -= this._buttons[i].width;
+				y += lineHeight;
+			} else {
+				x += this._buttons[i].width;
+			}
+		}
+	};
+
+	Window_ShopNumber.prototype.buttonSpacing = function() {
+		return 0;
+	};
+	
+	Window_ShopNumber.prototype.refresh = function() {
+		Window_Selectable.prototype.refresh.call(this);
+		this.drawCurrentItemName();
+		this.drawMultiplicationSign();
+		this.drawNumber();
+		this.drawTotalPrice();
+	};
+	
+	Window_ShopNumber.prototype.drawCurrentItemName = function() {
+		const padding = this.itemPadding();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const x = padding;
+		const y = padding + lineHeight*5;
+		const width = spriteW*8;
+		this.drawItemName(this._item, x, y, width);
+	};
+	
+	Window_ShopNumber.prototype.drawMultiplicationSign = function() {
+		const padding = this.itemPadding();
+		const sign = this.multiplicationSign();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const width = spriteW;
+		const x = padding + spriteW*5;
+		const y = padding + lineHeight*6;
+		this.drawText(sign, x, y, width);
+	};
+
+	Window_ShopNumber.prototype.multiplicationSign = function() {
+		return "x";
+	};
+
+	Window_ShopNumber.prototype.drawNumber = function() {
+		const padding = this.itemPadding();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const width = spriteW*2;
+		const x = padding + spriteW*6;
+		const y = padding + lineHeight*6;
+		this.drawText(this._number+"", x, y, width, "right");
+	};
+
+	Window_ShopNumber.prototype.drawTotalPrice = function() {
+		const padding = this.itemPadding();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const width = spriteW*8;
+		const total = this._price * this._number;
+		let resultGold = this._partyGold;
+		let mathSymbol = "+";
+		if(this._selling) {
+			resultGold += total;
+		} else {
+			mathSymbol = "-";
+			resultGold -= total;
+		}
+		const x = padding;
+		const y = padding + lineHeight*8;
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight;
+		const y4 = y3 + lineHeight;
+		this.drawText(this._partyGold+"", x, y, width, "right");
+		this.drawText(mathSymbol, x, y2, width);
+		this.drawText(total+"", x, y2, width, "right");
+		this.drawText("--------", x-1, y3, width, "right");
+		this.drawText("--------", x+2, y3, width, "right");
+		this.drawText(resultGold+"", x, y4, width, "right");
+	};
+	
+	Window_ShopNumber.prototype.itemRect = function() {
+		const padding = this.itemPadding();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const width = spriteW*8;
+		const rect = new Rectangle();
+		rect.x = 0;
+		rect.y = lineHeight*5;
+		rect.width = spriteW*9;
+		rect.height = this.lineHeight()/2*3;
+		return rect;
+	};
 	
 	// Window Shop Status
 	Window_ShopStatus.prototype.initialize = function(rect) {
@@ -2003,9 +2159,9 @@
 	
 	Window_ShopStatus.prototype.drawPossession = function(x, y) {
 		const spriteW = $gameMap.tileWidth()/2;
-		const width = spriteW*12;
+		const width = spriteW*8;
 		//this.changeTextColor(ColorManager.systemColor());
-		this.drawText("# Owned", x, y, width);
+		this.drawText("# Own", x, y, width);
 		//this.resetTextColor();
 		this.drawText($gameParty.numItems(this._item)+"", x, y, width, "right");
 	};
@@ -2101,7 +2257,7 @@
 		this.drawText(change+"", x, y, textWidth, "right");
 	};
 	
-	Window_StatusBase.prototype.drawIconListChange = function(x, y, name, itemIcons, actorIcons) {
+	Window_ShopStatus.prototype.drawIconListChange = function(x, y, name, itemIcons, actorIcons) {
 		const addedIcons = [];
 		const removedIcons = [];
 		for(let i = 0; i < itemIcons.length; i++) {
@@ -2129,7 +2285,7 @@
 		}
 	};
 	
-	Window_StatusBase.prototype.drawSingleIconList = function(x, y, icons) {
+	Window_ShopStatus.prototype.drawSingleIconList = function(x, y, icons) {
 		const spriteW = $gameMap.tileWidth()/2;
 		const width = spriteW*9;
 		let curX = x + width - spriteW;

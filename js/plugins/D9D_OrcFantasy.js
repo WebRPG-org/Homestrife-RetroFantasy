@@ -958,8 +958,8 @@
 	};
 	
 	Scene_Name.prototype.editWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*10;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._inputWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -2156,20 +2156,18 @@
 		Window_StatusBase.prototype.initialize.call(this, rect);
 		this._item = null;
 		this._pageIndex = 0;
-		this._firstRefresh = true;
+		const members = this.statusMembers();
+		for (let i = 0; i < members.length; i++) {
+			ImageManager.loadSvActor(members[i].battlerName());
+		}
 		this.refresh();
 	};
-
+	
 	Window_ShopStatus.prototype.refresh = function() {
 		const lineHeight = $gameMap.tileHeight()/2;
 		const x = this.itemPadding();
 		const y = this.itemPadding();
 		const y2 = y + lineHeight*2;
-		if(this._firstRefresh) {
-			// doing this because for some reason it just refuses to draw the first time and I'm tired of trying to figure out why
-			this.drawSvActors(x, y2);
-			this._firstRefresh = false;
-		}
 		this.contents.clear();
 		if (this._item) {
 			const spriteW = $gameMap.tileWidth()/2;
@@ -2336,6 +2334,15 @@
 	};
 	
 	// Window Name Edit
+	Window_NameEdit.prototype.setup = function(actor, maxLength) {
+		this._actor = actor;
+		this._maxLength = maxLength;
+		this._name = actor.name().slice(0, this._maxLength);
+		this._index = this._name.length;
+		this._defaultName = this._name;
+		ImageManager.loadSvActor(actor.battlerName());
+	};
+	
 	Window_NameEdit.prototype.add = function(ch) {
 		if (this._index < this._maxLength) {
 			this._name += ch;
@@ -2356,8 +2363,8 @@
 		const spriteW = $gameMap.tileWidth()/2;
 		const lineHeight = this.lineHeight()/2;
 		const itemPadding = this.itemPadding();
-		const x = this.itemPadding() + spriteW*2*index;
-		const y = this.itemPadding() + lineHeight;
+		const x = spriteW*4 + itemPadding + spriteW*2*index;
+		const y = lineHeight*2 + itemPadding + lineHeight;
 		const width = this.charWidth()*2;
 		const height = lineHeight*2;
 		return new Rectangle(x, y, width, height);
@@ -2365,6 +2372,12 @@
 	
 	Window_NameEdit.prototype.refresh = function() {
 		this.contents.clear();
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = this.lineHeight()/2;
+		const itemPadding = this.itemPadding();
+		const svX = itemPadding + spriteW;
+		const svY = itemPadding + lineHeight;
+		this.drawSvActor(this._actor, svX, svY, true);
 		for (let j = 0; j < this._name.length; j++) {
 			this.drawChar(j);
 		}
@@ -2374,10 +2387,68 @@
 		} else {
 			rect = this.itemRect(this._maxLength-1);
 		}
-		const itemPadding = this.itemPadding();
 		rect.x -= itemPadding;
 		rect.y -= itemPadding;
 		this.setCursorRect(rect.x, rect.y, rect.width, rect.height);
+	};
+	
+	// Window Name Input
+	Window_NameInput.prototype.itemWidth = function() {
+		return Window_Selectable.prototype.itemWidth.call(this);
+	};
+
+	Window_NameInput.prototype.groupSpacing = function() {
+		return $gameMap.tileWidth()/2;
+	};
+	
+	Window_NameInput.prototype.isPageChange = function() {
+		return this.isValuePageChange(this._index);
+	};
+
+	Window_NameInput.prototype.isOk = function() {
+		return this.isValueOk(this._index);
+	};
+	
+	Window_NameInput.prototype.isValuePageChange = function(index) {
+		return index === 88;
+	};
+
+	Window_NameInput.prototype.isValueOk = function(index) {
+		return index === 89;
+	};
+	
+	Window_NameInput.prototype.itemRect = function(index) {
+		const itemWidth = this.itemWidth();
+		const itemHeight = this.itemHeight();
+		const colSpacing = this.colSpacing();
+		const rowSpacing = this.rowSpacing();
+		const groupSpacing = this.groupSpacing();
+		const col = index % 10;
+		const group = Math.floor(col / 5);
+		const x = col * itemWidth + group * groupSpacing + colSpacing / 2;
+		const y = itemHeight/2 + Math.floor(index / 10) * itemHeight + rowSpacing / 2;
+		const width = itemWidth - colSpacing;
+		const height = itemHeight - rowSpacing;
+		return new Rectangle(x, y, width, height);
+	};
+	
+	Window_NameInput.prototype.drawItem = function(index) {
+		const itemPadding = this.itemPadding();
+		const rect = this.itemLineRect(index);
+		rect.y += itemPadding;
+		if(this.isValuePageChange(index)) { this.drawPageChange(rect.x, rect.y); return; }
+		if(this.isValueOk(index)) { this.drawOk(rect.x, rect.y); return; }
+		const table = this.table();
+		const character = table[this._page][index];
+		this.drawText(character, rect.x, rect.y, rect.width);
+	};
+	
+	Window_NameInput.prototype.drawPageChange = function(x, y) {
+		this.drawIcon(94, x, y);
+	};
+	
+	Window_NameInput.prototype.drawOk = function(x, y) {
+		this.drawIcon(95, x, y);
 	};
 	
 	// Window Title Command

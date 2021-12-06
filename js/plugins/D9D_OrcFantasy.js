@@ -238,7 +238,7 @@
 		// performance
 		this._skillLevels.MeleeAcc = 0;
 		this._skillLevels.RangeAcc = 0;
-		this._skillLevels.Defense  = 0;
+		this._skillLevels.Evasion  = 0;
 		this._skillLevels.Balance  = 0;
 		this._skillLevels.Agility  = 0;
 		this._skillLevels.Focus    = 0;
@@ -246,7 +246,7 @@
 		this._skillLevels.MeleeWpn = 0;
 		this._skillLevels.ThrowWpn = 0;
 		this._skillLevels.RangeWpn = 0;
-		this._skillLevels.Shields  = 0;
+		this._skillLevels.Unarmed  = 0;
 		// unique ability
 		this._skillLevels.Tactics  = 0;
 		this._skillLevels.Engineer = 0;
@@ -336,6 +336,7 @@
 				xparamTotal += (this.skillLevel("Defense")*5)/100;
 				break;
 			case 2: //range accuracy
+			case 4: //special accuracy
 				xparamTotal += (this.skillLevel("RangeAcc")*5)/100;
 				break;
 		}
@@ -441,6 +442,32 @@
 	
 	Game_Actor.prototype.isTwoHanded = function(item) {
 		return item && item.wtypeId && item.wtypeId % 3 != 1;
+	};
+	
+	Game_Actor.prototype.paramPlus = function(paramId) {
+		let value = Game_Battler.prototype.paramPlus.call(this, paramId);
+		const equips = this.equips();
+		for (let i = 0; i < equips.length; i++) {
+			if(paramId === 3 && i <= 1) { continue; }
+			const item = equips[i];
+			if (item) {
+				value += item.params[paramId];
+			}
+		}
+		return value;
+	};
+	
+	Game_Actor.prototype.shieldDefense = function() {
+		let value = 0;
+		const equips = this.equips();
+		for (let i = 0; i < equips.length; i++) {
+			if(i > 1) { continue; }
+			const item = equips[i];
+			if (item) {
+				value += item.params[3];
+			}
+		}
+		return value;
 	};
 	
 	// Game Party
@@ -1447,10 +1474,10 @@
 		let name = "UNKNOWN";
 		switch(skillNum) {
 			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
-			case  2: name =  "Defense"; break; case  3: name =  "Balance"; break; 
+			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
 			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
 			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
-			case  8: name = "FiredWpn"; break; case  9: name =  "Shields"; break; 
+			case  8: name = "FiredWpn"; break; case  9: name =  "Unarmed"; break; 
 		}
 		return name;
 	};
@@ -1484,8 +1511,9 @@
 		const textWidth = spriteW*8;
 		const plusMinusWidth = textWidth - spriteW*3;
 		this.drawText(name, x, y, textWidth);
-		this.drawText((newValue ? newValue : curValue)+"", x, y, textWidth, "right");
-		if (newValue) {
+		const newValueExists = newValue != null && newValue != undefined ;
+		this.drawText((newValueExists ? newValue : curValue)+"", x, y, textWidth, "right");
+		if (newValueExists && newValue != curValue) {
 			if(useArrows) {
 				let icon = 0;
 				if(newValue > curValue) {
@@ -1535,6 +1563,10 @@
 		return "RAC";
 	};
 	
+	Window_StatusBase.prototype.specialAccuracySymbol = function() {
+		return "SAC";
+	};
+	
 	Window_StatusBase.prototype.typeSymbol = function() {
 		return "TYP";
 	};
@@ -1543,8 +1575,12 @@
 		return "AMR";
 	};
 	
+	Window_StatusBase.prototype.blockSymbol = function() {
+		return "BLK";
+	};
+	
 	Window_StatusBase.prototype.evadeSymbol = function() {
-		return "EVD";
+		return "EVS";
 	};
 	
 	Window_StatusBase.prototype.coverageSymbol = function() {
@@ -1720,6 +1756,7 @@
 		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2), true);
 		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100), true);
 		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(this._actor.xparam(2)*100), Math.floor(tempActor.xparam(2)*100), true);
+		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), Math.floor(this._actor.xparam(4)*100), Math.floor(tempActor.xparam(4)*100), true);
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -1728,12 +1765,13 @@
 			typeIcons = typeIcons.concat(this._actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 			typeIcons = typeIcons.concat(this._actor.weaponTypes().map(type => this.iconForWeaponType(type)));
 		}
-		this.drawIconList(x2, y4, this.typeSymbol(), typeIcons, textWidth);
+		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3), true);
-		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
-		this.drawNameAndValue(x3, y3, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100), true);
-		this.drawText(this.resistSymbol(), x3, y4, textWidth);
+		this.drawNameAndValue(x3, y2, this.blockSymbol(), this._actor.shieldDefense(), tempActor.shieldDefense(), true);
+		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
+		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100), true);
+		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
 	
 	// Window Equip Command
@@ -2125,7 +2163,7 @@
 			const x3 = x2 + spriteW;
 			const y = $gameSystem.windowPadding();
 			const y2 = y + lineHeight*4;
-			const y3 = y2 + lineHeight*6;
+			const y3 = y2 + lineHeight*7;
 			this.drawActorSimpleStatus(this._actor, x3, y);
 			this.drawEquipParams(this._actor, x, y2);
 			this.drawSkillLevels(this._actor, x2, y3);
@@ -2180,15 +2218,17 @@
 		this.drawNameAndValue(x2, y, this.powerSymbol(), actor.param(2));
 		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(actor.xparam(0)*100));
 		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(actor.xparam(2)*100));
+		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), Math.floor(actor.xparam(4)*100));
 		let typeIcons = [];
 		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
-		this.drawIconList(x2, y4, this.typeSymbol(), typeIcons, textWidth);
+		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
-		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
-		this.drawNameAndValue(x3, y3, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
-		this.drawText(this.resistSymbol(), x3, y4, textWidth);
+		this.drawNameAndValue(x3, y2, this.blockSymbol(), actor.shieldDefense());
+		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
+		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
 	
 	// Window Options
@@ -2496,7 +2536,8 @@
 			}
 			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
 		} else {
-			this.drawNameAndValueChange(x, y, this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));
+			let defenseSymbol = this._item.etypeId === 2 ? this.blockSymbol() : this.armorSymbol();
+			this.drawNameAndValueChange(x, y, defenseSymbol, this._item.params[3], (item1 ? item1.params[3] : 0));
 			const coverage = this.getItemXParam(this._item, 3, true);
 			if(coverage > 0) {
 				this.drawNameAndValueChange(x, y2, this.coverageSymbol(), coverage, this.getItemXParam(item1, 3, true));

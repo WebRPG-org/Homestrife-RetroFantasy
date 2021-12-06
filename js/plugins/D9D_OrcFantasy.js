@@ -222,7 +222,7 @@
 		// performance
 		this._skillLevels.MeleeAcc = 0;
 		this._skillLevels.RangeAcc = 0;
-		this._skillLevels.Evasion  = 0;
+		this._skillLevels.Defense  = 0;
 		this._skillLevels.Balance  = 0;
 		this._skillLevels.Agility  = 0;
 		this._skillLevels.Focus    = 0;
@@ -287,6 +287,43 @@
 	
 	Game_BattlerBase.prototype.backRow = function() {
 		return this._backRow;
+	};
+	
+	const _Game_BattlerBase_param = Game_BattlerBase.prototype.param;
+	Game_BattlerBase.prototype.param = function(paramId) {
+		let paramTotal = _Game_BattlerBase_param.call(this, paramId);
+		switch(paramId) {
+			case 4: //toughness
+				paramTotal += this.skillLevel("IronBody");
+				break;
+			case 5: //balance
+				paramTotal += this.skillLevel("Balance");
+				break;
+			case 6: //agility
+				paramTotal += this.skillLevel("Agility");
+				break;
+			case 7: //focus
+				paramTotal += this.skillLevel("Focus");
+				break;
+		}
+		return paramTotal;
+	};
+	
+	const _Game_BattlerBase_xparam = Game_BattlerBase.prototype.xparam;
+	Game_BattlerBase.prototype.xparam = function(xparamId) {
+		let xparamTotal = _Game_BattlerBase_xparam.call(this, xparamId);
+		switch(xparamId) {
+			case 0: //melee accuracy
+				xparamTotal += (this.skillLevel("MeleeAcc")*5)/100;
+				break;
+			case 1: //evasion
+				xparamTotal += (this.skillLevel("Defense")*5)/100;
+				break;
+			case 2: //range accuracy
+				xparamTotal += (this.skillLevel("RangeAcc")*5)/100;
+				break;
+		}
+		return xparamTotal;
 	};
 	
 	// Game Actor
@@ -1440,24 +1477,28 @@
 		return "TGH";
 	};
 	
-	Window_StatusBase.prototype.magicSymbol = function() {
-		return "MGC";
+	Window_StatusBase.prototype.balanceSymbol = function() {
+		return "BLC";
 	};
 	
-	Window_StatusBase.prototype.speedSymbol = function() {
-		return "SPD";
+	Window_StatusBase.prototype.agilitySymbol = function() {
+		return "AGL";
 	};
 	
-	Window_StatusBase.prototype.recoverySymbol = function() {
-		return "RCV";
+	Window_StatusBase.prototype.focusSymbol = function() {
+		return "FCS";
 	};
 	
 	Window_StatusBase.prototype.powerSymbol = function() {
 		return "PWR";
 	};
 	
-	Window_StatusBase.prototype.accuracySymbol = function() {
-		return "ACR";
+	Window_StatusBase.prototype.meleeAccuracySymbol = function() {
+		return "MAC";
+	};
+	
+	Window_StatusBase.prototype.rangeAccuracySymbol = function() {
+		return "RAC";
 	};
 	
 	Window_StatusBase.prototype.typeSymbol = function() {
@@ -1637,13 +1678,14 @@
 		
 		const tempActor = this._tempActor ? this._tempActor : this._actor;
 		
-		this.drawNameAndValue(x, y3, this.toughnessSymbol(), this._actor.param(5), tempActor.param(5), true);
-		this.drawNameAndValue(x, y4, this.magicSymbol(), this._actor.param(4), tempActor.param(4), true);
-		this.drawNameAndValue(x, y5, this.speedSymbol(), this._actor.param(6), tempActor.param(6), true);
-		this.drawNameAndValue(x, y6, this.recoverySymbol(), this._actor.param(7), tempActor.param(7), true);
+		this.drawNameAndValue(x, y3, this.toughnessSymbol(), this._actor.param(4), tempActor.param(4), true);
+		this.drawNameAndValue(x, y4, this.balanceSymbol(), this._actor.param(5), tempActor.param(5), true);
+		this.drawNameAndValue(x, y5, this.agilitySymbol(), this._actor.param(6), tempActor.param(6), true);
+		this.drawNameAndValue(x, y6, this.focusSymbol(), this._actor.param(7), tempActor.param(7), true);
 		
 		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2), true);
-		this.drawNameAndValue(x2, y2, this.accuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100), true);
+		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100), true);
+		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(this._actor.xparam(2)*100), Math.floor(tempActor.xparam(2)*100), true);
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -2096,13 +2138,14 @@
 		const y4 = y3 + lineHeight;
 		const y5 = y4 + lineHeight;
 		
-		this.drawNameAndValue(x, y, this.toughnessSymbol(), actor.param(5));
-		this.drawNameAndValue(x, y2, this.magicSymbol(), actor.param(4));
-		this.drawNameAndValue(x, y3, this.speedSymbol(), actor.param(6));
-		this.drawNameAndValue(x, y4, this.recoverySymbol(), actor.param(7));
+		this.drawNameAndValue(x, y, this.toughnessSymbol(), actor.param(4));
+		this.drawNameAndValue(x, y2, this.balanceSymbol(), actor.param(5));
+		this.drawNameAndValue(x, y3, this.agilitySymbol(), actor.param(6));
+		this.drawNameAndValue(x, y4, this.focusSymbol(), actor.param(7));
 		
 		this.drawNameAndValue(x2, y, this.powerSymbol(), actor.param(2));
-		this.drawNameAndValue(x2, y2, this.accuracySymbol(), Math.floor(actor.xparam(0)*100));
+		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(actor.xparam(0)*100));
+		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(actor.xparam(2)*100));
 		let typeIcons = [];
 		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
@@ -2412,7 +2455,11 @@
 		const y3 = y2 + lineHeight;
 		if(paramId === 2) {
 			this.drawNameAndValueChange(x, y, this.powerSymbol(), this._item.params[2], (item1 ? item1.params[2] : 0));
-			this.drawNameAndValueChange(x, y2, this.accuracySymbol(), this.getItemXParam(this._item, 0, true), this.getItemXParam(item1, 0, true));
+			if(this._item.wtypeId >= 13) {
+				this.drawNameAndValueChange(x, y2, this.rangeAccuracySymbol(), this.getItemXParam(this._item, 2, true), this.getItemXParam(item1, 2, true));
+			} else {
+				this.drawNameAndValueChange(x, y2, this.meleeAccuracySymbol(), this.getItemXParam(this._item, 0, true), this.getItemXParam(item1, 0, true));
+			}
 			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
 		} else {
 			this.drawNameAndValueChange(x, y, this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));

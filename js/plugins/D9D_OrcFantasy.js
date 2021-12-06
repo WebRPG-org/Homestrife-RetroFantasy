@@ -1975,7 +1975,7 @@
 				desc = "Increase chances of striking\nwith melee attacks.";
 				break;
 			case  1:
-				desc = "Increase chances of striking\nwith thrown and fired attacks.";
+				desc = "Increase chances of striking\nwith thrown fired & magic atks.";
 				break; 
 			case  2:
 				desc = "Increase chances of dodging,\nblocking, and parrying attacks.";
@@ -1999,7 +1999,7 @@
 				desc = "Unlock techniques for bows and\nguns.";
 				break;
 			case  9:
-				desc = "Unlock shield techniques.";
+				desc = "Unlock punch and kick\ntechniques.";
 				break; 
 		}
 		const item = {};

@@ -732,13 +732,15 @@
 		this._skillsConfirmWindow = new Window_SkillLevelsConfirm(rect);
 		this._skillsConfirmWindow.setHandler("cancel", this.onSkillUpgradeCancel.bind(this));
 		this._skillsConfirmWindow.setHandler("upgrade", this.onSkillUpgrade.bind(this));
+		this._skillsConfirmWindow.setHandler("refund", this.onSkillRefund.bind(this));
 		this.addWindow(this._skillsConfirmWindow);
 		this._skillsConfirmWindow.hide();
+		this._skillsWindow.setSkillsConfirmWindow(this._skillsConfirmWindow);
 	};
 
 	Scene_SkillLevels.prototype.skillsConfirmWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
 		const wx = Graphics.boxWidth - ww - this._skillsWindow.width;
 		const wy = this._skillsStatusWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -751,12 +753,10 @@
 	};
 	
 	Scene_SkillLevels.prototype.onSkillOk = function() {
-		if(this._skillsWindow.canPurchaseNextSkillLevel()) {
-			this._skillsWindow.deactivate();
-			this._skillsConfirmWindow.activate();
-			this._skillsConfirmWindow.show();
-			this._skillsConfirmWindow.select(0);
-		}
+		this._skillsWindow.deactivate();
+		this._skillsConfirmWindow.activate();
+		this._skillsConfirmWindow.show();
+		this._skillsConfirmWindow.select(0);
 	};
 	
 	Scene_SkillLevels.prototype.onSkillUpgradeCancel = function() {
@@ -764,8 +764,17 @@
 	};
 	
 	Scene_SkillLevels.prototype.onSkillUpgrade = function() {
-		this._skillsWindow.purchaseNextSkillLevel();
-		this.exitSkillsCofirmWindow();
+		if(this._skillsWindow.canPurchaseNextSkillLevel()) {
+			this._skillsWindow.purchaseNextSkillLevel();
+			this.exitSkillsCofirmWindow();
+		}
+	};
+	
+	Scene_SkillLevels.prototype.onSkillRefund = function() {
+		if($gameSystem.isSaveEnabled()) {
+			this._skillsWindow.refundSkillLevels();
+			this.exitSkillsCofirmWindow();
+		}
 	};
 	
 	Scene_SkillLevels.prototype.exitSkillsCofirmWindow = function() {
@@ -1748,6 +1757,14 @@
 		}
 	};
 	
+	Window_SkillLevels.prototype.setSkillsConfirmWindow = function(skillsConfirmWindow) {
+		if (this._skillsConfirmWindow !== skillsConfirmWindow) {
+			this._skillsConfirmWindow = skillsConfirmWindow;
+			this._skillsConfirmWindow.setUpgradeEnabled(this.canPurchaseNextSkillLevel());
+			this._skillsConfirmWindow.setRefundEnabled(this.canRefund());
+		}
+	};
+	
 	Window_SkillLevels.prototype.maxItems = function() {
 		return this.skillCount(this._actor);
 	};
@@ -1762,6 +1779,14 @@
 		if (this._skillsStatusWindow) {
 			this._skillsStatusWindow.setSkillLevelCost(this.nextSkillLevelCost());
 		}
+		if (this._skillsConfirmWindow) {
+			this._skillsConfirmWindow.setUpgradeEnabled(this.canPurchaseNextSkillLevel());
+			this._skillsConfirmWindow.setRefundEnabled(this.canRefund());
+		}
+	};
+	
+	Window_SkillLevels.prototype.canRefund = function() {
+		return $gameSystem.isSaveEnabled() && this._actor && this._actor.skillLevel(this.skillName(this.index())) > 0;
 	};
 	
 	Window_SkillLevels.prototype.drawStaticElements = function() {
@@ -1804,12 +1829,18 @@
 	};
 	
 	Window_SkillLevels.prototype.isCurrentItemEnabled = function() {
-		return this.canPurchaseNextSkillLevel();
+		return true;
 	};
 	
 	Window_SkillLevels.prototype.purchaseNextSkillLevel = function() {
 		if(!this._actor) { return; }
 		this._actor.purchaseNextSkillLevel(this.skillName(this.index()));
+		this.refresh();
+	};
+	
+	Window_SkillLevels.prototype.refundSkillLevels = function() {
+		if(!this._actor) { return; }
+		this._actor.refundSkillLevels(this.skillName(this.index()));
 		this.refresh();
 	};
 	
@@ -1983,11 +2014,28 @@
 		Window_Command.prototype.initialize.call(this, rect);
 		this.select(0);
 		this._canRepeat = false;
+		this._upgradeEnabled = false;
+		this._refundEnabled = false;
 	};
 	
 	Window_SkillLevelsConfirm.prototype.makeCommandList = function() {
 		this.addCommand("Cancel", "cancel", true);
-		this.addCommand("Upgrade", "upgrade", true);
+		this.addCommand("Upgrade", "upgrade", this._upgradeEnabled);
+		this.addCommand("Refund", "refund", this._refundEnabled);
+	};
+	
+	Window_SkillLevelsConfirm.prototype.setUpgradeEnabled = function(enabled) {
+		if(this._upgradeEnabled != enabled) {
+			this._upgradeEnabled = enabled;
+			this.refresh();
+		}
+	};
+	
+	Window_SkillLevelsConfirm.prototype.setRefundEnabled = function(enabled) {
+		if(this._refundEnabled != enabled) {
+			this._refundEnabled = enabled;
+			this.refresh();
+		}
 	};
 	
 	// Window Status

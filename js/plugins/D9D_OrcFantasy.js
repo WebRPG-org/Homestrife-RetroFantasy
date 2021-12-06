@@ -176,6 +176,22 @@
 		return baseAlpha;
 	};
 	
+	Window.prototype._updatePauseSign = function() {
+		const sprite = this._pauseSignSprite;
+		const x = Math.floor(this._animationCount / 16) % 2;
+		const y = Math.floor(this._animationCount / 16 / 2) % 2;
+		const sx = 48;
+		const sy = 32;
+		const p = 8;
+		if (!this.pause) {
+			sprite.alpha = 0;
+		} else if (sprite.alpha < 1) {
+			sprite.alpha = 1;
+		}
+		sprite.setFrame(sx + x * p, sy + y * p, p, p);
+		sprite.visible = this.isOpen();
+	};
+	
 	// Data Manager
 	const _DataManager_makeSavefileInfo = DataManager.makeSavefileInfo;
 	DataManager.makeSavefileInfo = function() {
@@ -1218,6 +1234,20 @@
 	};
 	
 	// Window Selectable
+	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
+		return this.innerHeight;
+	};
+	
+	Window_Scrollable.prototype.updateArrows = function() {
+		this.downArrowVisible = this._scrollY < this.maxScrollYForDownArrow();
+		this.upArrowVisible = this._scrollY > 0;
+	};
+	
+	Window_Scrollable.prototype.maxScrollYForDownArrow = function() {
+		return Math.max(0, this.overallHeightForDownArrow() - this.innerHeight);
+	};
+	
+	// Window Selectable
 	Window_Selectable.prototype.colSpacing = function() {
 		return 0;
 	};
@@ -1246,6 +1276,10 @@
 	
 	Window_Selectable.prototype.overallHeight = function() {
 		return (this.maxRows()+1) * this.itemHeight();
+	};
+	
+	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
+		return this.maxRows() * this.itemHeight();
 	};
 	
 	Window_Selectable.prototype.ensureCursorVisible = function(smooth) {

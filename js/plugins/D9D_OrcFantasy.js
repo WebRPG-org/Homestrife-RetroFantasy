@@ -2967,6 +2967,8 @@
 		Window_Base.prototype.initialize.call(this, rect);
 		this.hide();
 		this.initMembers();
+		this._textSoundTime = 4;
+		this._textSoundTimer = 0;
 	};
 	
 	Window_Message.prototype.checkToNotClose = function() {
@@ -3010,6 +3012,54 @@
 		this.hide();
 		this._goldWindow.hide();
 		$gameMessage.clear();
+	};
+	
+	Window_Message.prototype.updateInput = function() {
+		if (this.isAnySubWindowActive()) {
+			return true;
+		}
+		if (this.pause) {
+			if (this.isTriggered()) {
+				Input.update();
+				this.pause = false;
+				this.playOkSound();
+				if (!this._textState) {
+					this.terminateMessage();
+				}
+			}
+			return true;
+		}
+		return false;
+	};
+	
+	Window_Message.prototype.updateMessage = function() {
+		const textState = this._textState;
+		if (textState) {
+			while (!this.isEndOfText(textState)) {
+				if (this.needsNewPage(textState)) {
+					this.newPage(textState);
+				}
+				this.updateShowFast();
+				this.processCharacter(textState);
+				this.playTextSound();
+				if (this.shouldBreakHere(textState)) {
+					break;
+				}
+			}
+			this.flushTextState(textState);
+			if (this.isEndOfText(textState) && !this.isWaiting()) {
+				this.onEndOfText();
+			}
+			return true;
+		} else {
+			return false;
+		}
+	};
+	
+	Window_Message.prototype.playTextSound = function() {
+		if(this._textSoundTimer > 0) { this._textSoundTimer--; return; }
+		this._textSoundTimer = this._textSoundTime;
+		this.playCursorSound();
 	};
 	
 	Window_Message.prototype.newPage = function(textState) {

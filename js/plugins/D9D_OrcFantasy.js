@@ -1195,7 +1195,8 @@
 	};
 	
 	Sprite_Actor.prototype.moveToStartPosition = function() {
-		//this.startMove(100, 0, 0);
+		const spriteW = $gameMap.tileWidth()/2;
+		this.startMove(-spriteW*5, 0, 10);
 	};
 	
 	Sprite_Actor.prototype.setActorHome = function(index) {
@@ -1211,7 +1212,8 @@
 	};
 	
 	Sprite_Actor.prototype.retreat = function() {
-		//this.startMove(100, 0, 10);
+		const spriteW = $gameMap.tileWidth()/2;
+		this.startMove(-spriteW*5, 0, 10);
 	};
 	
 	Sprite_Actor.prototype.damageOffsetX = function() {
@@ -1285,10 +1287,10 @@
 	};
 	
 	Window_Base.prototype.drawBattler = function(battlerName, x, y) {
-		width = 16;
+		width = 32;
 		height = 24;
 		const bitmap = ImageManager.loadSvActor(battlerName);
-		const pw = 16
+		const pw = 32;
 		const ph = 24;
 		const sw = Math.min(width, pw);
 		const sh = Math.min(height, ph);
@@ -1434,6 +1436,7 @@
 	};
 	
 	Window_StatusBase.prototype.drawSvActor = function(actor, x, y, ignoreRow) {
+		x -= $gameMap.tileWidth()/2;
 		if(!ignoreRow) {
 			x += actor.backRow() ? 0 : $gameMap.tileWidth()/2;
 		}

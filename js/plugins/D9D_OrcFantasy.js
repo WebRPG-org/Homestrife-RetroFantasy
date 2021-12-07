@@ -1194,6 +1194,52 @@
 		// do nothing
 	};
 	
+	Sprite_Actor.prototype.moveToStartPosition = function() {
+		//this.startMove(100, 0, 0);
+	};
+	
+	Sprite_Actor.prototype.setActorHome = function(index) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const spriteH = $gameMap.tileHeight()/2;
+		const rowX = this._actor.backRow() ? 0 : spriteW;
+		this.setHome(spriteW*3 + rowX, spriteH*9 + index*spriteH*4);
+	};
+	
+	Sprite_Actor.prototype.stepForward = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		this.startMove(spriteW*2, 0, 4);
+	};
+	
+	Sprite_Actor.prototype.retreat = function() {
+		//this.startMove(100, 0, 10);
+	};
+	
+	Sprite_Actor.prototype.damageOffsetX = function() {
+		return Sprite_Battler.prototype.damageOffsetX.call(this) - 11;
+	};
+	
+	// Sprite Enemy
+	Sprite_Enemy.prototype.setBattler = function(battler) {
+		Sprite_Battler.prototype.setBattler.call(this, battler);
+		this._enemy = battler;
+		const spriteW = $gameMap.tileWidth()/2;
+		const spriteH = $gameMap.tileHeight()/2;
+		const screenX = Math.round(battler.screenX()/3/spriteW)*spriteW;
+		const screenY = Math.round(battler.screenY()/3/spriteH)*spriteH;
+		this.setHome(screenX, screenY);
+		this._stateIconSprite.setup(battler);
+	};
+	
+	// Sprite Battleback
+	Sprite_Battleback.prototype.adjustPosition = function() {
+		this.width = 272;
+		this.height = 208;
+		this.x = 0;
+		this.y = 0;
+		this.scale.x = 1;
+		this.scale.y = 1;
+	};
+	
 	// Window Base
 	Window_Base.prototype.lineHeight = function() {
 		return $gameMap.tileHeight();

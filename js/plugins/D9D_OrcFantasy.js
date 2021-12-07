@@ -1131,6 +1131,119 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	// Scene Battle
+	Scene_Battle.prototype.stop = function() {
+		Scene_Message.prototype.stop.call(this);
+		if (this.needsSlowFadeOut()) {
+			this.startFadeOut(this.slowFadeSpeed(), false);
+		} else {
+			this.startFadeOut(this.fadeSpeed(), false);
+		}
+		this._partyCommandWindow.close();
+		this._actorCommandWindow.close();
+	};
+	
+	Scene_Battle.prototype.updateStatusWindowVisibility = function() {
+		this.updateStatusWindowPosition();
+	};
+	
+	Scene_Battle.prototype.statusWindowX = function() {
+		return 0;
+	};
+	
+	Scene_Battle.prototype.createAllWindows = function() {
+		this.createLogWindow();
+		this.createStatusWindow();
+		this.createPartyCommandWindow();
+		this.createActorCommandWindow();
+		this.createHelpWindow();
+		this.createSkillWindow();
+		this.createItemWindow();
+		this.createActorWindow();
+		this.createEnemyWindow();
+		Scene_Message.prototype.createAllWindows.call(this);
+	};
+	
+	Scene_Battle.prototype.statusWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*31;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*5;
+		const wx = 0;
+		const wy = Graphics.boxHeight-wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.startPartyCommandSelection = function() {
+		this._statusWindow.deselect();
+		this._actorCommandWindow.setup(null);
+		this._actorCommandWindow.close();
+		this._partyCommandWindow.setup();
+	};
+	
+	Scene_Battle.prototype.startActorCommandSelection = function() {
+		this._statusWindow.selectActor(BattleManager.actor());
+		this._partyCommandWindow.close();
+		this._actorCommandWindow.show();
+		this._actorCommandWindow.setup(BattleManager.actor());
+	};
+	
+	Scene_Battle.prototype.commandSkill = function() {
+		this._skillWindow.setActor(BattleManager.actor());
+		this._skillWindow.setStypeId(this._actorCommandWindow.currentExt());
+		this._skillWindow.refresh();
+		this._skillWindow.show();
+		this._skillWindow.activate();
+		this._actorCommandWindow.hide();
+	};
+	
+	Scene_Battle.prototype.commandItem = function() {
+		this._itemWindow.refresh();
+		this._itemWindow.show();
+		this._itemWindow.activate();
+		this._actorCommandWindow.hide();
+	};
+	
+	Scene_Battle.prototype.startEnemySelection = function() {
+		this._enemyWindow.refresh();
+		this._enemyWindow.show();
+		this._enemyWindow.select(0);
+		this._enemyWindow.activate();
+	};
+	
+	Scene_Battle.prototype.onEnemyCancel = function() {
+		this._enemyWindow.hide();
+		switch (this._actorCommandWindow.currentSymbol()) {
+			case "attack":
+				this._actorCommandWindow.activate();
+				break;
+			case "skill":
+				this._skillWindow.show();
+				this._skillWindow.activate();
+				break;
+			case "item":
+				this._itemWindow.show();
+				this._itemWindow.activate();
+				break;
+		}
+	};
+	
+	Scene_Battle.prototype.onSkillCancel = function() {
+		this._skillWindow.hide();
+		this._actorCommandWindow.show();
+		this._actorCommandWindow.activate();
+	};
+	
+	Scene_Battle.prototype.onItemCancel = function() {
+		this._itemWindow.hide();
+		this._actorCommandWindow.show();
+		this._actorCommandWindow.activate();
+	};
+	
+	Scene_Battle.prototype.endCommandSelection = function() {
+		this.closeCommandWindows();
+		this.hideSubInputWindows();
+		this._statusWindow.deselect();
+	};
+	
 	// Sprite Button
 	Sprite_Button.prototype.updateOpacity = function() {
 		this.opacity = 255;
@@ -1196,24 +1309,24 @@
 	
 	Sprite_Actor.prototype.moveToStartPosition = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(-spriteW*5, 0, 10);
+		this.startMove(-spriteW*5, 0, spriteW);
 	};
 	
 	Sprite_Actor.prototype.setActorHome = function(index) {
 		const spriteW = $gameMap.tileWidth()/2;
 		const spriteH = $gameMap.tileHeight()/2;
-		const rowX = this._actor.backRow() ? 0 : spriteW;
-		this.setHome(spriteW*3 + rowX, spriteH*9 + index*spriteH*4);
+		const rowX = this._actor.backRow() ? 0 : spriteW*2;
+		this.setHome(spriteW*2 + rowX, spriteH*9 + index*(spriteH*3 + spriteH/2));
 	};
 	
 	Sprite_Actor.prototype.stepForward = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(spriteW*2, 0, 4);
+		this.startMove(spriteW*2, 0, spriteW);
 	};
 	
 	Sprite_Actor.prototype.retreat = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(-spriteW*5, 0, 10);
+		this.startMove(-spriteW*5, 0, spriteW);
 	};
 	
 	Sprite_Actor.prototype.damageOffsetX = function() {
@@ -3160,6 +3273,49 @@
 				);
 				break;
 		}
+	};
+	
+	// Window Battle Status
+	Window_BattleStatus.prototype.initialize = function(rect) {
+		Window_StatusBase.prototype.initialize.call(this, rect);
+		this._bitmapsReady = 0;
+		this.preparePartyRefresh();
+	};
+	
+	Window_BattleStatus.prototype.maxCols = function() {
+		return 4;
+	};
+
+	Window_BattleStatus.prototype.itemHeight = function() {
+		const lineHeight = $gameMap.tileWidth()/2;
+		return lineHeight*5;
+	};
+	
+	Window_BattleStatus.prototype.updatePadding = function() {
+		Window_Base.prototype.updatePadding.call(this);
+	};
+	
+	Window_BattleStatus.prototype.drawItem = function(index) {
+		this.drawItemStatus(index);
+	};
+	
+	Window_BattleStatus.prototype.itemRect = function(index) {
+		const rect = Window_Selectable.prototype.itemRect.call(this, index);
+		const lineHeight = $gameMap.tileWidth()/2;
+		rect.y -= lineHeight;
+		return rect;
+	};
+	
+	Window_BattleStatus.prototype.drawItemStatus = function(index) {
+		const actor = this.actor(index);
+		const rect = this.itemRectWithPadding(index);
+		const spriteW = $gameMap.tileWidth()/2;
+		const lineHeight = $gameMap.tileWidth()/2;
+		const x = rect.x;
+		const y = rect.y + this.itemPadding();
+		const y2 = y + lineHeight;
+		this.drawActorName(actor, x, y, spriteW*7);
+		this.drawActorHpMp(actor, x, y2);
 	};
 	
 	// Window Title Command

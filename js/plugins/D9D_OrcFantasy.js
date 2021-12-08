@@ -224,6 +224,13 @@
 		}
 	};
 	
+	// Color Manager
+	ColorManager.textColor = function(n) {
+		const px = 32 + (n % 8) * 4 + 2;
+		const py = 48 + Math.floor(n / 8) * 4 + 2;
+		return this._windowskin.getPixel(px, py);
+	};
+	
 	// Game System
 	Game_System.prototype.windowPadding = function() {
 		return 4;
@@ -1165,7 +1172,7 @@
 	};
 	
 	Scene_Battle.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*31;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*28;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*5;
 		const wx = 0;
 		const wy = Graphics.boxHeight-wh;
@@ -1353,6 +1360,54 @@
 		this.y = 0;
 		this.scale.x = 1;
 		this.scale.y = 1;
+	};
+	
+	// Sprite Gauge
+	Sprite_Gauge.prototype.bitmapWidth = function() {
+		return $gameMap.tileWidth()/2*4;
+	};
+
+	Sprite_Gauge.prototype.bitmapHeight = function() {
+		return $gameMap.tileHeight()/2-1;
+	};
+
+	Sprite_Gauge.prototype.textHeight = function() {
+		return this.bitmapHeight();
+	};
+
+	Sprite_Gauge.prototype.gaugeHeight = function() {
+		return this.bitmapHeight();
+	};
+	
+	Sprite_Gauge.prototype.flashingColor1 = function() {
+		return [255, 255, 255, 255];
+	};
+
+	Sprite_Gauge.prototype.flashingColor2 = function() {
+		return [0, 0, 0, 0];
+	};
+	
+	Sprite_Gauge.prototype.drawGaugeRect = function(x, y, width, height) {
+		const rate = this.gaugeRate();
+		const fillW = Math.floor(width * rate);
+		const fillH = height;
+		
+		const color0 = this.gaugeBackColor();
+		let color1 = this.gaugeColor1();
+		const color2 = ColorManager.normalColor();
+		
+		this.bitmap.fillRect(x, y, width, height, color0);
+		this.bitmap.fillRect(x, y, fillW, fillH, color1);
+		
+		this.bitmap.fillRect(x, y, 1, 2, color2);
+		this.bitmap.fillRect(x, y+height-2, 1, 2, color2);
+		this.bitmap.fillRect(x, y, 2, 1, color2);
+		this.bitmap.fillRect(x, y+height-1, 2, 1, color2);
+		
+		this.bitmap.fillRect(x+width-1, y, 1, 2, color2);
+		this.bitmap.fillRect(x+width-1, y+height-2, 1, 2, color2);
+		this.bitmap.fillRect(x+width-2, y, 2, 1, color2);
+		this.bitmap.fillRect(x+width-2, y+height-1, 2, 1, color2);
 	};
 	
 	// Window Base
@@ -3283,16 +3338,37 @@
 	};
 	
 	Window_BattleStatus.prototype.maxCols = function() {
-		return 4;
+		return 1;
 	};
 
 	Window_BattleStatus.prototype.itemHeight = function() {
 		const lineHeight = $gameMap.tileWidth()/2;
-		return lineHeight*5;
+		return lineHeight;
 	};
 	
 	Window_BattleStatus.prototype.updatePadding = function() {
 		Window_Base.prototype.updatePadding.call(this);
+	};
+	
+	Window_BattleStatus.prototype.refresh = function() {
+		Window_StatusBase.prototype.refresh.call(this);
+		this.drawHeaders();
+	};
+	
+	Window_BattleStatus.prototype.drawHeaders = function() {
+		const itemPadding = this.itemPadding();
+		const spriteW = $gameMap.tileWidth()/2;
+		const valueW = spriteW*4;
+		const columnW = valueW+spriteW;
+		const x = itemPadding + spriteW*9;
+		const x2 = x + columnW;
+		const x3 = x2 + columnW;
+		const x4 = x3 + columnW;
+		const y = itemPadding;
+		this.drawText("Time", x, y, valueW);
+		this.drawText("Strs", x2, y, valueW);
+		this.drawText("Hlth", x3, y, valueW);
+		this.drawText("Endr", x4, y, valueW);
 	};
 	
 	Window_BattleStatus.prototype.drawItem = function(index) {
@@ -3302,7 +3378,7 @@
 	Window_BattleStatus.prototype.itemRect = function(index) {
 		const rect = Window_Selectable.prototype.itemRect.call(this, index);
 		const lineHeight = $gameMap.tileWidth()/2;
-		rect.y -= lineHeight;
+		rect.height -= lineHeight;
 		return rect;
 	};
 	
@@ -3310,12 +3386,19 @@
 		const actor = this.actor(index);
 		const rect = this.itemRectWithPadding(index);
 		const spriteW = $gameMap.tileWidth()/2;
-		const lineHeight = $gameMap.tileWidth()/2;
+		const valueW = spriteW*4;
+		const columnW = valueW+spriteW;
 		const x = rect.x;
+		const x2 = x + spriteW*9;
+		const x3 = x2 + columnW;
+		const x4 = x3 + columnW;
+		const x5 = x4 + columnW;
 		const y = rect.y + this.itemPadding();
-		const y2 = y + lineHeight;
-		this.drawActorName(actor, x, y, spriteW*7);
-		this.drawActorHpMp(actor, x, y2);
+		this.drawActorName(actor, x, y);
+		this.placeTimeGauge(actor, x2, y+1);
+		this.drawText(actor.tp + "%", x3, y, valueW, "right");
+		this.drawText(actor.hp + "%", x4, y, valueW, "right");
+		this.drawText(actor.mp + "%", x5, y, valueW, "right");
 	};
 	
 	// Window Title Command

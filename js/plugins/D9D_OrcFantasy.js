@@ -337,14 +337,14 @@
 		let xparamTotal = _Game_BattlerBase_xparam.call(this, xparamId);
 		switch(xparamId) {
 			case 0: //melee accuracy
-				xparamTotal += (this.skillLevel("MeleeAcc")*5)/100;
+				xparamTotal += this.skillLevel("MeleeAcc")/100;
 				break;
 			case 1: //evasion
-				xparamTotal += (this.skillLevel("Defense")*5)/100;
+				xparamTotal += this.skillLevel("Defense")/100;
 				break;
 			case 2: //range accuracy
 			case 4: //special accuracy
-				xparamTotal += (this.skillLevel("RangeAcc")*5)/100;
+				xparamTotal += this.skillLevel("RangeAcc")/100;
 				break;
 		}
 		return xparamTotal;

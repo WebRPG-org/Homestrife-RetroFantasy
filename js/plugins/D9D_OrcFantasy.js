@@ -1530,12 +1530,14 @@
 		this._cursorBlinkTimer = 0;
 		const width = 8;
 		const height = 8;
+		const bitmapCursorX = 32;
+		const bitmapCursorY = 32;
 		const color = ColorManager.ctGaugeColor1();
 		const cursorPartCount = 4;
 		for(let i = 0; i < cursorPartCount; i++) {
 			const sprite = new Sprite();
-			sprite.bitmap = new Bitmap(width, height);
-			sprite.bitmap.fillRect(0, 0, width, height, color);
+			sprite.bitmap = ImageManager.loadSystem("Window");
+			sprite.setFrame(bitmapCursorX+width*(i%2), bitmapCursorY+height*Math.floor(i/2), width, height);
 			sprite.hide();
 			this._cursorSprites.push(sprite);
 			this._battleField.addChild(sprite);

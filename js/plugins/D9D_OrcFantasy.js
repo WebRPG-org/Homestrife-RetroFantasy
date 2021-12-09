@@ -1179,6 +1179,50 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	Scene_Battle.prototype.partyCommandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
+		const wx = 0;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.actorCommandWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
+		const wx = 0;
+		const wy = Graphics.boxHeight - wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.createHelpWindow = function() {
+		const rect = this.helpWindowRect();
+		this._helpWindow = new Window_Help(rect);
+		this._helpWindow.setForBattle(true);
+		this._helpWindow.hide();
+		this.addWindow(this._helpWindow);
+	};
+	
+	Scene_Battle.prototype.helpWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*3;
+		const wx = 0;
+		const wy = 0;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.skillWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
+		const wx = 0;
+		const wy = Graphics.boxHeight-wh;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Battle.prototype.enemyWindowRect = function() {
+		return this.skillWindowRect();
+	};
+	
 	Scene_Battle.prototype.startPartyCommandSelection = function() {
 		this._statusWindow.deselect();
 		this._actorCommandWindow.setup(null);
@@ -1316,19 +1360,38 @@
 	
 	Sprite_Actor.prototype.moveToStartPosition = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(-spriteW*5, 0, spriteW);
+		this.startMove(-spriteW*5, 0, 0);
 	};
 	
 	Sprite_Actor.prototype.setActorHome = function(index) {
 		const spriteW = $gameMap.tileWidth()/2;
 		const spriteH = $gameMap.tileHeight()/2;
 		const rowX = this._actor.backRow() ? 0 : spriteW*2;
-		this.setHome(spriteW*2 + rowX, spriteH*9 + index*(spriteH*3 + spriteH/2));
+		const partyTop = spriteH*9+1;
+		const battlerHeight = spriteH*3;
+		const separationY = 2;
+		this.setHome(spriteW*2 + rowX, partyTop + index*(battlerHeight + separationY));
+	};
+	
+	Sprite_Actor.prototype.startEntryMotion = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		if (this._actor && this._actor.canMove()) {
+			this.startMotion("walk");
+			this.startMove(0, 0, spriteW);
+		} else if (!this.isMoving()) {
+			this.refreshMotion();
+			this.startMove(0, 0, 0);
+		}
 	};
 	
 	Sprite_Actor.prototype.stepForward = function() {
 		const spriteW = $gameMap.tileWidth()/2;
 		this.startMove(spriteW*2, 0, spriteW);
+	};
+	
+	Sprite_Actor.prototype.stepBack = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		this.startMove(0, 0, spriteW);
 	};
 	
 	Sprite_Actor.prototype.retreat = function() {
@@ -1392,11 +1455,9 @@
 		const fillW = Math.floor(width * rate);
 		const fillH = height;
 		
-		const color0 = this.gaugeBackColor();
 		let color1 = this.gaugeColor1();
 		const color2 = ColorManager.normalColor();
 		
-		this.bitmap.fillRect(x, y, width, height, color0);
 		this.bitmap.fillRect(x, y, fillW, fillH, color1);
 		
 		this.bitmap.fillRect(x, y, 1, 2, color2);
@@ -1547,6 +1608,23 @@
 		const rect = this.itemLineRect(index);
 		this.drawText(this.commandName(index), rect.x, rect.y+$gameSystem.windowPadding(), rect.width);
 	};
+	
+	// Window Help
+	Window_Help.prototype.refresh = function() {
+		const rect = this.baseTextRect();
+		if(this._forBattle) {
+			rect.y -= $gameMap.tileHeight()/2;
+		}
+		this.contents.clear();
+		this.drawTextEx(this._text, rect.x, rect.y, rect.width);
+	};
+	
+	Window_Help.prototype.setForBattle = function(forBattle) {
+		if(this._forBattle != forBattle) {
+			this._forBattle = forBattle;
+			this.refresh();
+		}
+	}
 	
 	// Window Gold
 	Window_Gold.prototype.refresh = function() {
@@ -3334,7 +3412,19 @@
 	Window_BattleStatus.prototype.initialize = function(rect) {
 		Window_StatusBase.prototype.initialize.call(this, rect);
 		this._bitmapsReady = 0;
+		this._actorCursors = [];
+		this._actorBlinkTimer = 2;
 		this.preparePartyRefresh();
+	};
+
+	Window_BattleStatus.prototype.cursorWidth = function() {
+		const spriteW = $gameMap.tileWidth()/2;
+		const columnW = spriteW*5;
+		return spriteW*9 + columnW*4 - spriteW;
+	};
+
+	Window_BattleStatus.prototype.cursorHeight = function() {
+		return this.itemHeight();
 	};
 	
 	Window_BattleStatus.prototype.maxCols = function() {
@@ -3350,9 +3440,37 @@
 		Window_Base.prototype.updatePadding.call(this);
 	};
 	
+	const _Window_BattleStatus_update = Window_BattleStatus.prototype.update;
+	Window_BattleStatus.prototype.update = function() {
+		_Window_BattleStatus_update.call(this);
+		this.updateActorCursors();
+	};
+	
+	Window_BattleStatus.prototype.updateActorCursors = function() {
+		let cursorIndex = 0;
+		this._actorBlinkTimer++;
+		for(const cursor of this._actorCursors) {
+			if(this.active && cursorIndex === this.index()) {
+				if(this._actorBlinkTimer % 2) {
+					cursor.show();
+				} else {
+					cursor.hide();
+				}
+			} else {
+				cursor.hide();
+			}
+			cursorIndex++;
+		}
+	};
+	
 	Window_BattleStatus.prototype.refresh = function() {
 		Window_StatusBase.prototype.refresh.call(this);
 		this.drawHeaders();
+	};
+	
+	Window_BattleStatus.prototype.refreshCursor = function() {
+		const lineHeight = $gameMap.tileHeight();
+		this.setCursorRect(0, -lineHeight, 0, 0);
 	};
 	
 	Window_BattleStatus.prototype.drawHeaders = function() {
@@ -3366,9 +3484,9 @@
 		const x4 = x3 + columnW;
 		const y = itemPadding;
 		this.drawText("Time", x, y, valueW);
-		this.drawText("Strs", x2, y, valueW);
-		this.drawText("Hlth", x3, y, valueW);
-		this.drawText("Endr", x4, y, valueW);
+		this.drawText("Hlth", x2, y, valueW);
+		this.drawText("Endr", x3, y, valueW);
+		this.drawText("Strs", x4, y, valueW);
 	};
 	
 	Window_BattleStatus.prototype.drawItem = function(index) {
@@ -3378,7 +3496,7 @@
 	Window_BattleStatus.prototype.itemRect = function(index) {
 		const rect = Window_Selectable.prototype.itemRect.call(this, index);
 		const lineHeight = $gameMap.tileWidth()/2;
-		rect.height -= lineHeight;
+		rect.height += lineHeight;
 		return rect;
 	};
 	
@@ -3396,9 +3514,38 @@
 		const y = rect.y + this.itemPadding();
 		this.drawActorName(actor, x, y);
 		this.placeTimeGauge(actor, x2, y+1);
-		this.drawText(actor.tp + "%", x3, y, valueW, "right");
-		this.drawText(actor.hp + "%", x4, y, valueW, "right");
-		this.drawText(actor.mp + "%", x5, y, valueW, "right");
+		this.drawText(actor.hp + "%", x3, y, valueW, "right");
+		this.drawText(actor.mp + "%", x4, y, valueW, "right");
+		this.drawText(actor.tp + "%", x5, y, valueW, "right");
+		this.placeActorCursor(actor, x-1, y);
+	};
+	
+	Window_BattleStatus.prototype.placeActorCursor = function(actor, x, y) {
+		const key = "actor%1-cursor".format(actor.actorId());
+		const sprite = this.createInnerSprite(key, Sprite);
+		const width = this.cursorWidth()+2;
+		const height = this.cursorHeight()+1;
+		sprite.bitmap = new Bitmap(width, height);
+		sprite.move(x, y);
+		const color = ColorManager.ctGaugeColor1();
+		sprite.bitmap.fillRect(0, 0, width, height, color);
+		sprite.bitmap.clearRect(1, 1, width-2, height-2, color);
+		sprite.hide();
+		const members = $gameParty.battleMembers();
+		this._actorCursors[members.indexOf(actor)] = sprite;
+	};
+	
+	// Window Battle Enemy
+	Window_BattleEnemy.prototype.colSpacing = function() {
+		return 4;
+	};
+	
+	Window_BattleEnemy.prototype.drawItem = function(index) {
+		this.resetTextColor();
+		const name = this._enemies[index].name();
+		const rect = this.itemLineRect(index);
+		rect.y += this.itemPadding();
+		this.drawText(name, rect.x, rect.y, rect.width);
 	};
 	
 	// Window Title Command

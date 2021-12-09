@@ -1349,6 +1349,10 @@
 		}
 	};
 	
+	Sprite_Battler.prototype.updateSelectionEffect = function() {
+		// do nothing
+	};
+	
 	// Sprite Actor
 	Sprite_Actor.prototype.createShadowSprite = function() {
 		// do nothing
@@ -1415,6 +1419,10 @@
 		this._stateIconSprite.setup(battler);
 	};
 	
+	Sprite_Enemy.prototype.isSelected = function() {
+		return this._battler && this._battler.isSelected();
+	}
+	
 	// Sprite Battleback
 	Sprite_Battleback.prototype.adjustPosition = function() {
 		this.width = 272;
@@ -1469,6 +1477,69 @@
 		this.bitmap.fillRect(x+width-1, y+height-2, 1, 2, color2);
 		this.bitmap.fillRect(x+width-2, y, 2, 1, color2);
 		this.bitmap.fillRect(x+width-2, y+height-1, 2, 1, color2);
+	};
+	
+	// Spriteset Battle
+	const _Spriteset_Battle_createLowerLayer = Spriteset_Battle.prototype.createLowerLayer;
+	Spriteset_Battle.prototype.createLowerLayer = function() {
+		_Spriteset_Battle_createLowerLayer.call(this);
+		this.createCursor();
+	};
+	
+	const _Spriteset_Battle_update = Spriteset_Battle.prototype.update;
+	Spriteset_Battle.prototype.update = function() {
+		_Spriteset_Battle_update.call(this);
+		this.updateCursor();
+	};
+	
+	Spriteset_Battle.prototype.updateCursor = function() {
+		for(const enemySprite of this._enemySprites) {
+			if(enemySprite.isSelected()) {
+				this._cursorBlinkTimer++;
+				if(this._cursorBlinkTimer % 2) {
+					const cursorSpacing = 4;
+					const startX = enemySprite.x - Math.round(enemySprite.anchor.x * enemySprite.width) - cursorSpacing;
+					const startY = enemySprite.y - Math.round(enemySprite.anchor.y * enemySprite.height) - cursorSpacing;
+					let curX = startX;
+					let curY = startY;
+					for(const cursorSprite of this._cursorSprites) {
+						cursorSprite.show();
+						cursorSprite.move(curX, curY);
+						curX += enemySprite.width;
+						if(curX > startX + enemySprite.width) {
+							curX = startX;
+							curY += enemySprite.height;
+						}
+					}
+				} else {
+					for(const cursorSprite of this._cursorSprites) {
+						cursorSprite.hide();
+					}
+				}
+				return;
+			}
+		}
+		this._cursorBlinkTimer = 0;
+		for(const cursorSprite of this._cursorSprites) {
+			cursorSprite.hide();
+		}
+	};
+	
+	Spriteset_Battle.prototype.createCursor = function() {
+		this._cursorSprites = [];
+		this._cursorBlinkTimer = 0;
+		const width = 8;
+		const height = 8;
+		const color = ColorManager.ctGaugeColor1();
+		const cursorPartCount = 4;
+		for(let i = 0; i < cursorPartCount; i++) {
+			const sprite = new Sprite();
+			sprite.bitmap = new Bitmap(width, height);
+			sprite.bitmap.fillRect(0, 0, width, height, color);
+			sprite.hide();
+			this._cursorSprites.push(sprite);
+			this._battleField.addChild(sprite);
+		}
 	};
 	
 	// Window Base

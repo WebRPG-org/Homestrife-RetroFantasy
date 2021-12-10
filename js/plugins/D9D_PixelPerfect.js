@@ -207,22 +207,6 @@
  * @min 1
  * @decimals 0
  *
- * @param sideViewActorW
- * @text Side View Actor Width
- * @desc The width of side view battle actors.
- * @type number
- * @default 64
- * @min 1
- * @decimals 0
- *
- * @param sideViewActorH
- * @text Side View Actor Height
- * @desc The height of side view battle actors.
- * @type number
- * @default 64
- * @min 1
- * @decimals 0
- *
  * @param windowFileSize
  * @text Window File Size
  * @desc The width and height of the system window file.
@@ -282,9 +266,6 @@
 		ppParams.windowFileSize = parsePPInt(ppParams.windowFileSize, 192, 1);
 		ppParams.windowBorderThickness = parsePPInt(ppParams.windowBorderThickness, 24, 0);
 		ppParams.cursorBorderThickness = parsePPInt(ppParams.cursorBorderThickness, 4, 0);
-		
-		ppParams.sideViewActorW = parsePPInt(ppParams.sideViewActorW, 64, 1);
-		ppParams.sideViewActorH = parsePPInt(ppParams.sideViewActorH, 64, 1);
 	}
 	
 	function parsePPInt(string, defaultValue, min, max) {

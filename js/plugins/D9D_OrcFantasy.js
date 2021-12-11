@@ -1392,14 +1392,27 @@
 	};
 	
 	// Sprite Actor
-	const _Sprite_Actor_initMembers = Sprite_Actor.prototype.initMembers;
 	Sprite_Actor.prototype.initMembers = function() {
+		Sprite_Battler.prototype.initMembers.call(this);
+		this._battlerName = "";
+		this._motion = null;
+		this._motionCount = 0;
 		this._motionType = null;
-		_Sprite_Actor_initMembers.call(this);
+		this._pattern = 0;
+		this.createShadowSprite();
+		this.createWeaponSprite();
+		this.createMainSprite();
+		this.createWeaponOverlaySprite();
+		this.createStateSprite();
 	};
 	
 	Sprite_Actor.prototype.createShadowSprite = function() {
 		// do nothing
+	};
+	
+	Sprite_Actor.prototype.createWeaponOverlaySprite = function() {
+		this._weaponOverlaySprite = new Sprite_Weapon();
+		this.addChild(this._weaponOverlaySprite);
 	};
 	
 	Sprite_Actor.prototype.updateShadow = function() {
@@ -1453,18 +1466,33 @@
 	
 	Sprite_Actor.prototype.setupMotion = function() {
 		if (this._actor.isMotionRequested()) {
-			this._motionType = this._actor.motionType();
-			this.startMotion(this._motionType);
-			this._actor.clearMotion();
+			this.startMotion(this._actor.motionType());
 		}
 	};
 	
 	Sprite_Actor.prototype.setupWeaponAnimation = function() {
 		if (this._actor.isWeaponAnimationRequested()) {
-			this._weaponSprite.setup(this._actor.weaponImageId(), this._motionType);
-			this._actor.clearWeaponAnimation();
-			this._motionType = null;
+			this._weaponSprite.setup(this._actor.weaponImageId(), this._actor.motionType());
 		}
+	};
+	
+	Sprite_Actor.prototype.setupWeaponOverlayAnimation = function() {
+		if (this._actor.isWeaponAnimationRequested()) {
+			this._weaponOverlaySprite.setup(this._actor.weaponImageId(), this._actor.motionType(), true);
+		}
+	};
+	
+	Sprite_Actor.prototype.updateMotion = function() {
+		this.setupMotion();
+		this.setupWeaponAnimation();
+		this.setupWeaponOverlayAnimation();
+		this._actor.clearMotion();
+		this._actor.clearWeaponAnimation();
+		if (this._actor.isMotionRefreshRequested()) {
+			this.refreshMotion();
+			this._actor.clearMotion();
+		}
+		this.updateMotionCount();
 	};
 	
 	// Sprite Enemy
@@ -1546,11 +1574,13 @@
 		this._motionType = null;
 		this.anchor.x = 0.375;
 		this.x = 0;
+		this._isOverlay = false;
 	};
 
 	const _Sprite_Weapon_setup = Sprite_Weapon.prototype.setup;
-	Sprite_Weapon.prototype.setup = function(weaponImageId, motionType) {
+	Sprite_Weapon.prototype.setup = function(weaponImageId, motionType, isOverlay) {
 		this._motionType = motionType;
+		this._isOverlay = isOverlay;
 		_Sprite_Weapon_setup.call(this, weaponImageId);
 	};
 	
@@ -1568,12 +1598,16 @@
 					pattern = 1;
 					break;
 			}
-			const index = (this._weaponImageId - 1) % 12;
-			const w = 64;
-			const h = 32;
-			const sx = (Math.floor(index / 6) * 3 + pattern) * w;
-			const sy = Math.floor(index % 6) * h;
-			this.setFrame(sx, sy, w, h);
+			if((pattern === 0 && this._isOverlay) || (pattern > 0 && !this._isOverlay)) {
+				const index = (this._weaponImageId - 1) % 12;
+				const w = 64;
+				const h = 32;
+				const sx = (Math.floor(index / 6) * 3 + pattern) * w;
+				const sy = Math.floor(index % 6) * h;
+				this.setFrame(sx, sy, w, h);
+			} else {
+				this.setFrame(0, 0, 0, 0);
+			}
 		} else {
 			this.setFrame(0, 0, 0, 0);
 		}

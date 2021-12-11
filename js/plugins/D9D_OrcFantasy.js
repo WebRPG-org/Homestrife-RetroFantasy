@@ -1544,7 +1544,8 @@
 	Sprite_Weapon.prototype.initMembers = function() {
 		_Sprite_Weapon_initMembers.call(this);
 		this._motionType = null;
-		this.x = 8;
+		this.anchor.x = 0.375;
+		this.x = 0;
 	};
 
 	const _Sprite_Weapon_setup = Sprite_Weapon.prototype.setup;

@@ -366,6 +366,24 @@
 	Game_Actor.prototype.initMembers = function() {
 		_Game_Actor_initMembers.call(this);
 		this._justEquipped = null;
+		this._trailImage = null;
+	};
+	
+	Game_Actor.prototype.clearTrail = function() {
+		this._trailImage = null;
+	};
+	
+	Game_Actor.prototype.isTrailRequested = function() {
+		return this._trailImage !==  null;
+	};
+	
+	Game_Actor.prototype.trailImage = function() {
+		return this._trailImage;
+	};
+	
+	Game_Actor.prototype.startTrail = function(trailImage) {
+		if(trailImage !== "Small" && trailImage !== "Medium" && trailImage !== "Large" && trailImage !== "Huge") { return; }
+		this._trailImage = trailImage;
 	};
 	
 	Game_Actor.prototype.changeExp = function(exp, show) {
@@ -495,6 +513,7 @@
 			// TODO: base motion on attack type
 			this.requestMotion(weapon.d9dInfo.motions[0]);
 			this.startWeaponAnimation(weapon.d9dInfo.image);
+			this.startTrail(weapon.d9dInfo.trail);
 		} else {
 			const wtypeId = weapon ? weapon.wtypeId : 0;
 			const attackMotion = $dataSystem.attackMotions[wtypeId];
@@ -1410,6 +1429,7 @@
 		this._pattern = 0;
 		this.createShadowSprite();
 		this.createShieldSprite();
+		this.createTrailSprite();
 		this.createWeaponSprite();
 		this.createMainSprite();
 		this.createShieldOverlaySprite();
@@ -1424,6 +1444,16 @@
 	Sprite_Actor.prototype.createShieldSprite = function() {
 		this._shieldSprite = new Sprite_Weapon(false, true);
 		this.addChild(this._shieldSprite);
+	};
+	
+	Sprite_Actor.prototype.createTrailSprite = function() {
+		this._trailSprite = new Sprite();
+		this._trailSprite.anchor.x = 0;
+		this._trailSprite.anchor.y = 1;
+		this._trailSprite.x = -16;
+		this._trailSprite.y = 8;
+		this._trailSprite.hide();
+		this.addChild(this._trailSprite);
 	};
 	
 	Sprite_Actor.prototype.createShieldOverlaySprite = function() {
@@ -1479,6 +1509,28 @@
 	
 	Sprite_Actor.prototype.isMoving = function() {
 		return this._movementDuration > 0 && !this._actor.isActing();
+	};
+	
+	Sprite_Actor.prototype.updateMotionCount = function() {
+		if (this._motion && ++this._motionCount >= this.motionSpeed()) {
+			if (this._motion.loop) {
+				this._pattern = (this._pattern + 1) % 4;
+			} else if (this._pattern < 2) {
+				this._pattern++;
+				if(this._motionType === "swing") {
+					if(this._pattern === 1) {
+						this._trailSprite.show();
+					} else {
+						this._trailSprite.hide();
+					}
+				} else {
+					this._trailSprite.hide();
+				}
+			} else {
+				this.refreshMotion();
+			}
+			this._motionCount = 0;
+		}
 	};
 	
 	Sprite_Actor.prototype.motionSpeed = function() {
@@ -1569,6 +1621,22 @@
 		if (this._actor.isWeaponAnimationRequested()) {
 			this._weaponOverlaySprite.setup(this._actor.weaponImageId(), this._actor.motionType());
 		}
+	};
+	
+	Sprite_Actor.prototype.setupTrail = function() {
+		if(this._actor.isTrailRequested()) {
+			const trailImage = this._actor.trailImage();
+			this._trailSprite.bitmap = ImageManager.loadSystem("WeaponTrail" + trailImage);
+			let trailSize = 0;
+			switch(trailImage) {
+				case  "Small": trailSize = 40; break;
+				case "Medium": trailSize = 48; break;
+				case  "Large": trailSize = 56; break;
+				case   "Huge": trailSize = 64; break;
+			}
+			this._trailSprite.setFrame(0, 0, trailSize, trailSize);
+			this._actor.clearTrail();
+		};
 	};
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
@@ -1693,6 +1761,7 @@
 		this.setupMotion();
 		this.setupWeaponAnimation();
 		this.setupWeaponOverlayAnimation();
+		this.setupTrail();
 		this._actor.clearMotion();
 		this._actor.clearWeaponAnimation();
 		if (this._actor.isMotionRefreshRequested()) {

@@ -1419,6 +1419,10 @@
 		// do nothing
 	};
 	
+	Sprite_Battler.prototype.isSelected = function() {
+		return this._battler && this._battler.isSelected();
+	}
+	
 	// Sprite Actor
 	Sprite_Actor.prototype.initMembers = function() {
 		Sprite_Battler.prototype.initMembers.call(this);
@@ -1482,7 +1486,7 @@
 		const partyTop = spriteH*9+1;
 		const battlerHeight = spriteH*3;
 		const separationY = 2;
-		this.setHome(spriteW*2 + rowX, partyTop + index*(battlerHeight + separationY));
+		this.setHome(spriteW*2 + spriteW/2 + rowX, partyTop + index*(battlerHeight + separationY));
 	};
 	
 	Sprite_Actor.prototype.updateTargetPosition = function() {
@@ -1783,10 +1787,6 @@
 		this._stateIconSprite.setup(battler);
 	};
 	
-	Sprite_Enemy.prototype.isSelected = function() {
-		return this._battler && this._battler.isSelected();
-	}
-	
 	Sprite_Enemy.prototype.damageOffsetY = function() {
 		return Sprite_Battler.prototype.damageOffsetY.call(this);
 	};
@@ -1952,31 +1952,40 @@
 	};
 	
 	Spriteset_Battle.prototype.updateCursor = function() {
+		let selectedSprite = null;
+		for(const actorSprite of this._actorSprites) {
+			if(actorSprite.isSelected()) {
+				selectedSprite = actorSprite;
+			}
+		}
 		for(const enemySprite of this._enemySprites) {
 			if(enemySprite.isSelected()) {
-				this._cursorBlinkTimer++;
-				if(this._cursorBlinkTimer % 2) {
-					const cursorSpacing = 4;
-					const startX = enemySprite.x - Math.round(enemySprite.anchor.x * enemySprite.width) - cursorSpacing;
-					const startY = enemySprite.y - Math.round(enemySprite.anchor.y * enemySprite.height) - cursorSpacing;
-					let curX = startX;
-					let curY = startY;
-					for(const cursorSprite of this._cursorSprites) {
-						cursorSprite.show();
-						cursorSprite.move(curX, curY);
-						curX += enemySprite.width;
-						if(curX > startX + enemySprite.width) {
-							curX = startX;
-							curY += enemySprite.height;
-						}
-					}
-				} else {
-					for(const cursorSprite of this._cursorSprites) {
-						cursorSprite.hide();
+				selectedSprite = enemySprite;
+			}
+		}
+		if(selectedSprite) {
+			this._cursorBlinkTimer++;
+			if(this._cursorBlinkTimer % 2) {
+				const cursorSpacing = 4;
+				const startX = selectedSprite.x - Math.round(selectedSprite.anchor.x * selectedSprite.width) - cursorSpacing;
+				const startY = selectedSprite.y - Math.round(selectedSprite.anchor.y * selectedSprite.height) - cursorSpacing;
+				let curX = startX;
+				let curY = startY;
+				for(const cursorSprite of this._cursorSprites) {
+					cursorSprite.show();
+					cursorSprite.move(curX, curY);
+					curX += selectedSprite.width;
+					if(curX > startX + selectedSprite.width) {
+						curX = startX;
+						curY += selectedSprite.height;
 					}
 				}
-				return;
+			} else {
+				for(const cursorSprite of this._cursorSprites) {
+					cursorSprite.hide();
+				}
 			}
+			return;
 		}
 		this._cursorBlinkTimer = 0;
 		for(const cursorSprite of this._cursorSprites) {
@@ -3988,6 +3997,11 @@
 		Window_Base.prototype.updatePadding.call(this);
 	};
 	
+	Window_BattleStatus.prototype.select = function(index) {
+		Window_Selectable.prototype.select.call(this, index);
+		$gameParty.select(this.actor(index));
+	};
+	
 	const _Window_BattleStatus_update = Window_BattleStatus.prototype.update;
 	Window_BattleStatus.prototype.update = function() {
 		_Window_BattleStatus_update.call(this);
@@ -3998,7 +4012,7 @@
 		let cursorIndex = 0;
 		this._actorBlinkTimer++;
 		for(const cursor of this._actorCursors) {
-			if(this.active && cursorIndex === this.index()) {
+			if(cursorIndex === this.index()) {
 				if(this._actorBlinkTimer % 2) {
 					cursor.show();
 				} else {
@@ -4081,6 +4095,11 @@
 		sprite.hide();
 		const members = $gameParty.battleMembers();
 		this._actorCursors[members.indexOf(actor)] = sprite;
+	};
+	
+	// Window Battle Actor
+	Window_BattleActor.prototype.select = function(index) {
+		Window_BattleStatus.prototype.select.call(this, index);
 	};
 	
 	// Window Battle Enemy

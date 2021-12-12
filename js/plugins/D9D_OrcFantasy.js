@@ -1450,6 +1450,60 @@
 		this.setHome(spriteW*2 + rowX, partyTop + index*(battlerHeight + separationY));
 	};
 	
+	Sprite_Actor.prototype.updateTargetPosition = function() {
+		if (this._actor.canMove() && BattleManager.isEscaped()) {
+			this.retreat();
+		} else if (this.shouldStepForward()) {
+			this.stepForward();
+		} else if (!this._actor.isActing() && !this.inHomePosition()) {
+			this.stepBack();
+		}
+	};
+	
+	Sprite_Actor.prototype.shouldStepForward = function() {
+		return this._actor.isActing() && (this._actor.motionType() === "swing" || this._actor.motionType() === "thrust");
+	};
+	
+	Sprite_Actor.prototype.isMoving = function() {
+		return this._movementDuration > 0 && !this._actor.isActing();
+	};
+	
+	Sprite_Actor.prototype.motionSpeed = function() {
+		return 12;
+	};
+	
+	Sprite_Actor.prototype.refreshMotion = function() {
+		const actor = this._actor;
+		if (actor) {
+			const stateMotion = actor.stateMotionIndex();
+			if (actor.isInputting()) {
+				this.startMotion("wait");
+			} else if (actor.isActing()) {
+				// do nothing
+			} else if (stateMotion === 3) {
+				this.startMotion("dead");
+			} else if (stateMotion === 2) {
+				this.startMotion("sleep");
+			} else if (actor.isChanting()) {
+				this.startMotion("chant");
+			} else if (actor.isGuard() || actor.isGuardWaiting()) {
+				this.startMotion("guard");
+			} else if (stateMotion === 1) {
+				this.startMotion("abnormal");
+			} else if (actor.isDying()) {
+				this.startMotion("dying");
+			} else if (actor.isUndecided()) {
+				if(this._motionType === "swing" || this._motionType === "thrust") {
+					this.startMotion("walk");
+				} else {
+					this.startMotion("wait");
+				}
+			} else {
+				this.startMotion("wait");
+			}
+		}
+	};
+	
 	Sprite_Actor.prototype.startEntryMotion = function() {
 		const spriteW = $gameMap.tileWidth()/2;
 		if (this._actor && this._actor.canMove()) {
@@ -1462,13 +1516,11 @@
 	};
 	
 	Sprite_Actor.prototype.stepForward = function() {
-		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(spriteW*2, 0, spriteW);
+		this.startMove(this.motionSpeed(), 0, this.motionSpeed());
 	};
 	
 	Sprite_Actor.prototype.stepBack = function() {
-		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(0, 0, spriteW);
+		this.startMove(0, 0, this.motionSpeed());
 	};
 	
 	Sprite_Actor.prototype.retreat = function() {
@@ -1501,6 +1553,7 @@
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
+			this._motionType = motionType;
 			this._motion = newMotion;
 			this._motionCount = 0;
 			this._pattern = 0;
@@ -1716,7 +1769,7 @@
 	};
 	
 	Sprite_Weapon.prototype.isIdle = function() {
-		return this._motion !== "thrust" && this._motion !== "swing" && this._motion !== "missile";
+		return this._motionType !== "thrust" && this._motionType !== "swing" && this._motionType !== "missile";
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
@@ -3780,6 +3833,22 @@
 				);
 				break;
 		}
+	};
+	
+	// Window Battle Log
+	Window_BattleLog.prototype.messageSpeed = function() {
+		return 8;
+	};
+	
+	Window_BattleLog.prototype.updateWaitCount = function() {
+		if (this._waitCount > 0) {
+			this._waitCount--;
+			if (this._waitCount < 0) {
+				this._waitCount = 0;
+			}
+			return true;
+		}
+		return false;
 	};
 	
 	// Window Battle Status

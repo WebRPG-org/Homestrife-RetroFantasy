@@ -205,6 +205,10 @@
 			if(!weapon) { continue; }
 			weapon.d9dInfo = weapon.note && weapon.note.length > 0 ? JSON.parse(weapon.note) : {};
 		}
+		for(const armor of $dataArmors) {
+			if(!armor) { continue; }
+			armor.d9dInfo = armor.note && armor.note.length > 0 ? JSON.parse(armor.note) : {};
+		}
 	};
 	
 	// Audio Manager
@@ -1399,10 +1403,11 @@
 		this._motionCount = 0;
 		this._motionType = null;
 		this._pattern = 0;
-		this._idleWeaponImageId = 0;
 		this.createShadowSprite();
+		this.createShieldSprite();
 		this.createWeaponSprite();
 		this.createMainSprite();
+		this.createShieldOverlaySprite();
 		this.createWeaponOverlaySprite();
 		this.createStateSprite();
 	};
@@ -1411,8 +1416,18 @@
 		// do nothing
 	};
 	
+	Sprite_Actor.prototype.createShieldSprite = function() {
+		this._shieldSprite = new Sprite_Weapon(false, true);
+		this.addChild(this._shieldSprite);
+	};
+	
+	Sprite_Actor.prototype.createShieldOverlaySprite = function() {
+		this._shieldOverlaySprite = new Sprite_Weapon(true, true);
+		this.addChild(this._shieldOverlaySprite);
+	};
+	
 	Sprite_Actor.prototype.createWeaponOverlaySprite = function() {
-		this._weaponOverlaySprite = new Sprite_Weapon();
+		this._weaponOverlaySprite = new Sprite_Weapon(true);
 		this.addChild(this._weaponOverlaySprite);
 	};
 	
@@ -1479,7 +1494,7 @@
 	
 	Sprite_Actor.prototype.setupWeaponOverlayAnimation = function() {
 		if (this._actor.isWeaponAnimationRequested()) {
-			this._weaponOverlaySprite.setup(this._actor.weaponImageId(), this._actor.motionType(), true);
+			this._weaponOverlaySprite.setup(this._actor.weaponImageId(), this._actor.motionType());
 		}
 	};
 	
@@ -1493,34 +1508,58 @@
 				motionType === "walk" ||
 				motionType === "wait" ||
 				motionType === "guard" ||
-				motionType === "chant"
+				motionType === "chant" ||
+				motionType === "skill" ||
+				motionType === "spell" ||
+				motionType === "item" ||
+				motionType === "victory"
 			) {
 				this.startWeaponIdleAnimation(motionType);
+				if(
+					motionType === "skill" ||
+					motionType === "spell" ||
+					motionType === "victory"
+				) {
+					this._weaponSprite.x = -4;
+					this._weaponSprite.y = -8;
+					this._weaponSprite.scale.x = -1;
+					this._weaponOverlaySprite.x = -4;
+					this._weaponOverlaySprite.y = -8;
+					this._weaponOverlaySprite.scale.x = -1;
+				} else {
+					this._weaponSprite.x = 0;
+					this._weaponSprite.y = 0;
+					this._weaponSprite.scale.x = 1;
+					this._weaponOverlaySprite.x = 0;
+					this._weaponOverlaySprite.y = 0;
+					this._weaponOverlaySprite.scale.x = 1;
+				}
 			} else {
 				this.clearWeaponIdleAnimation();
 			}
-		}
-	};
-	
-	Game_Actor.prototype.performAttack = function() {
-		const weapons = this.weapons();
-		const weapon = weapons[0];
-		if(weapon && weapon.d9dInfo.image !== undefined && weapon.d9dInfo.motions !== undefined) {
-			// TODO: base motion on attack type
-			this.requestMotion(weapon.d9dInfo.motions[0]);
-			this.startWeaponAnimation(weapon.d9dInfo.image);
-		} else {
-			const wtypeId = weapon ? weapon.wtypeId : 0;
-			const attackMotion = $dataSystem.attackMotions[wtypeId];
-			if (attackMotion) {
-				if (attackMotion.type === 0) {
-					this.requestMotion("thrust");
-				} else if (attackMotion.type === 1) {
-					this.requestMotion("swing");
-				} else if (attackMotion.type === 2) {
-					this.requestMotion("missile");
+			if(
+				motionType === "walk" ||
+				motionType === "wait" ||
+				motionType === "guard" ||
+				motionType === "chant" ||
+				motionType === "skill" ||
+				motionType === "spell" ||
+				motionType === "item" ||
+				motionType === "victory" ||
+				motionType === "swing" ||
+				motionType === "thrust" ||
+				motionType === "missile"
+			) {
+				this.startShieldIdleAnimation(motionType);
+				if(motionType === "item") {
+					this._shieldSprite.y = -9;
+					this._shieldOverlaySprite.y = -9;
+				} else {
+					this._shieldSprite.y = 0;
+					this._shieldOverlaySprite.y = 0;
 				}
-				this.startWeaponAnimation(attackMotion.weaponImageId);
+			} else {
+				this.clearShieldIdleAnimation();
 			}
 		}
 	};
@@ -1529,18 +1568,44 @@
 		const weapons = this._actor.weapons();
 		const weapon = weapons[0];
 		if(weapon && weapon.d9dInfo.image !== undefined) {
-			this._idleWeaponImageId = weapon.d9dInfo.image;
-			this._weaponSprite.setup(this._idleWeaponImageId, motionType);
-			this._weaponOverlaySprite.setup(this._idleWeaponImageId, motionType, true);
+			this._weaponSprite.setup(weapon.d9dInfo.image, motionType);
+			this._weaponOverlaySprite.setup(weapon.d9dInfo.image, motionType, true);
 		} else {
 			this.clearWeaponIdleAnimation();
 		}
 	};
 	
 	Sprite_Actor.prototype.clearWeaponIdleAnimation = function() {
-		this._idleWeaponImageId = null;
 		this._weaponSprite.setup(0);
 		this._weaponOverlaySprite.setup(0);
+		this._weaponSprite.x = 0;
+		this._weaponSprite.y = 0;
+		this._weaponSprite.scale.x = 1;
+		this._weaponSprite.scale.y = 1;
+		this._weaponOverlaySprite.x = 0;
+		this._weaponOverlaySprite.y = 0;
+		this._weaponOverlaySprite.scale.x = 1
+		this._weaponOverlaySprite.scale.y = 1;
+	};
+	
+	Sprite_Actor.prototype.startShieldIdleAnimation = function(motionType) {
+		const armors = this._actor.armors();
+		const armor = armors[0];
+		if(armor && armor.d9dInfo.image !== undefined) {
+			this._shieldSprite.setup(armor.d9dInfo.image, motionType);
+			this._shieldOverlaySprite.setup(armor.d9dInfo.image, motionType, true);
+		} else {
+			this.clearShieldIdleAnimation();
+		}
+	};
+	
+	Sprite_Actor.prototype.clearShieldIdleAnimation = function() {
+		this._shieldSprite.setup(0);
+		this._shieldOverlaySprite.setup(0);
+		this._shieldSprite.x = 0;
+		this._shieldSprite.y = 0;
+		this._shieldOverlaySprite.x = 0;
+		this._shieldOverlaySprite.y = 0;
 	};
 	
 	Sprite_Actor.prototype.updateMotion = function() {
@@ -1629,19 +1694,24 @@
 	};
 	
 	// Sprite Weapon
+	Sprite_Weapon.prototype.initialize = function(isOverlay, isShield) {
+		Sprite.prototype.initialize.call(this);
+		this.initMembers(isOverlay, isShield);
+	};
+	
 	const _Sprite_Weapon_initMembers = Sprite_Weapon.prototype.initMembers;
-	Sprite_Weapon.prototype.initMembers = function() {
+	Sprite_Weapon.prototype.initMembers = function(isOverlay, isShield) {
 		_Sprite_Weapon_initMembers.call(this);
 		this._motionType = null;
 		this.anchor.x = 0.375;
 		this.x = 0;
-		this._isOverlay = false;
+		this._isOverlay = isOverlay;
+		this._isShield = isShield;
 	};
 
 	const _Sprite_Weapon_setup = Sprite_Weapon.prototype.setup;
-	Sprite_Weapon.prototype.setup = function(weaponImageId, motionType, isOverlay) {
+	Sprite_Weapon.prototype.setup = function(weaponImageId, motionType) {
 		this._motionType = motionType;
-		this._isOverlay = isOverlay;
 		_Sprite_Weapon_setup.call(this, weaponImageId);
 	};
 	
@@ -1652,7 +1722,7 @@
 	Sprite_Weapon.prototype.updatePattern = function() {
 		this._pattern++;
 		if (this._pattern >= 3) {
-			if(this.isIdle()) {
+			if(this._isShield || this.isIdle()) {
 				this._pattern = 0;
 			} else {
 				this._weaponImageId = 0;
@@ -1660,24 +1730,42 @@
 		}
 	};
 	
+	Sprite_Weapon.prototype.loadBitmap = function() {
+		const pageId = Math.floor((this._weaponImageId - 1) / 12) + 1;
+		if (pageId >= 1) {
+			const baseName = this._isShield ? "Shields" : "Weapons";
+			this.bitmap = ImageManager.loadSystem(baseName + pageId);
+		} else {
+			this.bitmap = ImageManager.loadSystem("");
+		}
+	};
+	
 	Sprite_Weapon.prototype.updateFrame = function() {
 		if (this._weaponImageId > 0) {
 			let pattern = this._pattern;
-			switch(this._motionType) {
-				case "thrust":
-					if(pattern > 0) { pattern = 1; }
-					break;
-				case "swing":
-					if(pattern > 0) { pattern = 2; }
-					break;
-				case "missile":
-					pattern = 1;
-					break;
-				default:
-					pattern = 0;
-					break;
+			let shouldShow = false;
+			if(this._isShield) {
+				let shouldUnderlay = (this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile") && pattern > 0;
+				shouldShow = (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
+				pattern = 0;
+			} else {
+				switch(this._motionType) {
+					case "thrust":
+						if(pattern > 0) { pattern = 1; }
+						break;
+					case "swing":
+						if(pattern > 0) { pattern = 2; }
+						break;
+					case "missile":
+						pattern = 1;
+						break;
+					default:
+						pattern = 0;
+						break;
+				}
+				shouldShow = (pattern === 0 && this._isOverlay) || (pattern > 0 && !this._isOverlay);
 			}
-			if((pattern === 0 && this._isOverlay) || (pattern > 0 && !this._isOverlay)) {
+			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 12;
 				const w = 64;
 				const h = 32;

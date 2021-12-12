@@ -1745,6 +1745,10 @@
 		return this.bitmapHeight();
 	};
 	
+	Sprite_Gauge.prototype.smoothness = function() {
+		return this._statusType === "time" ? 1 : 20;
+	};
+	
 	Sprite_Gauge.prototype.flashingColor1 = function() {
 		return [255, 255, 255, 255];
 	};

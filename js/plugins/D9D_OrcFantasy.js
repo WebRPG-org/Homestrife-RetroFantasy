@@ -511,6 +511,11 @@
 		}
 	};
 	
+	Game_Actor.prototype.performMiss = function() {
+		Game_Battler.prototype.performMiss.call(this);
+		this.requestMotion("evade");
+	};
+	
 	// Game Party
 	Game_Party.prototype.swapOrder = function(index1, index2) {
 		if(index1 === index2) {
@@ -1455,9 +1460,17 @@
 			this.retreat();
 		} else if (this.shouldStepForward()) {
 			this.stepForward();
-		} else if (!this._actor.isActing() && !this.inHomePosition()) {
+		} else if (!this._actor.isActing() && this.inActingPosition()) {
 			this.stepBack();
+		} else if (this._actor.motionType() === "damage") {
+			this.stepBackDamage();
+		} else if (this._actor.motionType() === "evade") {
+			this.stepBackEvade();
 		}
+	};
+	
+	Sprite_Actor.prototype.inActingPosition = function() {
+		return this._offsetX === this.motionSpeed() && this._offsetY === 0;
 	};
 	
 	Sprite_Actor.prototype.shouldStepForward = function() {
@@ -1528,8 +1541,16 @@
 		this.startMove(-spriteW*5, 0, spriteW);
 	};
 	
+	Sprite_Actor.prototype.stepBackDamage = function() {
+		this.startMove(-1, 0, 0);
+	};
+	
+	Sprite_Actor.prototype.stepBackEvade = function() {
+		this.startMove(-2, 0, 0);
+	};
+	
 	Sprite_Actor.prototype.damageOffsetX = function() {
-		return Sprite_Battler.prototype.damageOffsetX.call(this) - 11;
+		return Sprite_Battler.prototype.damageOffsetX.call(this);
 	};
 	
 	Sprite_Actor.prototype.setupMotion = function() {
@@ -1553,6 +1574,9 @@
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
+			if(this._motionType === "damage" || this._motionType === "evade") {
+				this.startMove(0, 0, 0);
+			}
 			this._motionType = motionType;
 			this._motion = newMotion;
 			this._motionCount = 0;
@@ -1560,8 +1584,10 @@
 			if(
 				motionType === "walk" ||
 				motionType === "wait" ||
-				motionType === "guard" ||
 				motionType === "chant" ||
+				motionType === "guard" ||
+				motionType === "damage" ||
+				motionType === "evade" ||
 				motionType === "skill" ||
 				motionType === "spell" ||
 				motionType === "item" ||
@@ -1593,8 +1619,10 @@
 			if(
 				motionType === "walk" ||
 				motionType === "wait" ||
-				motionType === "guard" ||
 				motionType === "chant" ||
+				motionType === "guard" ||
+				motionType === "damage" ||
+				motionType === "evade" ||
 				motionType === "skill" ||
 				motionType === "spell" ||
 				motionType === "item" ||

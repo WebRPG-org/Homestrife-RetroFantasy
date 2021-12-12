@@ -1399,6 +1399,7 @@
 		this._motionCount = 0;
 		this._motionType = null;
 		this._pattern = 0;
+		this._idleWeaponImageId = 0;
 		this.createShadowSprite();
 		this.createWeaponSprite();
 		this.createMainSprite();
@@ -1480,6 +1481,66 @@
 		if (this._actor.isWeaponAnimationRequested()) {
 			this._weaponOverlaySprite.setup(this._actor.weaponImageId(), this._actor.motionType(), true);
 		}
+	};
+	
+	Sprite_Actor.prototype.startMotion = function(motionType) {
+		const newMotion = Sprite_Actor.MOTIONS[motionType];
+		if (this._motion !== newMotion) {
+			this._motion = newMotion;
+			this._motionCount = 0;
+			this._pattern = 0;
+			if(
+				motionType === "walk" ||
+				motionType === "wait" ||
+				motionType === "guard" ||
+				motionType === "chant"
+			) {
+				this.startWeaponIdleAnimation(motionType);
+			} else {
+				this.clearWeaponIdleAnimation();
+			}
+		}
+	};
+	
+	Game_Actor.prototype.performAttack = function() {
+		const weapons = this.weapons();
+		const weapon = weapons[0];
+		if(weapon && weapon.d9dInfo.image !== undefined && weapon.d9dInfo.motions !== undefined) {
+			// TODO: base motion on attack type
+			this.requestMotion(weapon.d9dInfo.motions[0]);
+			this.startWeaponAnimation(weapon.d9dInfo.image);
+		} else {
+			const wtypeId = weapon ? weapon.wtypeId : 0;
+			const attackMotion = $dataSystem.attackMotions[wtypeId];
+			if (attackMotion) {
+				if (attackMotion.type === 0) {
+					this.requestMotion("thrust");
+				} else if (attackMotion.type === 1) {
+					this.requestMotion("swing");
+				} else if (attackMotion.type === 2) {
+					this.requestMotion("missile");
+				}
+				this.startWeaponAnimation(attackMotion.weaponImageId);
+			}
+		}
+	};
+	
+	Sprite_Actor.prototype.startWeaponIdleAnimation = function(motionType) {
+		const weapons = this._actor.weapons();
+		const weapon = weapons[0];
+		if(weapon && weapon.d9dInfo.image !== undefined) {
+			this._idleWeaponImageId = weapon.d9dInfo.image;
+			this._weaponSprite.setup(this._idleWeaponImageId, motionType);
+			this._weaponOverlaySprite.setup(this._idleWeaponImageId, motionType, true);
+		} else {
+			this.clearWeaponIdleAnimation();
+		}
+	};
+	
+	Sprite_Actor.prototype.clearWeaponIdleAnimation = function() {
+		this._idleWeaponImageId = null;
+		this._weaponSprite.setup(0);
+		this._weaponOverlaySprite.setup(0);
 	};
 	
 	Sprite_Actor.prototype.updateMotion = function() {
@@ -1584,6 +1645,21 @@
 		_Sprite_Weapon_setup.call(this, weaponImageId);
 	};
 	
+	Sprite_Weapon.prototype.isIdle = function() {
+		return this._motion !== "thrust" && this._motion !== "swing" && this._motion !== "missile";
+	}
+	
+	Sprite_Weapon.prototype.updatePattern = function() {
+		this._pattern++;
+		if (this._pattern >= 3) {
+			if(this.isIdle()) {
+				this._pattern = 0;
+			} else {
+				this._weaponImageId = 0;
+			}
+		}
+	};
+	
 	Sprite_Weapon.prototype.updateFrame = function() {
 		if (this._weaponImageId > 0) {
 			let pattern = this._pattern;
@@ -1596,6 +1672,9 @@
 					break;
 				case "missile":
 					pattern = 1;
+					break;
+				default:
+					pattern = 0;
 					break;
 			}
 			if((pattern === 0 && this._isOverlay) || (pattern > 0 && !this._isOverlay)) {

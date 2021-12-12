@@ -1718,6 +1718,10 @@
 		return this._battler && this._battler.isSelected();
 	}
 	
+	Sprite_Enemy.prototype.damageOffsetY = function() {
+		return Sprite_Battler.prototype.damageOffsetY.call(this);
+	};
+	
 	// Sprite Battleback
 	Sprite_Battleback.prototype.adjustPosition = function() {
 		this.width = 272;

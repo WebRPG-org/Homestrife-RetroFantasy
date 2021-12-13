@@ -235,6 +235,47 @@
 		}
 	};
 	
+	// Battle Manager
+	BattleManager.updateTpb = function() {
+		while(!this.updateAllTpbBattlers()) {
+			$gameParty.updateTpb();
+			$gameTroop.updateTpb();
+		}
+		this.checkTpbTurnEnd();
+	};
+
+	BattleManager.updateAllTpbBattlers = function() {
+		let result = false;
+		for (const battler of this.allBattleMembers()) {
+			result = this.updateTpbBattler(battler) ? true : result;
+		}
+		return result;
+	};
+
+	BattleManager.updateTpbBattler = function(battler) {
+		if (battler.isTpbTurnEnd()) {
+			battler.onTurnEnd();
+			battler.startTpbTurn();
+			this.displayBattlerStatus(battler, false);
+			return true;
+		} else if (battler.isTpbReady()) {
+			battler.startTpbAction();
+			this._actionBattlers.push(battler);
+			return true;
+		} else if (battler.isTpbTimeout()) {
+			battler.onTpbTimeout();
+			this.displayBattlerStatus(battler, true);
+			return true;
+		}
+		return false;
+	};
+
+	BattleManager.checkTpbTurnEnd = function() {
+		if ($gameTroop.isTpbTurnEnd()) {
+			this.endTurn();
+		}
+	};
+	
 	// Color Manager
 	ColorManager.textColor = function(n) {
 		const px = 32 + (n % 8) * 4 + 2;
@@ -1237,7 +1278,7 @@
 	};
 	
 	Scene_Battle.prototype.statusWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*28;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*23;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*5;
 		const wx = 0;
 		const wy = Graphics.boxHeight-wh;
@@ -1247,7 +1288,7 @@
 	Scene_Battle.prototype.partyCommandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
-		const wx = 0;
+		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -1255,7 +1296,7 @@
 	Scene_Battle.prototype.actorCommandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
-		const wx = 0;
+		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -1279,7 +1320,7 @@
 	Scene_Battle.prototype.skillWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
-		const wx = 0;
+		const wx = Graphics.boxWidth-ww;
 		const wy = Graphics.boxHeight-wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
@@ -4077,12 +4118,10 @@
 		const x = itemPadding + spriteW*9;
 		const x2 = x + columnW;
 		const x3 = x2 + columnW;
-		const x4 = x3 + columnW;
 		const y = itemPadding;
-		this.drawText("Time", x, y, valueW);
-		this.drawText("Hlth", x2, y, valueW);
-		this.drawText("Endr", x3, y, valueW);
-		this.drawText("Strs", x4, y, valueW);
+		this.drawText("Hlth", x, y, valueW);
+		this.drawText("Endr", x2, y, valueW);
+		this.drawText("Strs", x3, y, valueW);
 	};
 	
 	Window_BattleStatus.prototype.drawItem = function(index) {
@@ -4106,13 +4145,11 @@
 		const x2 = x + spriteW*9;
 		const x3 = x2 + columnW;
 		const x4 = x3 + columnW;
-		const x5 = x4 + columnW;
 		const y = rect.y + this.itemPadding();
 		this.drawActorName(actor, x, y);
-		this.placeTimeGauge(actor, x2, y+1);
-		this.drawText(actor.hp + "%", x3, y, valueW, "right");
-		this.drawText(actor.mp + "%", x4, y, valueW, "right");
-		this.drawText(actor.tp + "%", x5, y, valueW, "right");
+		this.drawText(actor.hp + "%", x2, y, valueW, "right");
+		this.drawText(actor.mp + "%", x3, y, valueW, "right");
+		this.drawText(actor.tp + "%", x4, y, valueW, "right");
 		this.placeActorCursor(actor, x-1, y);
 	};
 	

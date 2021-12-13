@@ -505,32 +505,6 @@
 		return item && item.wtypeId && item.wtypeId % 3 != 1;
 	};
 	
-	Game_Actor.prototype.paramPlus = function(paramId) {
-		let value = Game_Battler.prototype.paramPlus.call(this, paramId);
-		const equips = this.equips();
-		for (let i = 0; i < equips.length; i++) {
-			if(paramId === 3 && i <= 1) { continue; }
-			const item = equips[i];
-			if (item) {
-				value += item.params[paramId];
-			}
-		}
-		return value;
-	};
-	
-	Game_Actor.prototype.shieldDefense = function() {
-		let value = 0;
-		const equips = this.equips();
-		for (let i = 0; i < equips.length; i++) {
-			if(i > 1) { continue; }
-			const item = equips[i];
-			if (item) {
-				value += item.params[3];
-			}
-		}
-		return value;
-	};
-	
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
@@ -2469,7 +2443,7 @@
 	};
 	
 	Window_StatusBase.prototype.blockSymbol = function() {
-		return "BLK";
+		return "PRY";
 	};
 	
 	Window_StatusBase.prototype.evadeSymbol = function() {
@@ -2661,8 +2635,8 @@
 		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3), true);
-		this.drawNameAndValue(x3, y2, this.blockSymbol(), this._actor.shieldDefense(), tempActor.shieldDefense(), true);
-		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
+		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.floor(this._actor.xparam(5)*100), Math.floor(tempActor.xparam(5)*100), true);
 		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100), true);
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
@@ -3118,8 +3092,8 @@
 		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
-		this.drawNameAndValue(x3, y2, this.blockSymbol(), actor.shieldDefense());
-		this.drawNameAndValue(x3, y3, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
+		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.floor(actor.xparam(5)*100));
 		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
@@ -3429,8 +3403,7 @@
 			}
 			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
 		} else {
-			let defenseSymbol = this._item.etypeId === 2 ? this.blockSymbol() : this.armorSymbol();
-			this.drawNameAndValueChange(x, y, defenseSymbol, this._item.params[3], (item1 ? item1.params[3] : 0));
+			this.drawNameAndValueChange(x, y, this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));
 			const coverage = this.getItemXParam(this._item, 3, true);
 			if(coverage > 0) {
 				this.drawNameAndValueChange(x, y2, this.coverageSymbol(), coverage, this.getItemXParam(item1, 3, true));

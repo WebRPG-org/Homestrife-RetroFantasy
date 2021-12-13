@@ -361,6 +361,31 @@
 		return xparamTotal;
 	};
 	
+	// Game Battler
+	Game_Battler.prototype.updateTpbChargeTime = function() {
+		if (this._tpbState === "charging" && !this.battlersAreBusy()) {
+			this._tpbChargeTime += this.tpbAcceleration();
+			if (this._tpbChargeTime >= 1) {
+				this._tpbChargeTime = 1;
+				this.onTpbCharged();
+			}
+		}
+	};
+	
+	Game_Battler.prototype.battlersAreBusy = function() {
+		for(const actor of $gameParty.members()) {
+			if(actor._actionState === "waiting" || actor._actionState === "acting") {
+				return true;
+			}
+		}
+		for(const enemy of $gameTroop.members()) {
+			if(enemy._actionState === "waiting" || enemy._actionState === "acting") {
+				return true;
+			}
+		}
+		return false;
+	};
+	
 	// Game Actor
 	const _Game_Actor_initMembers = Game_Actor.prototype.initMembers;
 	Game_Actor.prototype.initMembers = function() {

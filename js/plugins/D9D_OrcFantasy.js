@@ -1787,9 +1787,41 @@
 		this._stateIconSprite.setup(battler);
 	};
 	
+	Sprite_Enemy.prototype.startWhiten = function() {
+		this._effectDuration = 32;
+	};
+	
+	Sprite_Enemy.prototype.updateWhiten = function() {
+		// do nothing
+	};
+
+	Sprite_Enemy.prototype.updateBlink = function() {
+		this.opacity = this._effectDuration % 10 < 5 ? 255 : 0;
+	};
+
+	Sprite_Enemy.prototype.updateAppear = function() {
+		this.opacity = 256;
+	};
+
+	Sprite_Enemy.prototype.updateDisappear = function() {
+		this.opacity = 0;
+	};
+
+	Sprite_Enemy.prototype.updateCollapse = function() {
+		this.opacity = 0;
+	};
+
+	Sprite_Enemy.prototype.updateBossCollapse = function() {
+		this.opacity = 0;
+	};
+	
 	Sprite_Enemy.prototype.damageOffsetY = function() {
 		return Sprite_Battler.prototype.damageOffsetY.call(this);
 	};
+	
+	Sprite_Enemy.prototype.isSelected = function() {
+		return this._effectType === "whiten" || Sprite_Battler.prototype.isSelected.call(this);
+	}
 	
 	// Sprite Battleback
 	Sprite_Battleback.prototype.adjustPosition = function() {
@@ -3997,11 +4029,6 @@
 		Window_Base.prototype.updatePadding.call(this);
 	};
 	
-	Window_BattleStatus.prototype.select = function(index) {
-		Window_Selectable.prototype.select.call(this, index);
-		$gameParty.select(this.actor(index));
-	};
-	
 	const _Window_BattleStatus_update = Window_BattleStatus.prototype.update;
 	Window_BattleStatus.prototype.update = function() {
 		_Window_BattleStatus_update.call(this);
@@ -4095,11 +4122,6 @@
 		sprite.hide();
 		const members = $gameParty.battleMembers();
 		this._actorCursors[members.indexOf(actor)] = sprite;
-	};
-	
-	// Window Battle Actor
-	Window_BattleActor.prototype.select = function(index) {
-		Window_BattleStatus.prototype.select.call(this, index);
 	};
 	
 	// Window Battle Enemy

@@ -3997,6 +3997,15 @@
 		return false;
 	};
 	
+	Window_BattleLog.prototype.drawBackground = function() {
+		this.contentsBack.clear();
+	};
+	
+	Window_BattleLog.prototype.drawLineText = function(index) {
+		const rect = this.lineRect(index);
+		this.contents.clearRect(rect.x, rect.y, rect.width, rect.height);
+	};
+	
 	// Window Battle Status
 	Window_BattleStatus.prototype.initialize = function(rect) {
 		Window_StatusBase.prototype.initialize.call(this, rect);

@@ -276,6 +276,13 @@
 		}
 	};
 	
+	BattleManager.invokeAction = function(subject, target) {
+		this._logWindow.push("pushBaseLine");
+		this.invokeNormalAction(subject, target);
+		subject.setLastTarget(target);
+		this._logWindow.push("popBaseLine");
+	};
+	
 	// Color Manager
 	ColorManager.textColor = function(n) {
 		const px = 32 + (n % 8) * 4 + 2;
@@ -286,6 +293,115 @@
 	// Game System
 	Game_System.prototype.windowPadding = function() {
 		return 4;
+	};
+	
+	// Game Action
+	Game_Action.prototype.itemHit = function(/*target*/) {
+		const successRate = this.item().successRate;
+		if (this.isPhysical()) {
+			return successRate * 0.01 * this.subject().hit;
+		} else {
+			return successRate * 0.01;
+		}
+	};
+
+	Game_Action.prototype.itemEva = function(target) {
+		if (this.isPhysical() || this.isMagical()) {
+			return Math.floor(target.eva * 100);
+		} else {
+			return 0;
+		}
+	};
+
+	Game_Action.prototype.itemCri = function(target) {
+		return this.item().damage.critical
+			? Math.floor(target.cev * 100)
+			: 0;
+	};
+	
+	Game_Action.prototype.apply = function(target) {
+		const result = target.result();
+		this.subject().clearResult();
+		result.clear();
+		result.used = this.testApply(target);
+		// is "used" necessary?
+		//result.missed = result.used && Math.random() >= this.itemHit(target);
+		result.missed = false;
+		
+		// here's the new combat math
+		const subjectHit = Math.floor(this.itemHit(target)*100); // accuracy
+		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
+		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5) * 2;
+		result.evade = successRate < 0;
+		// new combat math over
+		
+		result.physical = this.isPhysical();
+		result.drain = this.isDrain();
+		if (result.isHit()) {
+			if (this.item().damage.type > 0) {
+				// here's the new critical math
+				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
+				// new critical math over
+				
+				const value = this.makeDamageValue(target, result.critical, successRate);
+				this.executeDamage(target, value);
+			}
+			for (const effect of this.item().effects) {
+				this.applyItemEffect(target, effect);
+			}
+			this.applyItemUserEffect(target);
+		}
+		this.updateLastTarget(target);
+	};
+	
+	Game_Action.prototype.doRoll = function(hit, eva) {
+		const rollDiff = hit-eva;
+		let rollCount = Math.abs(rollDiff);
+		let roll = Math.random();
+		while(rollCount > 0) {
+			const nextRoll = Math.random();
+			if((rollDiff < 0 && nextRoll < roll) || (rollDiff > 0 && nextRoll > roll)) {
+				roll = nextRoll;
+			}
+			rollCount--;
+		}
+		return roll;
+	};
+	
+	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
+		const item = this.item();
+		// bonus damage from how successful the hit was. critical ignores armor.
+		const baseValue = this.subject().atk * 5 * (1 + successRate) - (critical ? 0 : target.def);
+		//let value = baseValue * this.calcElementRate(target);
+		let value = Math.max(0, baseValue);
+		if (this.isPhysical()) {
+			//value *= target.pdr;
+		}
+		if (this.isMagical()) {
+			//value *= target.mdr;
+		}
+		if (baseValue < 0) {
+			//value *= target.rec;
+		}
+		value = Math.round(value / target.param(4)); // divide by toughness
+		return value;
+	};
+
+	Game_Action.prototype.calcElementRate = function(target) {
+		if (this.item().damage.elementId < 0) {
+			return this.elementsMaxRate(target, this.subject().attackElements());
+		} else {
+			return target.elementRate(this.item().damage.elementId);
+		}
+	};
+
+	Game_Action.prototype.elementsMaxRate = function(target, elements) {
+		if (elements.length > 0) {
+			const rates = elements.map(elementId => target.elementRate(elementId));
+			return Math.max(...rates);
+		} else {
+			return 1;
+		}
 	};
 	
 	// Game Battler Base

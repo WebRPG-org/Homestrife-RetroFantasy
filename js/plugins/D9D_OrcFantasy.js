@@ -2042,13 +2042,8 @@
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
-		this._pattern++;
-		if (this._pattern >= 3) {
-			if(this._isShield || this.isIdle()) {
-				this._pattern = 0;
-			} else {
-				this._weaponImageId = 0;
-			}
+		if (this._pattern < 2) {
+			this._pattern++;
 		}
 	};
 	

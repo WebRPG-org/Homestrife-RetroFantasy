@@ -331,7 +331,7 @@
 		// here's the new combat math
 		const subjectHit = Math.floor(this.itemHit(target)*100); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
-		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5) * 2;
+		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5);
 		result.evaded = successRate < 0;
 		// new combat math over
 		
@@ -372,7 +372,7 @@
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
 		const item = this.item();
 		// bonus damage from how successful the hit was. critical ignores armor.
-		const baseValue = this.subject().atk * 50 * (1 + successRate) - (critical ? 0 : target.def * 5);
+		const baseValue = this.subject().atk * 10 * (1 + successRate) - (critical ? 0 : target.def * 5);
 		//let value = baseValue * this.calcElementRate(target);
 		let value = Math.max(0, baseValue);
 		if (this.isPhysical()) {
@@ -517,31 +517,6 @@
 				break;
 		}
 		return xparamTotal;
-	};
-	
-	// Game Battler
-	Game_Battler.prototype.updateTpbChargeTime = function() {
-		if (this._tpbState === "charging" && !this.battlersAreBusy()) {
-			this._tpbChargeTime += this.tpbAcceleration();
-			if (this._tpbChargeTime >= 1) {
-				this._tpbChargeTime = 1;
-				this.onTpbCharged();
-			}
-		}
-	};
-	
-	Game_Battler.prototype.battlersAreBusy = function() {
-		for(const actor of $gameParty.members()) {
-			if(actor._actionState === "waiting" || actor._actionState === "acting") {
-				return true;
-			}
-		}
-		for(const enemy of $gameTroop.members()) {
-			if(enemy._actionState === "waiting" || enemy._actionState === "acting") {
-				return true;
-			}
-		}
-		return false;
 	};
 	
 	// Game Actor

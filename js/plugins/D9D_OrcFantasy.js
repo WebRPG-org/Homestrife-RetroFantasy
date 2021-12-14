@@ -332,7 +332,7 @@
 		const subjectHit = Math.floor(this.itemHit(target)*100); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5) * 2;
-		result.evade = successRate < 0;
+		result.evaded = successRate < 0;
 		// new combat math over
 		
 		result.physical = this.isPhysical();
@@ -352,6 +352,7 @@
 			this.applyItemUserEffect(target);
 		}
 		this.updateLastTarget(target);
+		$gameTemp.requestBattleRefresh();
 	};
 	
 	Game_Action.prototype.doRoll = function(hit, eva) {
@@ -371,7 +372,7 @@
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
 		const item = this.item();
 		// bonus damage from how successful the hit was. critical ignores armor.
-		const baseValue = this.subject().atk * 5 * (1 + successRate) - (critical ? 0 : target.def);
+		const baseValue = this.subject().atk * 50 * (1 + successRate) - (critical ? 0 : target.def * 5);
 		//let value = baseValue * this.calcElementRate(target);
 		let value = Math.max(0, baseValue);
 		if (this.isPhysical()) {
@@ -4238,6 +4239,11 @@
 		this.drawText("Hlth", x, y, valueW);
 		this.drawText("Endr", x2, y, valueW);
 		this.drawText("Strs", x3, y, valueW);
+	};
+	
+	Window_BattleStatus.prototype.preparePartyRefresh = function() {
+		$gameTemp.clearBattleRefreshRequest();
+		this.refresh();
 	};
 	
 	Window_BattleStatus.prototype.drawItem = function(index) {

@@ -1555,6 +1555,21 @@
 		return this._battler && this._battler.isSelected();
 	}
 	
+	Sprite_Battler.prototype.createDamageSprite = function() {
+		const last = this._damages[this._damages.length - 1];
+		const sprite = new Sprite_Damage();
+		if (last) {
+			sprite.x = last.x + 3;
+			sprite.y = last.y - 5;
+		} else {
+			sprite.x = this.x + this.damageOffsetX();
+			sprite.y = this.y + this.damageOffsetY();
+		}
+		sprite.setup(this._battler);
+		this._damages.push(sprite);
+		this.parent.addChild(sprite);
+	};
+	
 	// Sprite Actor
 	Sprite_Actor.prototype.initMembers = function() {
 		Sprite_Battler.prototype.initMembers.call(this);
@@ -1961,8 +1976,71 @@
 		this.height = 208;
 		this.x = 0;
 		this.y = 0;
+		this.y = 0;
 		this.scale.x = 1;
 		this.scale.y = 1;
+	};
+	
+	// Sprite Damage
+	Sprite_Damage.prototype.setupCriticalEffect = function() {
+		this._flashColor = [178, 16, 48, 255];
+		this._flashDuration = 60;
+	};
+	
+	Sprite_Damage.prototype.createMiss = function() {
+		const w = $gameMap.tileWidth()/2*4;
+		const h = $gameMap.tileHeight()/2;
+		const sprite = this.createChildSprite(w, h);
+		sprite.bitmap.drawText("Miss", 0, 0, w, h, "center");
+		sprite.dy = 0;
+	};
+	
+	Sprite_Damage.prototype.createDigits = function(value) {
+		const string = Math.abs(value).toString();
+		const w = $gameMap.tileWidth()/2;
+		const h = $gameMap.tileHeight()/2;
+		let curX = Math.floor(string.length / -2);
+		for (let i = 0; i < string.length; i++) {
+			const sprite = this.createChildSprite(w, h);
+			sprite.bitmap.drawText(string[i], 0, 0, w, h, "center");
+			sprite.x = curX;
+			sprite.dy = -i;
+			curX += w;
+		}
+	};
+	
+	Sprite_Damage.prototype.createChildSprite = function(width, height) {
+		const sprite = new Sprite();
+		sprite.bitmap = this.createBitmap(width, height);
+		sprite.anchor.x = 0.5;
+		sprite.anchor.y = 1;
+		sprite.y = -13;
+		sprite.ry = sprite.y;
+		this.addChild(sprite);
+		return sprite;
+	};
+	
+	Sprite_Damage.prototype.updateChild = function(sprite) {
+		sprite.dy += 0.5;
+		sprite.ry += sprite.dy;
+		if (sprite.ry >= 0) {
+			sprite.ry = 0;
+			sprite.dy *= -0.6;
+		}
+		sprite.y = Math.round(sprite.ry);
+		if(this._duration % 10 < 5) {
+			sprite.setBlendColor([0,0,0,0]);
+		} else {
+			sprite.setBlendColor(this._flashColor);
+		}
+	};
+	
+	Sprite_Damage.prototype.updateFlash = function() {
+		// do nothing
+	};
+	
+	Sprite_Damage.prototype.updateOpacity = function() {
+		// do nothing
 	};
 	
 	// Sprite Gauge

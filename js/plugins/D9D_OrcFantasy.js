@@ -1753,7 +1753,7 @@
 	};
 	
 	Sprite_Actor.prototype.damageOffsetX = function() {
-		return Sprite_Battler.prototype.damageOffsetX.call(this);
+		return Sprite_Battler.prototype.damageOffsetX.call(this) + 16;
 	};
 	
 	Sprite_Actor.prototype.setupMotion = function() {
@@ -4208,6 +4208,34 @@
 	Window_BattleLog.prototype.drawLineText = function(index) {
 		const rect = this.lineRect(index);
 		this.contents.clearRect(rect.x, rect.y, rect.width, rect.height);
+	};
+	
+	Window_BattleLog.prototype.displayCritical = function(target) {
+		// do nothing
+	};
+	
+	Window_BattleLog.prototype.displayAddedStates = function(target) {
+		const result = target.result();
+		const states = result.addedStateObjects();
+		for (const state of states) {
+			const stateText = target.isActor() ? state.message1 : state.message2;
+			if (state.id === target.deathStateId()) {
+				this.push("performCollapse", target);
+			}
+			if (stateText) {
+				// do nothing
+			}
+		}
+	};
+
+	Window_BattleLog.prototype.displayRemovedStates = function(target) {
+		const result = target.result();
+		const states = result.removedStateObjects();
+		for (const state of states) {
+			if (state.message4) {
+				// do nothing
+			}
+		}
 	};
 	
 	// Window Battle Status

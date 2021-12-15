@@ -519,6 +519,23 @@
 		return xparamTotal;
 	};
 	
+	Game_Battler.prototype.initTp = function() {
+		this.clearTp();
+	};
+	
+	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
+		this.gainSilentTp(damageRate);
+	};
+	
+	Game_Battler.prototype.regenerateTp = function() {
+		this.gainSilentTp(-this.luk);
+	};
+	
+	Game_Battler.prototype.onDamage = function(value) {
+		this.removeStatesByDamage();
+		this.chargeTpByDamage(value);
+	};
+	
 	// Game Actor
 	const _Game_Actor_initMembers = Game_Actor.prototype.initMembers;
 	Game_Actor.prototype.initMembers = function() {

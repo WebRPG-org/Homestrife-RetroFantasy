@@ -297,26 +297,12 @@
 	
 	// Game Action
 	Game_Action.prototype.itemHit = function(/*target*/) {
-		const successRate = this.item().successRate;
-		if (this.isPhysical()) {
-			return successRate * 0.01 * this.subject().hit;
-		} else {
-			return successRate * 0.01;
-		}
+		//const successRate = this.item().successRate;
+		return this.subject().hit;
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
-		if (this.isPhysical() || this.isMagical()) {
-			return Math.round(target.eva * 100);
-		} else {
-			return 0;
-		}
-	};
-
-	Game_Action.prototype.itemCri = function(target) {
-		return this.item().damage.critical
-			? Math.round(target.cev * 100)
-			: 0;
+		return target.eva;
 	};
 	
 	Game_Action.prototype.apply = function(target) {
@@ -329,14 +315,16 @@
 		result.missed = false;
 		
 		// here's the new combat math
-		const subjectHit = Math.round(this.itemHit(target)*100); // accuracy
+		const subjectHit = this.itemHit(target); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5);
 		result.evaded = successRate < 0;
 		// new combat math over
 		
-		result.physical = this.isPhysical();
-		result.drain = this.isDrain();
+		//result.physical = this.isPhysical();
+		//result.drain = this.isDrain();
+		result.physical = true;
+		result.drain = false;
 		if (result.isHit()) {
 			if (this.item().damage.type > 0) {
 				// here's the new critical math
@@ -384,7 +372,7 @@
 		if (baseValue < 0) {
 			//value *= target.rec;
 		}
-		value = Math.round(value / target.param(4)); // divide by toughness
+		value = Math.round(value / target.sparam(6)); // divide by toughness
 		return value;
 	};
 
@@ -518,10 +506,10 @@
 		let sparamTotal = _Game_BattlerBase_sparam.call(this, sparamId);
 		switch(sparamId) {
 			case 6: //toughness, using Physical Damage
-				sparamTotal = Math.round(sparamId*100) + this.skillLevel("IronBody");
+				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("IronBody");
 				break;
 			case 8: //balance, using Floor Damage
-				sparamTotal = Math.round(sparamId*100) + this.skillLevel("Balance");
+				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("Balance");
 				break;
 		}
 		return sparamTotal;
@@ -536,7 +524,7 @@
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		this.gainSilentTp(-this.luk);
+		this.gainSilentTp(-this.xparam(9));
 	};
 	
 	Game_Battler.prototype.onDamage = function(value) {

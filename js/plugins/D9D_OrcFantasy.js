@@ -307,7 +307,7 @@
 
 	Game_Action.prototype.itemEva = function(target) {
 		if (this.isPhysical() || this.isMagical()) {
-			return Math.floor(target.eva * 100);
+			return Math.round(target.eva * 100);
 		} else {
 			return 0;
 		}
@@ -315,7 +315,7 @@
 
 	Game_Action.prototype.itemCri = function(target) {
 		return this.item().damage.critical
-			? Math.floor(target.cev * 100)
+			? Math.round(target.cev * 100)
 			: 0;
 	};
 	
@@ -329,7 +329,7 @@
 		result.missed = false;
 		
 		// here's the new combat math
-		const subjectHit = Math.floor(this.itemHit(target)*100); // accuracy
+		const subjectHit = Math.round(this.itemHit(target)*100); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5);
 		result.evaded = successRate < 0;
@@ -485,17 +485,8 @@
 	Game_BattlerBase.prototype.param = function(paramId) {
 		let paramTotal = _Game_BattlerBase_param.call(this, paramId);
 		switch(paramId) {
-			case 4: //toughness
-				paramTotal += this.skillLevel("IronBody");
-				break;
-			case 5: //balance
-				paramTotal += this.skillLevel("Balance");
-				break;
-			case 6: //agility
+			case 6: //agility, using Agility
 				paramTotal += this.skillLevel("Agility");
-				break;
-			case 7: //focus
-				paramTotal += this.skillLevel("Focus");
 				break;
 		}
 		return paramTotal;
@@ -505,18 +496,35 @@
 	Game_BattlerBase.prototype.xparam = function(xparamId) {
 		let xparamTotal = _Game_BattlerBase_xparam.call(this, xparamId);
 		switch(xparamId) {
-			case 0: //melee accuracy
-				xparamTotal += this.skillLevel("MeleeAcc")/100;
+			case 0: //melee accuracy, using Hit Rate
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAcc");
 				break;
-			case 1: //evasion
-				xparamTotal += this.skillLevel("Defense")/100;
+			case 1: //evasion, using Evasion Rate
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Evasion");
 				break;
-			case 2: //range accuracy
-			case 4: //special accuracy
-				xparamTotal += this.skillLevel("RangeAcc")/100;
+			case 2: //range accuracy, using Critical Rate
+			case 4: //special accuracy, using Magic Evasion (???)
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("RangeAcc");
+				break;
+			case 9: //focus, using TP Regeneration
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Focus");
 				break;
 		}
 		return xparamTotal;
+	};
+	
+	const _Game_BattlerBase_sparam = Game_BattlerBase.prototype.sparam;
+	Game_BattlerBase.prototype.sparam = function(sparamId) {
+		let sparamTotal = _Game_BattlerBase_sparam.call(this, sparamId);
+		switch(sparamId) {
+			case 6: //toughness, using Physical Damage
+				sparamTotal = Math.round(sparamId*100) + this.skillLevel("IronBody");
+				break;
+			case 8: //balance, using Floor Damage
+				sparamTotal = Math.round(sparamId*100) + this.skillLevel("Balance");
+				break;
+		}
+		return sparamTotal;
 	};
 	
 	Game_Battler.prototype.initTp = function() {
@@ -2838,15 +2846,15 @@
 		
 		const tempActor = this._tempActor ? this._tempActor : this._actor;
 		
-		this.drawNameAndValue(x, y3, this.toughnessSymbol(), this._actor.param(4), tempActor.param(4), true);
-		this.drawNameAndValue(x, y4, this.balanceSymbol(), this._actor.param(5), tempActor.param(5), true);
+		this.drawNameAndValue(x, y3, this.toughnessSymbol(), this._actor.sparam(6), tempActor.sparam(6), true);
+		this.drawNameAndValue(x, y4, this.balanceSymbol(), this._actor.sparam(8), tempActor.sparam(8), true);
 		this.drawNameAndValue(x, y5, this.agilitySymbol(), this._actor.param(6), tempActor.param(6), true);
-		this.drawNameAndValue(x, y6, this.focusSymbol(), this._actor.param(7), tempActor.param(7), true);
+		this.drawNameAndValue(x, y6, this.focusSymbol(), this._actor.xparam(9), tempActor.xparam(9), true);
 		
 		this.drawNameAndValue(x2, y, this.powerSymbol(), this._actor.param(2), tempActor.param(2), true);
-		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(this._actor.xparam(0)*100), Math.floor(tempActor.xparam(0)*100), true);
-		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(this._actor.xparam(2)*100), Math.floor(tempActor.xparam(2)*100), true);
-		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), Math.floor(this._actor.xparam(4)*100), Math.floor(tempActor.xparam(4)*100), true);
+		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), this._actor.xparam(0), tempActor.xparam(0), true);
+		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), this._actor.xparam(2), tempActor.xparam(2), true);
+		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), this._actor.xparam(4), tempActor.xparam(4), true);
 		let typeIcons = [];
 		if(this._tempActor) {
 			typeIcons = typeIcons.concat(this._tempActor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
@@ -2858,9 +2866,9 @@
 		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3), true);
-		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(this._actor.xparam(1)*100), Math.floor(tempActor.xparam(1)*100), true);
-		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.floor(this._actor.xparam(5)*100), Math.floor(tempActor.xparam(5)*100), true);
-		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(this._actor.xparam(3)*100), Math.floor(tempActor.xparam(3)*100), true);
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), this._actor.xparam(1), tempActor.xparam(1), true);
+		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100), true);
+		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100), true);
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
 	
@@ -3300,24 +3308,24 @@
 		const y4 = y3 + lineHeight;
 		const y5 = y4 + lineHeight;
 		
-		this.drawNameAndValue(x, y, this.toughnessSymbol(), actor.param(4));
-		this.drawNameAndValue(x, y2, this.balanceSymbol(), actor.param(5));
+		this.drawNameAndValue(x, y, this.toughnessSymbol(), actor.sparam(6));
+		this.drawNameAndValue(x, y2, this.balanceSymbol(), actor.sparam(8));
 		this.drawNameAndValue(x, y3, this.agilitySymbol(), actor.param(6));
-		this.drawNameAndValue(x, y4, this.focusSymbol(), actor.param(7));
+		this.drawNameAndValue(x, y4, this.focusSymbol(), actor.xparam(9));
 		
 		this.drawNameAndValue(x2, y, this.powerSymbol(), actor.param(2));
-		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), Math.floor(actor.xparam(0)*100));
-		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), Math.floor(actor.xparam(2)*100));
-		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), Math.floor(actor.xparam(4)*100));
+		this.drawNameAndValue(x2, y2, this.meleeAccuracySymbol(), actor.xparam(0));
+		this.drawNameAndValue(x2, y3, this.rangeAccuracySymbol(), actor.xparam(2));
+		this.drawNameAndValue(x2, y4, this.specialAccuracySymbol(), actor.xparam(4));
 		let typeIcons = [];
 		typeIcons = typeIcons.concat(actor.traits(Game_BattlerBase.TRAIT_ATTACK_ELEMENT).map(trait => this.iconForElementType(trait.dataId)));
 		typeIcons = typeIcons.concat(actor.weaponTypes().map(type => this.iconForWeaponType(type)));
 		this.drawIconList(x2, y5, this.typeSymbol(), typeIcons, textWidth);
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
-		this.drawNameAndValue(x3, y2, this.evadeSymbol(), Math.floor(actor.xparam(1)*100));
-		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.floor(actor.xparam(5)*100));
-		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.floor(actor.xparam(3)*100));
+		this.drawNameAndValue(x3, y2, this.evadeSymbol(), actor.xparam(1));
+		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.round(actor.xparam(5)*100));
+		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.round(actor.xparam(3)*100));
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
 	
@@ -3619,31 +3627,31 @@
 		const y3 = y2 + lineHeight;
 		if(paramId === 2) {
 			this.drawNameAndValueChange(x, y, this.powerSymbol(), this._item.params[2], (item1 ? item1.params[2] : 0));
-			if(this._item.wtypeId >= 13) {
-				this.drawNameAndValueChange(x, y2, this.rangeAccuracySymbol(), this.getItemXParam(this._item, 2, true), this.getItemXParam(item1, 2, true));
+			if(this._item.wtypeId >= 16) {
+				this.drawNameAndValueChange(x, y2, this.rangeAccuracySymbol(), this.getItemXParam(this._item, 2), this.getItemXParam(item1, 2));
 			} else {
-				this.drawNameAndValueChange(x, y2, this.meleeAccuracySymbol(), this.getItemXParam(this._item, 0, true), this.getItemXParam(item1, 0, true));
+				this.drawNameAndValueChange(x, y2, this.meleeAccuracySymbol(), this.getItemXParam(this._item, 0), this.getItemXParam(item1, 0));
 			}
 			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
 		} else {
 			this.drawNameAndValueChange(x, y, this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));
-			const coverage = this.getItemXParam(this._item, 3, true);
-			if(coverage > 0) {
-				this.drawNameAndValueChange(x, y2, this.coverageSymbol(), coverage, this.getItemXParam(item1, 3, true));
+			const evasion = this.getItemXParam(this._item, 1);
+			if(evasion > 0) {
+				this.drawNameAndValueChange(x, y2, this.evadeSymbol(), evasion, this.getItemXParam(item1, 1));
 			} else {
-				this.drawNameAndValueChange(x, y2, this.evadeSymbol(), this.getItemXParam(this._item, 1, true), this.getItemXParam(item1, 1, true));
+				this.drawNameAndValueChange(x, y2, this.coverageSymbol(), this.getItemXParam(this._item, 3), this.getItemXParam(item1, 3));
 			}
 			//this.drawText(this.resistSymbol(), x, y3, textWidth);
 		}
 	};
 	
-	Window_ShopStatus.prototype.getItemXParam = function(item, dataId, isPercent) {
+	Window_ShopStatus.prototype.getItemXParam = function(item, dataId) {
 		if(!item) { return 0; }
 		const traits = item.traits
 			.filter(trait => trait.code === Game_BattlerBase.TRAIT_XPARAM && trait.dataId === dataId);
 		if(!traits || traits.length === 0) { return 0; }
 		const total = traits.reduce((prevVal, curTrait) => prevVal + curTrait.value, 0);
-		return isPercent? Math.floor(total*100) : total;
+		return Math.round(total*100);
 	};
 	
 	Window_ShopStatus.prototype.getItemTypeIcons = function(item) {

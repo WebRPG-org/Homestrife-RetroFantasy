@@ -283,6 +283,28 @@
 		this._logWindow.push("popBaseLine");
 	};
 	
+	BattleManager.startAction = function() {
+		const subject = this._subject;
+		const action = subject.currentAction();
+		const targets = action.makeTargets();
+		this._phase = "action";
+		this._action = action;
+		this._targets = targets;
+		subject.cancelMotionRefresh();
+		this._action.applyGlobal();
+		this._logWindow.startAction(subject, action, targets);
+	};
+	
+	BattleManager.endAction = function() {
+		this._subject.useItem(this._action.item());
+		this._logWindow.endAction(this._subject);
+		this._phase = "turn";
+		if (this._subject.numActions() === 0) {
+			this.endBattlerActions(this._subject);
+			this._subject = null;
+		}
+	};
+	
 	// Color Manager
 	ColorManager.textColor = function(n) {
 		const px = 32 + (n % 8) * 4 + 2;
@@ -520,6 +542,21 @@
 		return sparamTotal;
 	};
 	
+	Game_BattlerBase.prototype.canPaySkillCost = function(skill) {
+		return (
+			this._mp >= this.skillMpCost(skill)
+		);
+	};
+	
+	Game_BattlerBase.prototype.paySkillCost = function(skill) {
+		this._mp -= this.skillMpCost(skill);
+		this._tp += this.skillTpCost(skill);
+		this._mp = this._mp.clamp(0, this.mmp);
+		this._tp = this._tp.clamp(0, this.maxTp());
+		$gameTemp.requestBattleRefresh();
+	};
+	
+	// Game Battler
 	Game_Battler.prototype.initTp = function() {
 		this.clearTp();
 	};
@@ -535,6 +572,15 @@
 	Game_Battler.prototype.onDamage = function(value) {
 		this.removeStatesByDamage();
 		this.chargeTpByDamage(value);
+	};
+	
+	Game_Battler.prototype.onTurnEnd = function() {
+		this.clearResult();
+		this.regenerateAll();
+		this.updateStateTurns();
+		this.updateBuffTurns();
+		this.removeStatesAuto(2);
+		$gameTemp.requestBattleRefresh();
 	};
 	
 	// Game Actor

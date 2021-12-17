@@ -2627,35 +2627,35 @@
 	};
 	
 	Window_StatusBase.prototype.toughnessSymbol = function() {
-		return "TGH";
+		return "TOU";
 	};
 	
 	Window_StatusBase.prototype.balanceSymbol = function() {
-		return "BLC";
+		return "BAL";
 	};
 	
 	Window_StatusBase.prototype.agilitySymbol = function() {
-		return "AGL";
+		return "AGI";
 	};
 	
 	Window_StatusBase.prototype.focusSymbol = function() {
-		return "FCS";
+		return "FOC";
 	};
 	
 	Window_StatusBase.prototype.powerSymbol = function() {
-		return "PWR";
+		return "POW";
 	};
 	
 	Window_StatusBase.prototype.meleeAccuracySymbol = function() {
-		return "MAC";
+		return "MEL";
 	};
 	
 	Window_StatusBase.prototype.rangeAccuracySymbol = function() {
-		return "RAC";
+		return "RAN";
 	};
 	
 	Window_StatusBase.prototype.specialAccuracySymbol = function() {
-		return "SAC";
+		return "SPE";
 	};
 	
 	Window_StatusBase.prototype.typeSymbol = function() {
@@ -2663,23 +2663,23 @@
 	};
 	
 	Window_StatusBase.prototype.armorSymbol = function() {
-		return "AMR";
+		return "ARM";
 	};
 	
-	Window_StatusBase.prototype.blockSymbol = function() {
-		return "PRY";
+	Window_StatusBase.prototype.parrySymbol = function() {
+		return "PAR";
 	};
 	
 	Window_StatusBase.prototype.evadeSymbol = function() {
-		return "EVS";
+		return "EVA";
 	};
 	
 	Window_StatusBase.prototype.coverageSymbol = function() {
-		return "CVG";
+		return "COV";
 	};
 	
 	Window_StatusBase.prototype.resistSymbol = function() {
-		return "RST";
+		return "RES";
 	};
 	
 	// Window Menu Command
@@ -2860,7 +2860,7 @@
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), this._actor.param(3), tempActor.param(3), true);
 		this.drawNameAndValue(x3, y2, this.evadeSymbol(), this._actor.xparam(1), tempActor.xparam(1), true);
-		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100), true);
+		this.drawNameAndValue(x3, y3, this.parrySymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100), true);
 		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100), true);
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};
@@ -3069,10 +3069,10 @@
 				desc = "Increase chances of striking\nwith thrown fired & magic atks.";
 				break; 
 			case  2:
-				desc = "Increase chances of dodging,\nblocking, and parrying attacks.";
+				desc = "Increase chances of dodging and\nparrying attacks.";
 				break;
 			case  3:
-				desc = "Resist stress inflicted by\nshoves, tripping, and impacts.";
+				desc = "Resist stress and damage caused\nby tripping and terrain.";
 				break; 
 			case  4:
 				desc = "Decrease wait time between\nactions in combat.";
@@ -3317,7 +3317,7 @@
 		
 		this.drawNameAndValue(x3, y, this.armorSymbol(), actor.param(3));
 		this.drawNameAndValue(x3, y2, this.evadeSymbol(), actor.xparam(1));
-		this.drawNameAndValue(x3, y3, this.blockSymbol(), Math.round(actor.xparam(5)*100));
+		this.drawNameAndValue(x3, y3, this.parrySymbol(), Math.round(actor.xparam(5)*100));
 		this.drawNameAndValue(x3, y4, this.coverageSymbol(), Math.round(actor.xparam(3)*100));
 		this.drawText(this.resistSymbol(), x3, y5, textWidth);
 	};

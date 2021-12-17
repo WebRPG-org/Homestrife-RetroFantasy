@@ -298,11 +298,11 @@
 	// Game Action
 	Game_Action.prototype.itemHit = function(/*target*/) {
 		//const successRate = this.item().successRate;
-		return this.subject().hit;
+		return Math.max(0, this.subject().hit - Math.floor(this.subject().tp / 20));
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
-		return target.eva;
+		return Math.max(0, target.eva - Math.floor(target.tp / 20));
 	};
 	
 	Game_Action.prototype.apply = function(target) {
@@ -391,6 +391,11 @@
 		} else {
 			return 1;
 		}
+	};
+	
+	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
+		const value = Math.floor(this.item().tpGain * this.subject().tcr);
+		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));
 	};
 	
 	// Game Battler Base

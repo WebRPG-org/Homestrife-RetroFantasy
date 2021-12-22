@@ -420,6 +420,14 @@
 		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));
 	};
 	
+	Game_Action.prototype.itemEffectGainTp = function(target, effect) {
+		let value = Math.floor(effect.value1);
+		if (value !== 0) {
+			target.gainTp(-value);
+			this.makeSuccess(target);
+		}
+	};
+	
 	// Game Battler Base
 	const _Game_BattlerBase_initMembers = Game_BattlerBase.prototype.initMembers;
 	Game_BattlerBase.prototype.initMembers = function() {
@@ -566,7 +574,7 @@
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		this.gainSilentTp(-this.xparam(9));
+		this.gainSilentTp(-this.xparam(9)*4);
 	};
 	
 	Game_Battler.prototype.onDamage = function(value) {
@@ -581,6 +589,11 @@
 		this.updateBuffTurns();
 		this.removeStatesAuto(2);
 		$gameTemp.requestBattleRefresh();
+	};
+	
+	Game_Battler.prototype.gainTp = function(value) {
+		this._result.tpDamage = value;
+		this.setTp(this.tp + value);
 	};
 	
 	// Game Actor

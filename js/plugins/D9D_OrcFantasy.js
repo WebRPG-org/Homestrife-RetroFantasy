@@ -467,7 +467,11 @@
 		value = Math.floor(value);
 		if (value !== 0) {
 			target.gainHp(value);
-			target.gainSilentTp(value);
+			if($gameParty.inBattle()) {
+				target.gainSilentTp(value);
+			} else {
+				target.gainSilentMp(-value/10);
+			}
 			this.makeSuccess(target);
 		}
 	};
@@ -608,17 +612,18 @@
 	};
 	
 	Game_BattlerBase.prototype.canPaySkillCost = function(skill) {
-		return (
-			this._mp >= this.skillMpCost(skill)
-		);
+		return true;
 	};
 	
 	Game_BattlerBase.prototype.paySkillCost = function(skill) {
-		this._mp -= this.skillMpCost(skill);
-		this._tp += this.skillTpCost(skill);
-		this._mp = this._mp.clamp(0, this.mmp);
-		this._tp = this._tp.clamp(0, this.maxTp());
-		$gameTemp.requestBattleRefresh();
+		if($gameParty.inBattle()) {
+			this._tp += this.skillMpCost(skill) + this.skillTpCost(skill);
+			this._tp = this._tp.clamp(0, this.maxTp());
+			$gameTemp.requestBattleRefresh();
+		} else {
+			this._mp -= (this.skillMpCost(skill) + this.skillTpCost(skill))/10;
+			this._mp = this._mp.clamp(0, this.mmp);
+		}
 	};
 	
 	// Game Battler

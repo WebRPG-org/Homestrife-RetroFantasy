@@ -342,7 +342,33 @@
 	// Game Action
 	Game_Action.prototype.itemHit = function(/*target*/) {
 		//const successRate = this.item().successRate;
-		return Math.max(0, this.subject().hit - Math.floor(this.subject().tp / 20));
+		// Figure out if its melee, ranged, or special
+		let subjectHit = this.subject().hit;
+		if(this.isAttack()) {
+			// need to dynamically figure things out for basic attacks
+			if(this.subject().equips) {
+				// actor basic attack hit is based on weapon type
+				const weapon = this.subject().equips()[0];
+				if(weapon && weapon.wtypeId >= 16) {
+					// its a strictly ranged weapon
+					subjectHit = this.subject().xparam(2);
+				}
+			} else {
+				// how does an enemy figure this out?
+			}
+		} if(!this.isGuard()) {
+			// for other skills, just base it on the skill itself
+			if(this.isMagical()) {
+				if(this.item().stypeId === 1) {
+					// weapon tech, so ranged
+					subjectHit = this.subject().xparam(2);
+				} else {
+					// special (ranged, but ignoring the weapon)
+					subjectHit = this.subject().xparam(4);
+				}
+			}
+		}
+		return Math.max(0, subjectHit - Math.floor(this.subject().tp / 20));
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
@@ -364,12 +390,19 @@
 		//result.missed = result.used && Math.random() >= this.itemHit(target);
 		result.missed = false;
 		
+		////
 		// here's the new combat math
+		////
+		
+		// do actual hit/miss math
 		const subjectHit = this.itemHit(target); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
+		
+		////
 		// new combat math over
+		////
 		
 		//result.physical = this.isPhysical();
 		//result.drain = this.isDrain();

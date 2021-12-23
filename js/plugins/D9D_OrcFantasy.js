@@ -437,9 +437,17 @@
 		}
 	};
 	
-	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
-		const value = Math.floor(this.item().tpGain * this.subject().tcr);
-		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));
+	Game_Action.prototype.itemEffectRecoverHp = function(target, effect) {
+		let value = (target.mhp * effect.value1 + effect.value2) * target.rec;
+		if (this.isItem()) {
+			value *= this.subject().pha;
+		}
+		value = Math.floor(value);
+		if (value !== 0) {
+			target.gainHp(value);
+			target.gainSilentTp(value);
+			this.makeSuccess(target);
+		}
 	};
 	
 	Game_Action.prototype.itemEffectGainTp = function(target, effect) {
@@ -448,6 +456,11 @@
 			target.gainTp(-value);
 			this.makeSuccess(target);
 		}
+	};
+	
+	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
+		const value = Math.floor(this.item().tpGain * this.subject().tcr);
+		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));
 	};
 	
 	// Game Battler Base

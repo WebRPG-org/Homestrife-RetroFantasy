@@ -305,6 +305,28 @@
 		}
 	};
 	
+	BattleManager.endBattle = function(result) {
+		this._phase = "battleEnd";
+		this.cancelActorInput();
+		this._inputting = false;
+		if (this._eventCallback) {
+			this._eventCallback(result);
+		}
+		if (result === 0) {
+			$gameSystem.onBattleWin();
+		} else if (this._escaped) {
+			$gameSystem.onBattleEscape();
+		}
+		this.regenerateAllTp();
+	};
+	
+	BattleManager.regenerateAllTp = function() {
+		for (const actor of $gameParty.allMembers()) {
+			actor.gainSilentMp(-actor.tp/10);
+			actor.gainSilentTp(-actor.tp);
+		}
+	};
+	
 	// Color Manager
 	ColorManager.textColor = function(n) {
 		const px = 32 + (n % 8) * 4 + 2;
@@ -609,7 +631,12 @@
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		this.gainSilentTp(-this.xparam(9)*4);
+		const regenRate = this.xparam(9)*4;
+		const tpRate = Math.min(Math.floor(this.mp*10), regenRate);
+		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
+		const mpRate = Math.min(this.tp, tpRate);
+		this.gainSilentTp(-adjustedTpRate);
+		this.gainSilentMp(-mpRate/10);
 	};
 	
 	Game_Battler.prototype.onDamage = function(value) {
@@ -624,6 +651,10 @@
 		this.updateBuffTurns();
 		this.removeStatesAuto(2);
 		$gameTemp.requestBattleRefresh();
+	};
+	
+	Game_Battler.prototype.gainSilentMp = function(value) {
+		this.setMp(this.mp + value);
 	};
 	
 	Game_Battler.prototype.gainTp = function(value) {
@@ -2532,7 +2563,7 @@
 		this.drawText("HL", x, y, width);
 		this.drawText(actor.hp + "%", x, y, width, "right");
 		this.drawText("EN", x, y + lineHeight/2, width);
-		this.drawText(actor.mp + "%", x, y + lineHeight/2, width, "right");
+		this.drawText(Math.floor(actor.mp) + "%", x, y + lineHeight/2, width, "right");
 	};
 	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
@@ -4458,7 +4489,7 @@
 		const y = rect.y + this.itemPadding();
 		this.drawActorName(actor, x, y);
 		this.drawText(actor.hp + "%", x2, y, valueW, "right");
-		this.drawText(actor.mp + "%", x3, y, valueW, "right");
+		this.drawText(Math.floor(actor.mp) + "%", x3, y, valueW, "right");
 		this.drawText(actor.tp + "%", x4, y, valueW, "right");
 		this.placeActorCursor(actor, x-1, y);
 	};

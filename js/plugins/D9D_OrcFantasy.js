@@ -356,7 +356,7 @@
 			} else {
 				// how does an enemy figure this out?
 			}
-		} if(!this.isGuard()) {
+		} else if(!this.isGuard()) {
 			// for other skills, just base it on the skill itself
 			if(this.isMagical()) {
 				if(this.item().stypeId === 1) {
@@ -376,9 +376,53 @@
 	};
 	
 	Game_Action.prototype.itemCri = function(target) {
-		return this.item().damage.critical
-			? this.subject().cri * (1 - target.cev)
-			: 1;
+		if(this.item().damage.critical) {
+			let critEva = target.cev;
+			if(critEva === 0) { return 0; }
+			const element = this.bestElementId(target);
+			switch(element) {
+				case 0: // none
+				case 1: // trip
+				case 2: // blunt
+				case 3: // cut
+				case 4: // keen
+					critEva += 0.09;
+					break;
+				case 5: // pierce
+				case 7: // bullet
+				case 8: // anti-armor
+				case 9: // fire
+				case 10: // ice
+				case 11: // corrode
+				case 12: // electric
+				case 13: // purify
+				case 14: // corrupt
+					critEva += 0.04;
+					break;
+				case 6: // stiletto
+					critEva += 0.01;
+					break;
+			}
+			return critEva;
+		} else {
+			return 1;
+		}
+	};
+	
+	Game_Action.prototype.bestElementId = function(target) {
+		// figure out the best damage type to use, when there are multiple weapon damage types
+		if (this.isAttack()) {
+			const elements = this.subject().attackElements();
+			for(const element of elements) {
+				if(element < 9) {
+					// TODO: actually figure this logic out. just return the first weapon damage type for now
+					return element;
+				}
+			}
+			return 0;
+		} else {
+			return this.item().damage.elementId;
+		}
 	};
 	
 	Game_Action.prototype.apply = function(target) {
@@ -390,19 +434,12 @@
 		//result.missed = result.used && Math.random() >= this.itemHit(target);
 		result.missed = false;
 		
-		////
-		// here's the new combat math
-		////
-		
-		// do actual hit/miss math
+		// here's the new hit/miss math
 		const subjectHit = this.itemHit(target); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
-		
-		////
-		// new combat math over
-		////
+		// new hit/miss math over
 		
 		//result.physical = this.isPhysical();
 		//result.drain = this.isDrain();
@@ -855,6 +892,10 @@
 	Game_Actor.prototype.performMiss = function() {
 		Game_Battler.prototype.performMiss.call(this);
 		this.requestMotion("evade");
+	};
+	
+	Game_Actor.prototype.bareHandsElementId = function() {
+		return 2;
 	};
 	
 	// Game Party

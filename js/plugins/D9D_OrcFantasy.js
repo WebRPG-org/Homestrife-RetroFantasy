@@ -466,12 +466,13 @@
 		}
 		value = Math.floor(value);
 		if (value !== 0) {
-			target.gainHp(value);
+			const stressRate = Math.min(target.mhp - target.hp, value);
 			if($gameParty.inBattle()) {
-				target.gainSilentTp(value);
+				target.gainSilentTp(stressRate);
 			} else {
-				target.gainSilentMp(-value/10);
+				target.gainSilentMp(-stressRate/10);
 			}
+			target.gainHp(value);
 			this.makeSuccess(target);
 		}
 	};

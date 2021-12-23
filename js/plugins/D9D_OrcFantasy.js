@@ -339,8 +339,8 @@
 		// here's the new combat math
 		const subjectHit = this.itemHit(target); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
-		const successRate = (this.doRoll(subjectHit, targetEva) - 0.5);
-		result.evaded = successRate < 0;
+		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
+		result.evaded = successRate < 0.5;
 		// new combat math over
 		
 		//result.physical = this.isPhysical();
@@ -353,13 +353,16 @@
 				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
 				// new critical math over
 				
-				const value = this.makeDamageValue(target, result.critical, successRate);
+				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
 				this.executeDamage(target, value);
 			}
 			for (const effect of this.item().effects) {
 				this.applyItemEffect(target, effect);
 			}
 			this.applyItemUserEffect(target);
+		} else if(!this.isCertainHit()) {
+			// apply stress even on miss
+			target.gainSilentTp(Math.round(20 * (Math.min(successRate, 0.5) / 0.5)));
 		}
 		this.updateLastTarget(target);
 		$gameTemp.requestBattleRefresh();
@@ -570,7 +573,7 @@
 	};
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
-		this.gainSilentTp(damageRate);
+		this.gainSilentTp(20+damageRate);
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {

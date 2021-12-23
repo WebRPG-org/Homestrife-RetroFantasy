@@ -349,6 +349,12 @@
 		return Math.max(0, target.eva - Math.floor(target.tp / 20));
 	};
 	
+	Game_Action.prototype.itemCri = function(target) {
+		return this.item().damage.critical
+			? this.subject().cri * (1 - target.cev)
+			: 1;
+	};
+	
 	Game_Action.prototype.apply = function(target) {
 		const result = target.result();
 		this.subject().clearResult();
@@ -444,9 +450,11 @@
 		if (value !== 0) {
 			this.makeSuccess(target);
 		}
+		// reduction from balance
+		const reducedValue = Math.max(0, value - target.sparam(8));
 		// gain stress instead
-		target.gainTp(value);
-		this.gainDrainedMp(-value);
+		target.gainTp(reducedValue);
+		this.gainDrainedMp(-reducedValue);
 	};
 	
 	Game_Action.prototype.gainDrainedMp = function(value) {

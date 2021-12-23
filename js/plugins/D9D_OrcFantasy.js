@@ -418,6 +418,25 @@
 		}
 	};
 	
+	Game_Action.prototype.executeMpDamage = function(target, value) {
+		if (value !== 0) {
+			this.makeSuccess(target);
+		}
+		// gain stress instead
+		target.gainTp(value);
+		this.gainDrainedMp(-value);
+	};
+	
+	Game_Action.prototype.gainDrainedMp = function(value) {
+		if (this.isDrain()) {
+			let gainTarget = this.subject();
+			if (this._reflectionTarget) {
+				gainTarget = this._reflectionTarget;
+			}
+			gainTarget.gainTp(value);
+		}
+	};
+	
 	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
 		const value = Math.floor(this.item().tpGain * this.subject().tcr);
 		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));

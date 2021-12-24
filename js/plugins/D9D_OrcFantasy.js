@@ -375,33 +375,35 @@
 		return Math.max(0, target.eva - Math.floor(target.tp / 20));
 	};
 	
-	Game_Action.prototype.itemCri = function(target) {
+	Game_Action.prototype.itemCri = function(target, elementId) {
 		if(this.item().damage.critical) {
 			let critEva = target.cev;
 			if(critEva === 0) { return 0; }
-			const element = this.bestElementId(target);
-			switch(element) {
-				case 0: // none
-				case 1: // trip
-				case 2: // blunt
-				case 3: // cut
-				case 4: // keen
-					critEva += 0.09;
-					break;
-				case 5: // pierce
-				case 7: // bullet
-				case 8: // anti-armor
-				case 9: // fire
-				case 10: // ice
-				case 11: // corrode
-				case 12: // electric
-				case 13: // purify
-				case 14: // corrupt
-					critEva += 0.04;
-					break;
-				case 6: // stiletto
-					critEva += 0.01;
-					break;
+			switch(elementId) {
+			case 0: // none
+			case 1: // trip
+			case 2: // blunt
+			case 3: // cut
+			case 4: // keen
+				// this stuff has a hard time getting around armor
+				critEva += 0.09;
+				break;
+			case 5: // pierce
+			case 7: // bullet
+			case 8: // anti-armor
+			case 9: // fire
+			case 10: // ice
+			case 11: // corrode
+			case 12: // electric
+			case 13: // purify
+			case 14: // corrupt
+				// this stuff can slip into cracks in armor
+				critEva += 0.04;
+				break;
+			case 6: // stiletto
+				// this can just outright punch through the smallest openings
+				critEva += 0.01;
+				break;
 			}
 			return critEva;
 		} else {
@@ -414,7 +416,7 @@
 		if (this.isAttack()) {
 			const elements = this.subject().attackElements();
 			for(const element of elements) {
-				if(element < 9) {
+				if(element > 1 && element < 9) {
 					// TODO: actually figure this logic out. just return the first weapon damage type for now
 					return element;
 				}
@@ -445,13 +447,16 @@
 		//result.drain = this.isDrain();
 		result.physical = true;
 		result.drain = false;
+		
+		const bestElementId = this.bestElementId(target);
+		
 		if (result.isHit()) {
 			if (this.item().damage.type > 0) {
 				// here's the new critical math
-				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
+				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target, bestElementId);
 				// new critical math over
 				
-				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
+				const value = this.makeDamageValue(target, result.critical, successRate - 0.5, bestElementId);
 				this.executeDamage(target, value);
 			}
 			for (const effect of this.item().effects) {
@@ -480,23 +485,71 @@
 		return roll;
 	};
 	
-	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
+	Game_Action.prototype.makeDamageValue = function(target, critical, successRate, weaponElementId) {
 		const item = this.item();
-		// bonus damage from how successful the hit was. critical ignores armor.
-		const baseValue = this.subject().atk * 10 * (1 + successRate) - (critical ? 0 : target.def * 5);
-		//let value = baseValue * this.calcElementRate(target);
-		let value = Math.max(0, baseValue);
-		if (this.isPhysical()) {
-			//value *= target.pdr;
+		
+		// get the power from either the weapon or the skill itself. bonus damage from hit success amount
+		let power = this.subject().atk;
+		if(!this.isAttack() && item.stypeId != 1) {
+			power = this.evalDamageFormula(target);
 		}
-		if (this.isMagical()) {
-			//value *= target.mdr;
+		power = power * 10 * (1 + successRate);
+		
+		// armor, unless its a critical
+		const armor = critical ? 0 : target.def * 5;
+		
+		// gather the elements and do element specific stuff
+		const attackElements = this.subject().attackElements();
+		const isTrip = attackElements.indexOf(1) > 0;
+		const elements = attackElements.filter(element => element > 8);
+		if(weaponElementId > 1 && weaponElementId < 9) {
+			elements.push(weaponElementId);
 		}
-		if (baseValue < 0) {
-			//value *= target.rec;
+		let bonusBlunt = 0;
+		for(const element of elements) {
+			switch(element) {
+			case 0: // none
+				break;
+			case 1: // trip
+				break;
+			case 2: // blunt
+				break;
+			case 3: // cut
+				bonusBlunt += Math.min(power, armor) / 2;
+				break;
+			case 4: // keen
+				bonusBlunt += Math.min(power, armor) / 4;
+				break;
+			case 5: // pierce
+				bonusBlunt += Math.min(power, armor) / 4;
+				break;
+			case 6: // stiletto
+				bonusBlunt += Math.min(power, armor) / 8;
+				break;
+			case 7: // bullet
+				bonusBlunt += Math.min(power, armor);
+				break;
+			case 8: // anti-armor
+				bonusBlunt += Math.min(power, armor);
+				break;
+			case 9: // fire
+				break;
+			case 10: // ice
+				break;
+			case 11: // corrode
+				break;
+			case 12: // electric
+				break;
+			case 13: // purify
+				break;
+			case 14: // corrupt
+				break;
+			}
 		}
-		value = Math.round(value / target.sparam(6)); // divide by toughness
-		return value;
+		
+		// get the final value
+		const value = Math.max(0, power + bonusBlunt - armor);
+		return Math.round(value / target.sparam(6)); // divide by toughness
 	};
 
 	Game_Action.prototype.calcElementRate = function(target) {
@@ -597,8 +650,8 @@
 		this._skillLevels.SpellSwd = 0;
 		this._skillLevels.BlackMgc = 0;
 		this._skillLevels.DevilEye = 0;
-		this._skillLevels.IronBody = 0;
 		this._skillLevels.Spirit   = 0;
+		this._skillLevels.IronBody = 0;
 	};
 	
 	Game_BattlerBase.prototype.skillLevel = function(skillName) {

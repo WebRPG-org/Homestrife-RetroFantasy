@@ -394,7 +394,7 @@
 			case 9: // fire
 			case 10: // ice
 			case 11: // corrode
-			case 12: // electric
+			case 12: // lightning
 			case 13: // purify
 			case 14: // corrupt
 				// this stuff can slip into cracks in armor
@@ -485,15 +485,22 @@
 		return roll;
 	};
 	
+	Game_Action.prototype.elementalPowerBonus = function() {
+		// if a weapon attack also has elemental damage types (fire, ice, etc), add this much power for each one
+		return 10;
+	};
+	
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate, weaponElementId) {
 		const item = this.item();
 		
 		// get the power from either the weapon or the skill itself. bonus damage from hit success amount
 		let power = this.subject().atk;
-		if(!this.isAttack() && item.stypeId != 1) {
+		if(!this.isAttack() && (item.stypeId != 1 || (item.id > 52 && item.id < 103))) {
+			// get power from the skill itself if its not an attack, and not one of the first 50 techs
 			power = this.evalDamageFormula(target);
 		}
-		power = power * 10 * (1 + successRate);
+		const powerMult = item.id === 52 ? 5 : 10; // pommel attack uses partial damage
+		power = power * powerMult * (1 + successRate);
 		
 		// armor, unless its a critical
 		const armor = critical ? 0 : target.def * 5;
@@ -502,10 +509,13 @@
 		const attackElements = this.subject().attackElements();
 		const isTrip = attackElements.indexOf(1) > 0;
 		const elements = attackElements.filter(element => element > 8);
-		if(weaponElementId > 1 && weaponElementId < 9) {
+		const isWeaponAttack = weaponElementId > 1 && weaponElementId < 9;
+		if(isWeaponAttack) {
 			elements.push(weaponElementId);
 		}
 		let bonusBlunt = 0;
+		let bonusElemental = 0;
+		const elementalBonus = this.elementalPowerBonus() * powerMult * (1 + successRate);
 		for(const element of elements) {
 			switch(element) {
 			case 0: // none
@@ -513,42 +523,52 @@
 			case 1: // trip
 				break;
 			case 2: // blunt
-				break;
-			case 3: // cut
+				// weapon damage types all convert damage reduced by armor into extra damage to some degree,
+				// to represent the blunt impact of even bladed or pointed weapons
 				bonusBlunt += Math.min(power, armor) / 2;
 				break;
+			case 3: // cut
+				bonusBlunt += Math.min(power, armor) / 4;
+				break;
 			case 4: // keen
-				bonusBlunt += Math.min(power, armor) / 4;
-				break;
-			case 5: // pierce
-				bonusBlunt += Math.min(power, armor) / 4;
-				break;
-			case 6: // stiletto
 				bonusBlunt += Math.min(power, armor) / 8;
 				break;
+			case 5: // pierce
+				bonusBlunt += Math.min(power, armor) / 8;
+				break;
+			case 6: // stiletto
+				bonusBlunt += Math.min(power, armor) / 16;
+				break;
 			case 7: // bullet
-				bonusBlunt += Math.min(power, armor);
+				bonusBlunt += Math.min(power, armor) / 2;
 				break;
 			case 8: // anti-armor
-				bonusBlunt += Math.min(power, armor);
+				bonusBlunt += Math.min(power, armor) / 2;
 				break;
 			case 9: // fire
+				// elemental damage is an extra bonus for weapons. otherwise it just comes from the skill power
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
 			case 10: // ice
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
 			case 11: // corrode
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
-			case 12: // electric
+			case 12: // lightning
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
 			case 13: // purify
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
 			case 14: // corrupt
+				bonusElemental += isWeaponAttack ? elementalBonus : 0;
 				break;
 			}
 		}
 		
 		// get the final value
-		const value = Math.max(0, power + bonusBlunt - armor);
+		const value = Math.max(0, power + bonusBlunt + bonusElemental - armor);
 		return Math.round(value / target.sparam(6)); // divide by toughness
 	};
 

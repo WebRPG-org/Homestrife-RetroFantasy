@@ -485,9 +485,9 @@
 		return roll;
 	};
 	
-	Game_Action.prototype.elementalPowerBonus = function() {
-		// if a weapon attack also has elemental damage types (fire, ice, etc), add this much power for each one
-		return 10;
+	Game_Action.prototype.elementalPowerRatio = function() {
+		// if a weapon attack also has elemental damage types (fire, ice, etc), this much of the power is actuall elemental damage
+		return 0.1;
 	};
 	
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate, weaponElementId) {
@@ -507,24 +507,34 @@
 		
 		// gather the elements and do element specific stuff
 		const attackElements = this.subject().attackElements();
-		const isTrip = attackElements.indexOf(1) > 0;
 		const elements = attackElements.filter(element => element > 8);
 		const isWeaponAttack = weaponElementId > 1 && weaponElementId < 9;
-		if(isWeaponAttack) {
-			elements.push(weaponElementId);
-		}
 		let bonusBlunt = 0;
-		let bonusElemental = 0;
-		const elementalBonus = this.elementalPowerBonus() * powerMult * (1 + successRate);
-		for(const element of elements) {
-			switch(element) {
-			case 0: // none
-				break;
-			case 1: // trip
-				break;
+		let elementalPower = 0;
+		if(isWeaponAttack) {
+			if (elements.length > 0) {
+				// if a weapon attack has elemental damage types, remove them from the total power
+				for(const element of elements) {
+					switch(element) {
+					case 9: // fire
+					case 10: // ice
+					case 11: // corrode
+					case 12: // lightning
+					case 13: // purify
+					case 14: // corrupt
+						// TODO: elemental resistences should get applied at some point
+						elementalPower += power * this.elementalPowerRatio();
+						break;
+					}
+				}
+				elementalPower = Math.min(power, elementalPower);
+				power = Math.max(0, power - elementalPower);
+			}
+			
+			// weapon damage types all convert damage reduced by armor into extra damage to some degree,
+			// to represent the blunt impact of even bladed or pointed weapons
+			switch(weaponElementId) {
 			case 2: // blunt
-				// weapon damage types all convert damage reduced by armor into extra damage to some degree,
-				// to represent the blunt impact of even bladed or pointed weapons
 				bonusBlunt += Math.min(power, armor) / 2;
 				break;
 			case 3: // cut
@@ -545,30 +555,13 @@
 			case 8: // anti-armor
 				bonusBlunt += Math.min(power, armor) / 2;
 				break;
-			case 9: // fire
-				// elemental damage is an extra bonus for weapons. otherwise it just comes from the skill power
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
-			case 10: // ice
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
-			case 11: // corrode
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
-			case 12: // lightning
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
-			case 13: // purify
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
-			case 14: // corrupt
-				bonusElemental += isWeaponAttack ? elementalBonus : 0;
-				break;
 			}
+		} else {
+			// TODO: elemental resistence for non-weapon attacks should get applied here
 		}
 		
 		// get the final value
-		const value = Math.max(0, power + bonusBlunt + bonusElemental - armor);
+		const value = Math.max(0, power + bonusBlunt + elementalPower - armor);
 		return Math.round(value / target.sparam(6)); // divide by toughness
 	};
 

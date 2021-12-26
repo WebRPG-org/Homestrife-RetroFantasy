@@ -340,10 +340,8 @@
 	};
 	
 	// Game Action
-	Game_Action.prototype.itemHit = function(/*target*/) {
-		//const successRate = this.item().successRate;
+	Game_Action.prototype.rangeType = function() {
 		// Figure out if its melee, ranged, or special
-		let subjectHit = this.subject().hit;
 		if(this.isAttack()) {
 			// need to dynamically figure things out for basic attacks
 			if(this.subject().equips) {
@@ -351,7 +349,7 @@
 				const weapon = this.subject().equips()[0];
 				if(weapon && weapon.wtypeId >= 16) {
 					// its a strictly ranged weapon
-					subjectHit = this.subject().xparam(2);
+					return "ranged";
 				}
 			} else {
 				// how does an enemy figure this out?
@@ -361,12 +359,29 @@
 			if(this.isMagical()) {
 				if(this.item().stypeId === 1) {
 					// weapon tech, so ranged
-					subjectHit = this.subject().xparam(2);
+					return "ranged";
 				} else {
 					// special (ranged, but ignoring the weapon)
-					subjectHit = this.subject().xparam(4);
+					return "special";
 				}
 			}
+		}
+		return "melee";
+	};
+	
+	Game_Action.prototype.itemHit = function(rangeType) {
+		//const successRate = this.item().successRate;
+		let subjectHit = 0;
+		switch(rangeType) {
+		case "melee":
+			subjectHit = this.subject().hit;
+			break;
+		case "ranged":
+			subjectHit = this.subject().xparam(2);
+			break;
+		case "special":
+			subjectHit = this.subject().xparam(4);
+			break;
 		}
 		return Math.max(0, subjectHit - Math.floor(this.subject().tp / 20));
 	};
@@ -435,9 +450,11 @@
 		// is "used" necessary?
 		//result.missed = result.used && Math.random() >= this.itemHit(target);
 		result.missed = false;
+		result.parry = false;
 		
 		// here's the new hit/miss math
-		const subjectHit = this.itemHit(target); // accuracy
+		const rangeType = this.rangeType();
+		const subjectHit = this.itemHit(rangeType); // accuracy
 		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
@@ -464,8 +481,17 @@
 			}
 			this.applyItemUserEffect(target);
 		} else if(!this.isCertainHit()) {
-			// apply stress even on miss
-			target.gainSilentTp(Math.round(20 * (Math.min(successRate, 0.5) / 0.5)));
+			if(rangeType === "melee") {
+				// check for a parry
+				result.parry = this.doRoll(subjectHit, targetEva) < target.xparam(5);
+			}
+			if(result.parry) {
+				// apply stress to attacker
+				this.subject().gainSilentTp(Math.max(0, Math.round(20 - (20 * (Math.min(successRate, 0.5) / 0.5)))));
+			} else {
+				// apply stress even on miss
+				target.gainSilentTp(Math.round(20 * (Math.min(successRate, 0.5) / 0.5)));
+			}
 		}
 		this.updateLastTarget(target);
 		$gameTemp.requestBattleRefresh();
@@ -2279,6 +2305,26 @@
 	};
 	
 	// Sprite Damage
+	Sprite_Damage.prototype.setup = function(target) {
+		const result = target.result();
+		if (result.missed || result.evaded) {
+			this._colorType = 0;
+			this.createMiss();
+		} else if (result.parry) {
+			this._colorType = 0;
+			this.createParry();
+		} else if (result.hpAffected) {
+			this._colorType = result.hpDamage >= 0 ? 0 : 1;
+			this.createDigits(result.hpDamage);
+		} else if (target.isAlive() && result.mpDamage !== 0) {
+			this._colorType = result.mpDamage >= 0 ? 2 : 3;
+			this.createDigits(result.mpDamage);
+		}
+		if (result.critical) {
+			this.setupCriticalEffect();
+		}
+	};
+	
 	Sprite_Damage.prototype.setupCriticalEffect = function() {
 		this._flashColor = [178, 16, 48, 255];
 		this._flashDuration = 60;
@@ -2289,6 +2335,14 @@
 		const h = $gameMap.tileHeight()/2;
 		const sprite = this.createChildSprite(w, h);
 		sprite.bitmap.drawText("Miss", 0, 0, w, h, "center");
+		sprite.dy = 0;
+	};
+	
+	Sprite_Damage.prototype.createParry = function() {
+		const w = $gameMap.tileWidth()/2*5;
+		const h = $gameMap.tileHeight()/2;
+		const sprite = this.createChildSprite(w, h);
+		sprite.bitmap.drawText("Parry", 0, 0, w, h, "center");
 		sprite.dy = 0;
 	};
 	

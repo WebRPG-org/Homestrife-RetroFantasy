@@ -3027,7 +3027,7 @@
 		if (this.needsCommand("equip")) {
 			this.addCommand(TextManager.equip, "equip", enabled);
 		}
-		this.addCommand("Skills", "skillLevels", enabled);
+		this.addCommand("SkillLvl", "skillLevels", enabled);
 		if (this.needsCommand("status")) {
 			this.addCommand(TextManager.status, "status", enabled);
 		}

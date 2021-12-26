@@ -1,0 +1,52 @@
+====Various Setting Explanations====
+===Classes===
+==Parameter Curves==
+Max HP: Health (always 100)
+Max MP: Endurance (always 100)
+Attack: Power (always 5)
+Defense: Armor (always 0)
+M.Attack: Nothing (always 0)
+M.Defense: Nothing (always 0)
+Agility: Agility (always 5)
+Luck: Nothing (always 0)
+
+==Traits==
+=Sp-Parameter=
+Physical Damage: Toughness, damage is divided by this number (Always 5%, actually represents a whole number)
+Floor Damage: Balance, attacks that only inflict stress are reduced by this (Always 5%, actually represents a whole number)
+
+=Ex-Parameter=
+TP Regeneration: Focus, determines stress recovered at turn start (Always 5%, actually represents a whole number)
+Hit Rate: Melee Accuracy (Always 5%, actually represents a whole number)
+Evasion Rate: Evasion (Always 5%, actually represents a whole number)
+Critical Rate: Ranged Accuracy (Always 5%, actually represents a whole number)
+Magic Evasion: Special Accuracy, ranged accuracy but without weapon bonuses (Always 5%, actually represents a whole number)
+Magic Reflection: Parry, like a critical fail chance for a melee attacker, which inflicts stress on the attacker (Always 5%)
+
+===Skills===
+==General Settings==
+MP Cost: Does nothing.
+TP Cost: Inflicts stress on the user.
+Hit Type: Physical Attack is Melee, Magical Attack is Ranged (for Attack and Techniques) or Special (for all other skills)
+
+==Damage==
+Type: HP Damage targets health, MP damage inflicts stress.
+Element: Does what you expect, but Trip doesn't really do anything here.
+Formula: Does nothing for Attack and weapon Techniques, otherwise is a flat value that represents attack power.
+
+==Effects==
+Gain TP: Reduces the target's stress.
+
+===Weapons===
+==General Settings==
+Weapon Type: Everything before Throw is a melee type. Throw and onward is strictly ranged. MeleThrw, 2HMelThr, and GrMelThr grant a "shot" tech corresponding to the weapon's first Attack Element that is a weapon damage type.
+
+==Traits==
+Attack Element: Blunt, Cut, Keen, Pierce, Siletto, Bullet, and Anti-Armor enable individual weapon Techs, and are known as weapon damage types. Regular attack and techs only utilize one of these, even if a weapon has more than one. Trip is a special type that enables a "trip" Tech that inflicts stress rather than damage. The remaining Attack Elements are elemental damage types. Each elemental damage type reprents 10% of the weapon's total power.
+
+Critical Hits: Critical hits are hits that ignore the target's armor. Crit chance is inherent to the Attack Element. Blunt, Cut, Keen has a low crit chance. Stiletto has a high crit chance. None and Trip can't crit. The rest have medium crit chance.
+
+===Armors===
+==Traits==
+=Ex-Parameter=
+Critial Evasion: Coverage. The higher this is, the lower chance that an attack will bypass armor. Over 90% and low crit chance attacks can't crit at all. Over 95% and the same is true of medium crit chance. Over 98% and not even high crit chance can, but you probably shouldn't do that because stiletto attacks should awalys be useful.

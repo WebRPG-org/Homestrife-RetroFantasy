@@ -297,6 +297,20 @@
 	
 	BattleManager.endAction = function() {
 		this._subject.useItem(this._action.item());
+		
+		// stress inflicted from using a flail
+		if(this._subject.equips) {
+			const weapon = this._subject.equips()[0];
+			if(weapon && weapon.wtypeId > 6 && weapon.wtypeId < 10) {
+				const skill = this._action.item();
+				if(skill.id === 1 || skill.id === 4) {
+					this._subject._tp += Game_Action.prototype.stressThreshold();
+					this._subject._tp = this._subject._tp.clamp(0, this.maxTp());
+					$gameTemp.requestBattleRefresh();
+				}
+			}
+		}
+		
 		this._logWindow.endAction(this._subject);
 		this._phase = "turn";
 		if (this._subject.numActions() === 0) {
@@ -322,7 +336,7 @@
 	
 	BattleManager.regenerateAllTp = function() {
 		for (const actor of $gameParty.allMembers()) {
-			actor.gainSilentMp(-actor.tp/10);
+			actor.gainSilentMp(-actor.tp/Game_Action.prototype.enduranceStressRatio());
 			actor.gainSilentTp(-actor.tp);
 		}
 	};
@@ -369,6 +383,10 @@
 		return "melee";
 	};
 	
+	Game_Action.prototype.stressThreshold = function() {
+		return 20;
+	}
+	
 	Game_Action.prototype.itemHit = function(rangeType) {
 		//const successRate = this.item().successRate;
 		let subjectHit = 0;
@@ -383,11 +401,11 @@
 			subjectHit = this.subject().xparam(4);
 			break;
 		}
-		return Math.max(0, subjectHit - Math.floor(this.subject().tp / 20));
+		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
-		return Math.max(0, target.eva - Math.floor(target.tp / 20));
+		return Math.max(0, target.eva - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
 	Game_Action.prototype.itemCri = function(target, elementId) {
@@ -487,10 +505,10 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				this.subject().gainSilentTp(Math.max(0, Math.round(20 - (20 * (Math.min(successRate, 0.5) / 0.5)))));
+				this.subject().gainSilentTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainSilentTp(Math.round(20 * (Math.min(successRate, 0.5) / 0.5)));
+				target.gainSilentTp(Math.round(this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -629,6 +647,10 @@
 		}
 	};
 	
+	Game_Action.prototype.enduranceStressRatio = function() {
+		return 10;
+	};
+	
 	Game_Action.prototype.itemEffectRecoverHp = function(target, effect) {
 		let value = (target.mhp * effect.value1 + effect.value2) * target.rec;
 		if (this.isItem()) {
@@ -640,7 +662,7 @@
 			if($gameParty.inBattle()) {
 				target.gainSilentTp(stressRate);
 			} else {
-				target.gainSilentMp(-stressRate/10);
+				target.gainSilentMp(-stressRate/this.enduranceStressRatio());
 			}
 			target.gainHp(value);
 			this.makeSuccess(target);
@@ -792,7 +814,7 @@
 			this._tp = this._tp.clamp(0, this.maxTp());
 			$gameTemp.requestBattleRefresh();
 		} else {
-			this._mp -= (this.skillMpCost(skill) + this.skillTpCost(skill))/10;
+			this._mp -= (this.skillMpCost(skill) + this.skillTpCost(skill))/Game_Action.prototype.enduranceStressRatio();
 			this._mp = this._mp.clamp(0, this.mmp);
 		}
 	};
@@ -808,11 +830,11 @@
 	
 	Game_Battler.prototype.regenerateTp = function() {
 		const regenRate = this.xparam(9)*4;
-		const tpRate = Math.min(Math.floor(this.mp*10), regenRate);
+		const tpRate = Math.min(Math.floor(this.mp*Game_Action.prototype.enduranceStressRatio()), regenRate);
 		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
 		const mpRate = Math.min(this.tp, tpRate);
 		this.gainSilentTp(-adjustedTpRate);
-		this.gainSilentMp(-mpRate/10);
+		this.gainSilentMp(-mpRate/Game_Action.prototype.enduranceStressRatio());
 	};
 	
 	Game_Battler.prototype.onDamage = function(value) {

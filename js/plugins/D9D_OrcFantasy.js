@@ -392,7 +392,7 @@
 		let subjectHit = 0;
 		switch(rangeType) {
 		case "melee":
-			subjectHit = this.subject().hit;
+			subjectHit = this.subject().hit - (this.subject().backRow() ? 2 : 0);
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
@@ -401,7 +401,7 @@
 			subjectHit = this.subject().xparam(4);
 			break;
 		}
-		return Math.max(0, subjectHit - (this.subject().backRow() ? 2 : 0) - Math.floor(this.subject().tp / this.stressThreshold()));
+		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 
 	Game_Action.prototype.itemEva = function(target) {

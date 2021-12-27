@@ -1104,6 +1104,46 @@
 		return list;
 	};
 	
+	// Game Unit
+	Game_Unit.prototype.randomTarget = function(ignoreRow) {
+		if(ignoreRow) { return this.randomTargetEqualChance(this.aliveMembers()); }
+		
+		// check if there's both front and back row members
+		const frontRow = [];
+		const backRow = [];
+		for (const member of this.aliveMembers()) {
+			if(member.backRow()) {
+				backRow.push(member);
+			} else {
+				frontRow.push(member);
+			}
+		}
+		
+		// everyone's in the same row, treat them equally
+		if(frontRow.length == 0 || backRow.length == 0) { return this.randomTargetEqualChance(this.aliveMembers()); }
+		
+		// figure out which row is targeted
+		const frontRowChance = frontRow.length > 2 ? 0.9 : (frontRow.length == 2 ? 0.8 : 0.6);
+		const rowRand = Math.random();
+		if(rowRand >= frontRowChance) {
+			return this.randomTargetEqualChance(backRow);
+		}
+		return this.randomTargetEqualChance(frontRow);
+	};
+	
+	Game_Unit.prototype.randomTargetEqualChance = function(members) {
+		let tgrRand = Math.random();
+		const tgrThreshold = 1 / members.length;
+		let target = null;
+		for (const member of members) {
+			tgrRand -= tgrThreshold;
+			if (tgrRand <= 0 && !target) {
+				target = member;
+			}
+		}
+		return target;
+	};
+	
 	// Game Party
 	Game_Party.prototype.swapOrder = function(index1, index2) {
 		if(index1 === index2) {
@@ -1118,6 +1158,22 @@
 	
 	Game_Party.prototype.svActorsForSavefile = function() {
 		return this.battleMembers().map(actor => actor.battlerName());
+	};
+	
+	Game_Party.prototype.setupBattleTestMembers = function() {
+		for (let i = 0; i < $dataSystem.testBattlers.length; i++) {
+			const battler = $dataSystem.testBattlers[i];
+			const actor = $gameActors.actor(battler.actorId);
+			if (actor) {
+				actor.changeLevel(battler.level, false);
+				actor.initEquips(battler.equips);
+				actor.recoverAll();
+				if(i > 1) {
+					actor.toggleRow();
+				}
+				this.addActor(battler.actorId);
+			}
+		}
 	};
 	
 	// Game Character Base

@@ -401,11 +401,11 @@
 			subjectHit = this.subject().xparam(4);
 			break;
 		}
-		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
+		return Math.max(0, subjectHit - (this.subject().backRow() ? 2 : 0) - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
-		return Math.max(0, target.eva - Math.floor(target.tp / this.stressThreshold()));
+		return Math.max(0, target.eva + (target.isGuard() ? 2 : 0) - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
 	Game_Action.prototype.itemCri = function(target, elementId) {
@@ -473,7 +473,7 @@
 		// here's the new hit/miss math
 		const rangeType = this.rangeType();
 		const subjectHit = this.itemHit(rangeType); // accuracy
-		const targetEva = this.itemEva(target) + (target.isGuard() ? 2 : 0); // evasion, guarding adds a bonus
+		const targetEva = this.itemEva(target); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
 		// new hit/miss math over

@@ -990,6 +990,98 @@
 		return 2;
 	};
 	
+	Game_Actor.prototype.addedSkills = function() {
+		const returnSkills = Game_BattlerBase.prototype.addedSkills.call(this);
+		// get skills from weapon damage types
+		const weapon = this.equips()[0];
+		if(weapon) {
+			// just add pommel
+			returnSkills.push(52);
+			
+			// is it throwable melee?
+			const rangeType = weapon.wtypeId < 16 ? "melee" : "ranged";
+			const isThrowableMelee = weapon.wtypeId > 12 && weapon.wtypeId < 16;
+			
+			const attackElements = (weapon.traits.filter(trait => trait.code === Game_BattlerBase.TRAIT_ATTACK_ELEMENT)).reduce((r, trait) => r.concat(trait.dataId), []);
+			let isFirst = true;
+			for(const attackElement of attackElements) {
+				if(attackElement > 8) {
+					// ignore elemental damage types
+					continue;
+				}
+				switch(attackElement) {
+				case 1: // trip
+					returnSkills.push(rangeType === "melee" ? 99 : 100);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(100);
+					}
+					break;
+				case 2: // blunt
+					returnSkills.push(rangeType === "melee" ? 4 : 11);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(11);
+					}
+					break;
+				case 3: // cut
+					returnSkills.push(rangeType === "melee" ? 5 : 12);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(12);
+					}
+					break;
+				case 4: // keen
+					returnSkills.push(rangeType === "melee" ? 6 : 13);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(13);
+					}
+					break;
+				case 5: // pierce
+					returnSkills.push(rangeType === "melee" ? 7 : 14);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(14);
+					}
+					break;
+				case 6: // stiletto
+					returnSkills.push(rangeType === "melee" ? 8 : 15);
+					if(isFirst && isThrowableMelee && rangeType === "melee") {
+						returnSkills.push(15);
+					}
+					break;
+				case 7: // bullet
+					returnSkills.push(9);
+					break;
+				case 8: // anti-armor
+					returnSkills.push(10);
+					break;
+				}
+				isFirst = false;
+			}
+		}
+		return returnSkills;
+	};
+	
+	Game_Actor.prototype.skills = function() {
+		const list = [];
+		// get all the skill ids
+		let skillIds = this._skills.concat(this.addedSkills());
+		
+		// filter out duplicates
+		skillIds = skillIds.filter(function(item, pos, self) {
+			return self.indexOf(item) == pos;
+		})
+		
+		// sort by id
+		skillIds.sort(function(a, b) {
+		  return a - b;
+		});
+		
+		for (const id of skillIds) {
+			if (!list.includes($dataSkills[id])) {
+				list.push($dataSkills[id]);
+			}
+		}
+		return list;
+	};
+	
 	// Game Party
 	Game_Party.prototype.swapOrder = function(index1, index2) {
 		if(index1 === index2) {

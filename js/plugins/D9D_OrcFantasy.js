@@ -928,7 +928,7 @@
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		const regenRate = this.xparam(9)*4;
+		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()/5;
 		const tpRate = Math.min(Math.floor(this.mp*Game_Action.prototype.enduranceStressRatio()), regenRate);
 		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
 		const mpRate = Math.min(this.tp, tpRate);

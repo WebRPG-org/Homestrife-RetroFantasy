@@ -304,7 +304,7 @@
 			if(weapon && weapon.wtypeId > 6 && weapon.wtypeId < 10) {
 				const skill = this._action.item();
 				if(skill.id === 1 || skill.id === 4) {
-					this._subject._tp += Game_Action.prototype.stressThreshold();
+					this._subject._tp += Game_Action.prototype.stressThreshold()*2;
 					this._subject._tp = this._subject._tp.clamp(0, this.maxTp());
 					$gameTemp.requestBattleRefresh();
 				}
@@ -483,7 +483,7 @@
 	};
 	
 	Game_Action.prototype.stressThreshold = function() {
-		return 20;
+		return 10;
 	}
 	
 	Game_Action.prototype.itemHit = function(rangeType) {
@@ -604,10 +604,10 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				this.subject().gainSilentTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)))));
+				this.subject().gainSilentTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainSilentTp(Math.round(this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)));
+				target.gainSilentTp(Math.round(this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -924,7 +924,7 @@
 	};
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
-		this.gainSilentTp(20+damageRate);
+		this.gainSilentTp(Game_Action.prototype.stressThreshold()+damageRate);
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
@@ -2579,11 +2579,13 @@
 	Sprite_Damage.prototype.setup = function(target) {
 		const result = target.result();
 		if (result.missed || result.evaded) {
-			this._colorType = 0;
-			this.createMiss();
-		} else if (result.parry) {
-			this._colorType = 0;
-			this.createParry();
+			if (result.parry) {
+				this._colorType = 0;
+				this.createParry();
+			} else {
+				this._colorType = 0;
+				this.createMiss();
+			}
 		} else if (result.hpAffected) {
 			this._colorType = result.hpDamage >= 0 ? 0 : 1;
 			this.createDigits(result.hpDamage);

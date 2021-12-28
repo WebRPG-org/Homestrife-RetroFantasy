@@ -1,10 +1,10 @@
 [
 null,
 {"id":1,"atypeId":0,"description":"","etypeId":2,"traits":[{"code":22,"dataId":1,"value":0}],"iconIndex":0,"name":"-----SIMPLE","note":"","params":[0,0,0,0,0,0,0,0],"price":0},
-{"id":2,"atypeId":4,"description":"A round wooden shield.","etypeId":2,"traits":[{"code":22,"dataId":1,"value":0.02},{"code":22,"dataId":5,"value":0.1}],"iconIndex":128,"name":"Targe","note":"{\n\"image\": 1\n}","params":[0,0,0,3,0,0,0,0],"price":15},
+{"id":2,"atypeId":4,"description":"A round wooden shield.","etypeId":2,"traits":[{"code":22,"dataId":1,"value":0.06},{"code":22,"dataId":5,"value":0.06}],"iconIndex":128,"name":"Targe","note":"{\n\"image\": 1\n}","params":[0,0,0,3,0,0,0,0],"price":15},
 {"id":3,"atypeId":1,"description":"A rugged, wide-brimmed hat.","etypeId":3,"traits":[{"code":22,"dataId":3,"value":0.1}],"iconIndex":131,"name":"BrimHat","note":"","params":[0,0,0,2,0,0,0,0],"price":4},
 {"id":4,"atypeId":1,"description":"A thick cloth head wrapping.","etypeId":3,"traits":[{"code":22,"dataId":3,"value":0.2}],"iconIndex":133,"name":"Coif","note":"","params":[0,0,0,2,0,0,0,0],"price":6},
-{"id":5,"atypeId":1,"description":"An adjustable cloak that can\neven fit over armor.","etypeId":4,"traits":[{"code":22,"dataId":1,"value":0.01}],"iconIndex":146,"name":"Cloak","note":"","params":[0,0,0,0,0,0,0,0],"price":15},
+{"id":5,"atypeId":1,"description":"An adjustable cloak that can\neven fit over armor.","etypeId":4,"traits":[{"code":22,"dataId":1,"value":0.02}],"iconIndex":146,"name":"Cloak","note":"","params":[0,0,0,2,0,0,0,0],"price":15},
 {"id":6,"atypeId":1,"description":"A long, durable traveling coat\nwith defensive padding.","etypeId":5,"traits":[{"code":22,"dataId":3,"value":0.3}],"iconIndex":136,"name":"Coat","note":"","params":[0,0,0,4,0,0,0,0],"price":25},
 {"id":7,"atypeId":1,"description":"Rugged pants, made for travel\nand strenuous activity.","etypeId":6,"traits":[{"code":22,"dataId":3,"value":0.2}],"iconIndex":139,"name":"Pants","note":"","params":[0,0,0,3,0,0,0,0],"price":15},
 {"id":8,"atypeId":1,"description":"A durable traveling skirt, long\nand unrestricting.","etypeId":6,"traits":[{"code":22,"dataId":3,"value":0.2}],"iconIndex":140,"name":"Skirt","note":"","params":[0,0,0,3,0,0,0,0],"price":15},

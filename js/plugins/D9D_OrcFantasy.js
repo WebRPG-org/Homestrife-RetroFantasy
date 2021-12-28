@@ -354,6 +354,105 @@
 	};
 	
 	// Game Action
+	Game_Action.prototype.decideRandomTarget = function() {
+		let target;
+		if (this.isForDeadFriend()) {
+			target = this.friendsUnit().randomDeadTarget();
+		} else if (this.isForFriend()) {
+			target = this.friendsUnit().randomTarget(true);
+		} else {
+			target = this.opponentsUnit().randomTarget(false, this.isReach());
+		}
+		if (target) {
+			this._targetIndex = target.index();
+		} else {
+			this.clear();
+		}
+	};
+	
+	Game_Action.prototype.confusionTarget = function() {
+		switch (this.subject().confusionLevel()) {
+			case 1:
+				return this.opponentsUnit().randomTarget(false, this.isReach());
+			case 2:
+				if (Math.randomInt(2) === 0) {
+					return this.opponentsUnit().randomTarget(false, this.isReach());
+				}
+				return this.friendsUnit().randomTarget(false, this.isReach());
+			default:
+				return this.friendsUnit().randomTarget(false, this.isReach());
+		}
+	};
+	
+	Game_Action.prototype.targetsForOpponents = function() {
+		const unit = this.opponentsUnit();
+		if (this.isForRandom()) {
+			return this.randomTargets(unit);
+		} else {
+			return this.targetsForAlive(unit);
+		}
+	};
+
+	Game_Action.prototype.targetsForFriends = function() {
+		const unit = this.friendsUnit();
+		if (this.isForUser()) {
+			return [this.subject()];
+		} else if (this.isForDeadFriend()) {
+			return this.targetsForDead(unit);
+		} else if (this.isForAliveFriend()) {
+			return this.targetsForAlive(unit, true);
+		} else {
+			return this.targetsForDeadAndAlive(unit);
+		}
+	};
+	
+	Game_Action.prototype.randomTargets = function(unit) {
+		const targets = [];
+		for (let i = 0; i < this.numTargets(); i++) {
+			targets.push(unit.randomTarget(false, this.isReach()));
+		}
+		return targets;
+	};
+	
+	Game_Action.prototype.targetsForAlive = function(unit, forFriends) {
+		if (this.isForOne()) {
+			if (this._targetIndex < 0) {
+				return [unit.randomTarget(forFriends, this.isReach())];
+			} else {
+				return [unit.smoothTarget(this._targetIndex)];
+			}
+		} else {
+			return unit.aliveMembers();
+		}
+	};
+	
+	Game_Action.prototype.isReach = function() {
+		// Figure out if its melee, ranged, or special
+		if(this.isAttack()) {
+			// need to dynamically figure things out for basic attacks
+			if(this.subject().equips) {
+				// actor basic attack hit is based on weapon type
+				const weapon = this.subject().equips()[0];
+				if(
+					weapon && (
+						weapon.wtypeId >= 16 || // strictly ranged
+						(weapon.wtypeId > 9 && weapon.wtypeId < 13) // reach weapon
+					)
+				) {
+					return true;
+				}
+			} else {
+				// how does an enemy figure this out?
+			}
+		} else if(!this.isGuard()) {
+			// for other skills, just base it on the skill itself
+			if(this.isMagical()) {
+				return true;
+			}
+		}
+		return false;
+	};
+	
 	Game_Action.prototype.rangeType = function() {
 		// Figure out if its melee, ranged, or special
 		if(this.isAttack()) {
@@ -1105,7 +1204,7 @@
 	};
 	
 	// Game Unit
-	Game_Unit.prototype.randomTarget = function(ignoreRow) {
+	Game_Unit.prototype.randomTarget = function(ignoreRow, reach) {
 		if(ignoreRow) { return this.randomTargetEqualChance(this.aliveMembers()); }
 		
 		// check if there's both front and back row members
@@ -1123,7 +1222,9 @@
 		if(frontRow.length == 0 || backRow.length == 0) { return this.randomTargetEqualChance(this.aliveMembers()); }
 		
 		// figure out which row is targeted
-		const frontRowChance = frontRow.length > 2 ? 0.9 : (frontRow.length == 2 ? 0.8 : 0.6);
+		const rowDifference = frontRow.length - backRow.length;
+		let frontRowChance = (reach ? 0.6 : 0.8) + Math.abs(rowDifference) * (rowDifference >= 0 ? 0.5 : -1);
+		frontRowChance = frontRowChance.clamp(0.5, 0.9);
 		const rowRand = Math.random();
 		if(rowRand >= frontRowChance) {
 			return this.randomTargetEqualChance(backRow);

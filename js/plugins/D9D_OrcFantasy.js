@@ -2052,11 +2052,30 @@
 		this._actorCommandWindow.hide();
 	};
 	
+	Scene_Battle.prototype.commandGuard = function() {
+		const action = BattleManager.inputtingAction();
+		action.setGuard();
+		this.turnInputsDone();
+	};
+	
 	Scene_Battle.prototype.commandItem = function() {
 		this._itemWindow.refresh();
 		this._itemWindow.show();
 		this._itemWindow.activate();
 		this._actorCommandWindow.hide();
+	};
+	
+	Scene_Battle.prototype.turnInputsDone = function() {
+		BattleManager.finishActorInput();
+		this.hideSubInputWindows();
+		this.endCommandSelection();
+	};
+	
+	Scene_Battle.prototype.onActorOk = function() {
+		const action = BattleManager.inputtingAction();
+		action.setTarget(this._actorWindow.index());
+		this.hideSubInputWindows();
+		this.turnInputsDone();
 	};
 	
 	Scene_Battle.prototype.startEnemySelection = function() {
@@ -2070,10 +2089,7 @@
 		const action = BattleManager.inputtingAction();
 		action.setTarget(this._enemyWindow.enemyIndex());
 		this.hideSubInputWindows();
-		//this.selectNextCommand();
-		BattleManager.finishActorInput();
-		this.hideSubInputWindows();
-		this.endCommandSelection();
+		this.turnInputsDone();
 	};
 	
 	Scene_Battle.prototype.onEnemyCancel = function() {

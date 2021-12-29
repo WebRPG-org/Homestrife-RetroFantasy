@@ -21,7 +21,7 @@ Hit Rate: Melee Accuracy (Always 5%, actually represents a whole number)
 Evasion Rate: Evasion (Always 5%, actually represents a whole number)
 Critical Rate: Ranged Accuracy (Always 5%, actually represents a whole number)
 Magic Evasion: Special Accuracy, ranged accuracy but without weapon bonuses (Always 5%, actually represents a whole number)
-Magic Reflection: Parry, like a critical fail chance for a melee attacker, which inflicts stress on the attacker (Always 5%)
+Magic Reflection: Parry, like a critical fail chance for a melee attacker, which inflicts stress on the attacker (Always 1%)
 
 ===Skills===
 ==General Settings==

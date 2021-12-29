@@ -1938,8 +1938,8 @@
 		} else {
 			this.startFadeOut(this.fadeSpeed(), false);
 		}
-		this._partyCommandWindow.close();
-		this._actorCommandWindow.close();
+		this._partyCommandWindow.hide();
+		this._actorCommandWindow.hide();
 	};
 	
 	Scene_Battle.prototype.updateStatusWindowVisibility = function() {
@@ -2015,18 +2015,32 @@
 		return this.skillWindowRect();
 	};
 	
+	Scene_Battle.prototype.closeCommandWindows = function() {
+		this._partyCommandWindow.deactivate();
+		this._actorCommandWindow.deactivate();
+		this._partyCommandWindow.hide();
+		this._actorCommandWindow.hide();
+	};
+	
 	Scene_Battle.prototype.startPartyCommandSelection = function() {
 		this._statusWindow.deselect();
 		this._actorCommandWindow.setup(null);
-		this._actorCommandWindow.close();
+		this._actorCommandWindow.hide();
 		this._partyCommandWindow.setup();
 	};
 	
 	Scene_Battle.prototype.startActorCommandSelection = function() {
 		this._statusWindow.selectActor(BattleManager.actor());
-		this._partyCommandWindow.close();
+		this._partyCommandWindow.hide();
 		this._actorCommandWindow.show();
 		this._actorCommandWindow.setup(BattleManager.actor());
+	};
+	
+	Scene_Battle.prototype.commandAttack = function() {
+		const action = BattleManager.inputtingAction();
+		action.setAttack();
+		this.onSelectAction();
+		this._actorCommandWindow.hide();
 	};
 	
 	Scene_Battle.prototype.commandSkill = function() {
@@ -2052,10 +2066,21 @@
 		this._enemyWindow.activate();
 	};
 	
+	Scene_Battle.prototype.onEnemyOk = function() {
+		const action = BattleManager.inputtingAction();
+		action.setTarget(this._enemyWindow.enemyIndex());
+		this.hideSubInputWindows();
+		//this.selectNextCommand();
+		BattleManager.finishActorInput();
+		this.hideSubInputWindows();
+		this.endCommandSelection();
+	};
+	
 	Scene_Battle.prototype.onEnemyCancel = function() {
 		this._enemyWindow.hide();
 		switch (this._actorCommandWindow.currentSymbol()) {
 			case "attack":
+				this._actorCommandWindow.show();
 				this._actorCommandWindow.activate();
 				break;
 			case "skill":
@@ -4860,6 +4885,36 @@
 				// do nothing
 			}
 		}
+	};
+	
+	// Window Party Command
+	Window_PartyCommand.prototype.initialize = function(rect) {
+		Window_Command.prototype.initialize.call(this, rect);
+		this.hide();
+		this.deactivate();
+	};
+
+	Window_PartyCommand.prototype.setup = function() {
+		this.refresh();
+		this.forceSelect(0);
+		this.activate();
+		this.show();
+	};
+	
+	// Window Actor Command
+	Window_ActorCommand.prototype.initialize = function(rect) {
+		Window_Command.prototype.initialize.call(this, rect);
+		this.hide();
+		this.deactivate();
+		this._actor = null;
+	};
+	
+	Window_ActorCommand.prototype.setup = function(actor) {
+		this._actor = actor;
+		this.refresh();
+		this.selectLast();
+		this.activate();
+		this.show();
 	};
 	
 	// Window Battle Status

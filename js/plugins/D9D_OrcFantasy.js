@@ -1931,6 +1931,20 @@
 	};
 	
 	// Scene Battle
+	Scene_Battle.prototype.changeInputWindow = function() {
+		this.hideSubInputWindows();
+		if (BattleManager.isInputting() && !this._turnInputsDone) {
+			if (BattleManager.actor()) {
+				this.startActorCommandSelection();
+			} else {
+				this.startPartyCommandSelection();
+			}
+		} else {
+			this.endCommandSelection();
+		}
+		this._turnInputsDone = false;
+	};
+	
 	Scene_Battle.prototype.stop = function() {
 		Scene_Message.prototype.stop.call(this);
 		if (this.needsSlowFadeOut()) {
@@ -2069,6 +2083,7 @@
 		BattleManager.finishActorInput();
 		this.hideSubInputWindows();
 		this.endCommandSelection();
+		this._turnInputsDone = true;
 	};
 	
 	Scene_Battle.prototype.onActorOk = function() {

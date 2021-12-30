@@ -491,7 +491,7 @@
 		let subjectHit = 0;
 		switch(rangeType) {
 		case "melee":
-			subjectHit = this.subject().hit - (this.subject().backRow() ? 2 : 0);
+			subjectHit = this.subject().hit - (this.subject().backRow() ? 5 : 0);
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
@@ -504,7 +504,7 @@
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
-		return Math.max(0, target.eva + (target.isGuard() ? 2 : 0) - Math.floor(target.tp / this.stressThreshold()));
+		return Math.max(0, target.eva + (target.isGuard() ? 5 : 0) - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
 	Game_Action.prototype.itemCri = function(target, elementId) {
@@ -924,11 +924,11 @@
 	};
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
-		this.gainSilentTp(Game_Action.prototype.stressThreshold()+damageRate);
+		this.gainSilentTp(Game_Action.prototype.stressThreshold()*2+damageRate);
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()/5;
+		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()*2/5;
 		const tpRate = Math.min(Math.floor(this.mp*Game_Action.prototype.enduranceStressRatio()), regenRate);
 		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
 		const mpRate = Math.min(this.tp, tpRate);

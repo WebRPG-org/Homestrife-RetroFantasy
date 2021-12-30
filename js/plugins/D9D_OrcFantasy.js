@@ -486,12 +486,12 @@
 		return 10;
 	}
 	
-	Game_Action.prototype.itemHit = function(rangeType) {
+	Game_Action.prototype.itemHit = function(target, rangeType) {
 		//const successRate = this.item().successRate;
 		let subjectHit = 0;
 		switch(rangeType) {
 		case "melee":
-			subjectHit = this.subject().hit - (this.subject().backRow() ? 5 : 0);
+			subjectHit = this.subject().hit - (this.subject().backRow() || target.backRow() ? 5 : 0);
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
@@ -571,7 +571,7 @@
 		
 		// here's the new hit/miss math
 		const rangeType = this.rangeType();
-		const subjectHit = this.itemHit(rangeType); // accuracy
+		const subjectHit = this.itemHit(target, rangeType); // accuracy
 		const targetEva = this.itemEva(target); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
@@ -2027,6 +2027,14 @@
 	
 	Scene_Battle.prototype.enemyWindowRect = function() {
 		return this.skillWindowRect();
+	};
+	
+	Scene_Battle.prototype.messageWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
+		const wx = 0;
+		const wy = Graphics.boxHeight-wh;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	Scene_Battle.prototype.closeCommandWindows = function() {

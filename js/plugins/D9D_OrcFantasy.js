@@ -486,12 +486,15 @@
 		return 10;
 	}
 	
-	Game_Action.prototype.itemHit = function(target, rangeType) {
+	Game_Action.prototype.itemHit = function(target, rangeType, isReach) {
 		//const successRate = this.item().successRate;
 		let subjectHit = 0;
 		switch(rangeType) {
 		case "melee":
-			subjectHit = this.subject().hit - (this.subject().backRow() || target.backRow() ? 5 : 0);
+			subjectHit = this.subject().hit;
+			const rangePenalty = 5;
+			const totalPenalty = Math.max(0, (this.subject().backRow() ? rangePenalty : 0) + (target.backRow() ? rangePenalty : 0) - (isReach ? rangePenalty : 0));
+			subjectHit -= totalPenalty;
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
@@ -507,55 +510,33 @@
 		return Math.max(0, target.eva + (target.isGuard() ? 5 : 0) - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
-	Game_Action.prototype.itemCri = function(target, elementId) {
+	Game_Action.prototype.itemCri = function(target) {
 		if(this.item().damage.critical) {
+			let elementId = 0;
+			if (this.isAttack()) {
+				const elements = this.subject().attackElements();
+				for(const element of elements) {
+					if(element === 2) { // high crit
+						elementId = 2;
+						break;
+					}
+				}
+			} else {
+				elementId = this.item().damage.elementId;
+			}
+			
 			let critEva = target.cev;
 			if(critEva === 0) { return 0; }
 			switch(elementId) {
 			case 0: // none
-			case 1: // trip
-			case 2: // blunt
-			case 3: // cut
-			case 4: // keen
+			case 1: // piercing
 				// this stuff has a hard time getting around armor
 				critEva += 0.09;
-				break;
-			case 5: // pierce
-			case 7: // bullet
-			case 8: // anti-armor
-			case 9: // fire
-			case 10: // ice
-			case 11: // corrode
-			case 12: // lightning
-			case 13: // purify
-			case 14: // corrupt
-				// this stuff can slip into cracks in armor
-				critEva += 0.04;
-				break;
-			case 6: // stiletto
-				// this can just outright punch through the smallest openings
-				critEva += 0.01;
 				break;
 			}
 			return critEva;
 		} else {
 			return 1;
-		}
-	};
-	
-	Game_Action.prototype.bestElementId = function(target) {
-		// figure out the best damage type to use, when there are multiple weapon damage types
-		if (this.isAttack()) {
-			const elements = this.subject().attackElements();
-			for(const element of elements) {
-				if(element > 1 && element < 9) {
-					// TODO: actually figure this logic out. just return the first weapon damage type for now
-					return element;
-				}
-			}
-			return 0;
-		} else {
-			return this.item().damage.elementId;
 		}
 	};
 	
@@ -571,7 +552,8 @@
 		
 		// here's the new hit/miss math
 		const rangeType = this.rangeType();
-		const subjectHit = this.itemHit(target, rangeType); // accuracy
+		const isReach = this.isReach();
+		const subjectHit = this.itemHit(target, rangeType, isReach); // accuracy
 		const targetEva = this.itemEva(target); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
 		result.evaded = successRate < 0.5;
@@ -582,15 +564,13 @@
 		result.physical = true;
 		result.drain = false;
 		
-		const bestElementId = this.bestElementId(target);
-		
 		if (result.isHit()) {
 			if (this.item().damage.type > 0) {
 				// here's the new critical math
-				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target, bestElementId);
+				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
 				// new critical math over
 				
-				const value = this.makeDamageValue(target, result.critical, successRate - 0.5, bestElementId);
+				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
 				this.executeDamage(target, value);
 			}
 			for (const effect of this.item().effects) {
@@ -633,7 +613,7 @@
 		return 0.1;
 	};
 	
-	Game_Action.prototype.makeDamageValue = function(target, critical, successRate, weaponElementId) {
+	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
 		const item = this.item();
 		
 		// get the power from either the weapon or the skill itself. bonus damage from hit success amount
@@ -649,22 +629,40 @@
 		const armor = critical ? 0 : target.def * 5;
 		
 		// gather the elements and do element specific stuff
-		const attackElements = this.subject().attackElements();
-		const elements = attackElements.filter(element => element > 8);
-		const isWeaponAttack = weaponElementId > 1 && weaponElementId < 9;
-		let bonusBlunt = 0;
+		let isWeaponAttack = false;
+		let isPiercing = false;
+		const fluidElements = [];
+		if (this.isAttack() || (item.stypeId == 1 && item.id > 3 && item.id < 53)) {
+			isWeaponAttack = true;
+			const elements = this.subject().attackElements();
+			if(!this.isAttack()) {
+				// get rid of the weapon's piercing and high crit and use the skill's element instead
+				elements.filter(element => element > 2);
+				elements.push(this.item().damage.elementId);
+			}
+			for(const element of elements) {
+				if(element === 1) {
+					isPiercing = true;
+				} else if(element > 2) {
+					fluidElements.push(element);
+				}
+			}
+		} else {
+			isPiercing = this.item().damage.elementId === 1;
+		}
+		
 		let elementalPower = 0;
 		if(isWeaponAttack) {
-			if (elements.length > 0) {
+			if (fluidElements.length > 0) {
 				// if a weapon attack has elemental damage types, remove them from the total power
-				for(const element of elements) {
+				for(const element of fluidElements) {
 					switch(element) {
-					case 9: // fire
-					case 10: // ice
-					case 11: // corrode
-					case 12: // lightning
-					case 13: // purify
-					case 14: // corrupt
+					case 3: // fire
+					case 4: // ice
+					case 5: // corrode
+					case 6: // lightning
+					case 7: // purify
+					case 8: // corrupt
 						// TODO: elemental resistences should get applied at some point
 						elementalPower += power * this.elementalPowerRatio();
 						break;
@@ -673,35 +671,12 @@
 				elementalPower = Math.min(power, elementalPower);
 				power = Math.max(0, power - elementalPower);
 			}
-			
-			// weapon damage types all convert damage reduced by armor into extra damage to some degree,
-			// to represent the blunt impact of even bladed or pointed weapons
-			switch(weaponElementId) {
-			case 2: // blunt
-				bonusBlunt += Math.min(power, armor) / 2;
-				break;
-			case 3: // cut
-				bonusBlunt += Math.min(power, armor) / 4;
-				break;
-			case 4: // keen
-				bonusBlunt += Math.min(power, armor) / 8;
-				break;
-			case 5: // pierce
-				bonusBlunt += Math.min(power, armor) / 8;
-				break;
-			case 6: // stiletto
-				bonusBlunt += Math.min(power, armor) / 16;
-				break;
-			case 7: // bullet
-				bonusBlunt += Math.min(power, armor) / 2;
-				break;
-			case 8: // anti-armor
-				bonusBlunt += Math.min(power, armor) / 2;
-				break;
-			}
 		} else {
 			// TODO: elemental resistence for non-weapon attacks should get applied here
 		}
+		
+		// piercing basically ignores 50% of the power that would have been reduced
+		const bonusBlunt = isPiercing ? Math.min(power, armor) / 2 : 0;
 		
 		// get the final value
 		const value = Math.max(0, power + bonusBlunt + elementalPower - armor);
@@ -1081,9 +1056,8 @@
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
-		if(weapon && weapon.d9dInfo.image !== undefined && weapon.d9dInfo.motions !== undefined) {
-			// TODO: base motion on attack type
-			this.requestMotion(weapon.d9dInfo.motions[0]);
+		if(weapon && weapon.d9dInfo.image !== undefined && weapon.d9dInfo.motion !== undefined) {
+			this.requestMotion(weapon.d9dInfo.motion);
 			this.startWeaponAnimation(weapon.d9dInfo.image);
 			this.startTrail(weapon.d9dInfo.trail);
 		} else {
@@ -1109,75 +1083,6 @@
 	
 	Game_Actor.prototype.bareHandsElementId = function() {
 		return 2;
-	};
-	
-	Game_Actor.prototype.addedSkills = function() {
-		const returnSkills = Game_BattlerBase.prototype.addedSkills.call(this);
-		// get skills from weapon damage types
-		const weapon = this.equips()[0];
-		if(weapon) {
-			// just add pommel
-			returnSkills.push(52);
-			
-			// is it throwable melee?
-			const rangeType = weapon.wtypeId < 16 ? "melee" : "ranged";
-			const isThrowableMelee = weapon.wtypeId > 12 && weapon.wtypeId < 16;
-			
-			const attackElements = (weapon.traits.filter(trait => trait.code === Game_BattlerBase.TRAIT_ATTACK_ELEMENT)).reduce((r, trait) => r.concat(trait.dataId), []);
-			let isFirst = true;
-			for(const attackElement of attackElements) {
-				if(attackElement > 8) {
-					// ignore elemental damage types
-					continue;
-				}
-				switch(attackElement) {
-				case 1: // trip
-					returnSkills.push(rangeType === "melee" ? 99 : 100);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(100);
-					}
-					break;
-				case 2: // blunt
-					returnSkills.push(rangeType === "melee" ? 4 : 11);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(11);
-					}
-					break;
-				case 3: // cut
-					returnSkills.push(rangeType === "melee" ? 5 : 12);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(12);
-					}
-					break;
-				case 4: // keen
-					returnSkills.push(rangeType === "melee" ? 6 : 13);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(13);
-					}
-					break;
-				case 5: // pierce
-					returnSkills.push(rangeType === "melee" ? 7 : 14);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(14);
-					}
-					break;
-				case 6: // stiletto
-					returnSkills.push(rangeType === "melee" ? 8 : 15);
-					if(isFirst && isThrowableMelee && rangeType === "melee") {
-						returnSkills.push(15);
-					}
-					break;
-				case 7: // bullet
-					returnSkills.push(9);
-					break;
-				case 8: // anti-armor
-					returnSkills.push(10);
-					break;
-				}
-				isFirst = false;
-			}
-		}
-		return returnSkills;
 	};
 	
 	Game_Actor.prototype.skills = function() {
@@ -3170,20 +3075,14 @@
 	Window_StatusBase.prototype.iconForElementType = function(type) {
 		let returnVal = 0;
 		switch(type) {
-			case  1: returnVal =  32; break;
-			case  2: returnVal =  33; break;
-			case  3: returnVal =  34; break;
-			case  4: returnVal =  35; break;
-			case  5: returnVal =  36; break;
-			case  6: returnVal =  37; break;
-			case  7: returnVal =  38; break;
-			case  8: returnVal =  39; break;
-			case  9: returnVal =  40; break;
-			case 10: returnVal =  41; break;
-			case 11: returnVal =  42; break;
-			case 12: returnVal =  43; break;
-			case 13: returnVal =  44; break;
-			case 14: returnVal =  45; break;
+			case  1: returnVal =  39; break;
+			case  2: returnVal =  36; break;
+			case  3: returnVal =  40; break;
+			case  4: returnVal =  41; break;
+			case  5: returnVal =  42; break;
+			case  6: returnVal =  43; break;
+			case  7: returnVal =  44; break;
+			case  8: returnVal =  45; break;
 		}
 		return returnVal;
 	};
@@ -3191,11 +3090,11 @@
 	Window_StatusBase.prototype.iconForWeaponType = function(type) {
 		let returnVal = 0;
 		switch(type) {
-			case  4: case  5: case  6: returnVal =  49; break;
-			case  7: case  8: case  9: returnVal =  50; break;
-			case 10: case 11: case 12: returnVal =  51; break;
-			case 13: case 14: case 15: returnVal =  52; break;
-			case 16: case 17: case 18: returnVal =  53; break;
+			case  7: case  8: case  9: returnVal = 50; break; // flail
+			case 10: case 11: case 12: returnVal = 51; break; // reach
+			case 13: case 14: case 15: returnVal = 49; break; // throwable melee
+			case 16: case 17: case 18: case 19: case 20: case 21: returnVal = 52; break; // strictly thrown
+			case 22: case 23: case 24: returnVal = 53; break; // fired
 		}
 		return returnVal;
 	};

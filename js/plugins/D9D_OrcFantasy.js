@@ -488,21 +488,42 @@
 	
 	Game_Action.prototype.itemHit = function(target, rangeType, isReach) {
 		//const successRate = this.item().successRate;
+		let adjustType = "none";
+		const weapon = this.subject().equips ? this.subject().equips()[0] : null;
+		if(!this.isAttack() && weapon) {
+			if(this.item().id === 52 || (this.item().id > 53 && this.item().id < 103)) {
+				// pommel strike or non-weapon tech shouldn't include the weapon bonus
+				adjustType = "ignoreWeapon";
+			} else if(this.item().id > 3 && this.item().id < 52 && (weapon.wtypeId === 4 || weapon.wtypeId === 5 || weapon.wtypeId === 6)) {
+				// sword techs get a small penalty
+				adjustType = "swordTech";
+			}
+		}
 		let subjectHit = 0;
 		switch(rangeType) {
 		case "melee":
 			subjectHit = this.subject().hit;
+			if(adjustType === "ignoreWeapon") {
+				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 0 ? Math.round(cur.value * 100) : 0), 0);
+			}
 			const rangePenalty = 5;
 			const totalPenalty = Math.max(0, (this.subject().backRow() ? rangePenalty : 0) + (target.backRow() ? rangePenalty : 0) - (isReach ? rangePenalty : 0));
 			subjectHit -= totalPenalty;
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
+			if(adjustType === "ignoreWeapon") {
+				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 2 ? Math.round(cur.value * 100) : 0), 0);
+			}
 			break;
 		case "special":
 			subjectHit = this.subject().xparam(4);
+			if(adjustType === "ignoreWeapon") {
+				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 4 ? Math.round(cur.value * 100) : 0), 0);
+			}
 			break;
 		}
+		subjectHit -= adjustType === "swordTech" ? 2 : 0;
 		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 

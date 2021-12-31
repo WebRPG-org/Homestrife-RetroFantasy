@@ -643,11 +643,11 @@
 			// get power from the skill itself if its not an attack, and not one of the first 50 techs
 			power = this.evalDamageFormula(target);
 		}
-		const powerMult = item.id === 52 ? 5 : 10; // pommel attack uses partial damage
+		const powerMult = item.id === 52 ? 7.5 : 10; // pommel attack uses partial damage
 		power = power * powerMult * (1 + successRate);
 		
-		// armor, unless its a critical
-		const armor = critical ? 0 : target.def * 5;
+		// armor, unless its a critical or stress
+		const armor = critical || this.isMpEffect() ? 0 : target.def * 5;
 		
 		// gather the elements and do element specific stuff
 		let isWeaponAttack = false;
@@ -726,7 +726,7 @@
 			this.makeSuccess(target);
 		}
 		// reduction from balance
-		const reducedValue = Math.max(0, value - target.sparam(8));
+		const reducedValue = Math.max(0, this.stressThreshold()*2 + value - target.sparam(8)*4);
 		// gain stress instead
 		target.gainTp(reducedValue);
 		this.gainDrainedMp(-reducedValue);

@@ -605,10 +605,10 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				this.subject().gainSilentTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
+				this.subject().gainTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainSilentTp(Math.round(this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)));
+				target.gainTp(Math.round(this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -774,7 +774,7 @@
 	
 	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
 		const value = Math.floor(this.item().tpGain * this.subject().tcr);
-		this.subject().gainSilentTp(value * (this.subject().isGuard() ? 2 : 1));
+		this.subject().gainTp(value * (this.subject().isGuard() ? 2 : 1));
 	};
 	
 	// Game Battler Base
@@ -953,6 +953,17 @@
 	Game_Battler.prototype.gainTp = function(value) {
 		this._result.tpDamage = value;
 		this.setTp(this.tp + value);
+	};
+	
+	Game_Battler.prototype.shouldPopupDamage = function() {
+		const result = this._result;
+		return (
+			result.missed ||
+			result.evaded ||
+			result.hpAffected ||
+			result.mpDamage !== 0 ||
+			result.tpDamage !== 0
+		);
 	};
 	
 	// Game Actor
@@ -2574,14 +2585,19 @@
 				this.createParry();
 			} else {
 				this._colorType = 0;
-				this.createMiss();
+				this.createMiss(result.tpDamage);
 			}
 		} else if (result.hpAffected) {
 			this._colorType = result.hpDamage >= 0 ? 0 : 1;
-			this.createDigits(result.hpDamage);
-		} else if (target.isAlive() && result.mpDamage !== 0) {
-			this._colorType = result.mpDamage >= 0 ? 2 : 3;
-			this.createDigits(result.mpDamage);
+			this.createDamage(result.hpDamage);
+		} else if (target.isAlive()) {
+			if(result.mpDamage !== 0) {
+				this._colorType = result.mpDamage >= 0 ? 2 : 3;
+				this.createDigits(result.mpDamage);
+			} else if(result.tpDamage !== 0) {
+				this._colorType = result.tpDamage >= 0 ? 2 : 3;
+				this.createStress(result.tpDamage);
+			}
 		}
 		if (result.critical) {
 			this.setupCriticalEffect();
@@ -2593,12 +2609,13 @@
 		this._flashDuration = 60;
 	};
 	
-	Sprite_Damage.prototype.createMiss = function() {
+	Sprite_Damage.prototype.createMiss = function(tpDamage) {
 		const w = $gameMap.tileWidth()/2*4;
 		const h = $gameMap.tileHeight()/2;
-		const sprite = this.createChildSprite(w, h);
+		const sprite = this.createChildSprite(w, h, true);
 		sprite.bitmap.drawText("Miss", 0, 0, w, h, "center");
 		sprite.dy = 0;
+		this.createDigits(tpDamage);
 	};
 	
 	Sprite_Damage.prototype.createParry = function() {
@@ -2607,6 +2624,26 @@
 		const sprite = this.createChildSprite(w, h);
 		sprite.bitmap.drawText("Parry", 0, 0, w, h, "center");
 		sprite.dy = 0;
+	};
+	
+	Sprite_Damage.prototype.createDamage = function(hpDamage) {
+		if(hpDamage < 0) {
+			const w = $gameMap.tileWidth()/2*4;
+			const h = $gameMap.tileHeight()/2;
+			const sprite = this.createChildSprite(w, h, true);
+			sprite.bitmap.drawText("Heal", 0, 0, w, h, "center");
+			sprite.dy = 0;
+		}
+		this.createDigits(hpDamage);
+	};
+	
+	Sprite_Damage.prototype.createStress = function(tpDamage) {
+		const w = $gameMap.tileWidth()/2*6;
+		const h = $gameMap.tileHeight()/2;
+		const sprite = this.createChildSprite(w, h, true);
+		sprite.bitmap.drawText(tpDamage >= 0 ? "Stress" : "Soothe", 0, 0, w, h, "center");
+		sprite.dy = 0;
+		this.createDigits(tpDamage);
 	};
 	
 	Sprite_Damage.prototype.createDigits = function(value) {
@@ -2623,23 +2660,24 @@
 		}
 	};
 	
-	Sprite_Damage.prototype.createChildSprite = function(width, height) {
+	Sprite_Damage.prototype.createChildSprite = function(width, height, isCaption) {
 		const sprite = new Sprite();
 		sprite.bitmap = this.createBitmap(width, height);
 		sprite.anchor.x = 0.5;
 		sprite.anchor.y = 1;
-		sprite.y = -13;
+		sprite.y = -13 - (isCaption ? $gameMap.tileHeight()/2 : 0);
 		sprite.ry = sprite.y;
+		sprite.isCaption = isCaption;
 		this.addChild(sprite);
 		return sprite;
 	};
 	
 	Sprite_Damage.prototype.updateChild = function(sprite) {
-		sprite.dy += 0.5;
+		sprite.dy += 1;
 		sprite.ry += sprite.dy;
-		if (sprite.ry >= 0) {
-			sprite.ry = 0;
-			sprite.dy *= -0.6;
+		if (sprite.ry >= (sprite.isCaption ? -$gameMap.tileHeight()/2 : 0)) {
+			sprite.ry = (sprite.isCaption ? -$gameMap.tileHeight()/2 : 0);
+			sprite.dy = -Math.floor(sprite.dy*0.8);
 		}
 		sprite.y = Math.round(sprite.ry);
 		if(this._duration % 10 < 5) {

@@ -201,6 +201,10 @@
 	};
 	
 	DataManager.parseNotes = function() {
+		for(const skill of $dataSkills) {
+			if(!skill) { continue; }
+			skill.d9dInfo = skill.note && skill.note.length > 0 ? JSON.parse(skill.note) : {};
+		}
 		for(const weapon of $dataWeapons) {
 			if(!weapon) { continue; }
 			weapon.d9dInfo = weapon.note && weapon.note.length > 0 ? JSON.parse(weapon.note) : {};
@@ -1085,6 +1089,19 @@
 		return item && item.wtypeId && item.wtypeId % 3 != 1;
 	};
 	
+	Game_Actor.prototype.performAction = function(action) {
+		Game_Battler.prototype.performAction.call(this, action);
+		if (action.isAttack()) {
+			this.performAttack();
+		} else if (action.isGuard()) {
+			this.requestMotion("guard");
+		} else if (action.isSkill()) {
+			this.performSkill(action);
+		} else if (action.isItem()) {
+			this.requestMotion("item");
+		}
+	};
+	
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
@@ -1106,6 +1123,25 @@
 				this.startWeaponAnimation(attackMotion.weaponImageId);
 			}
 		}
+	};
+	
+	Game_Actor.prototype.performSkill = function(action) {
+		if(action.item().id > 3 && action.item().id < 53) {
+			const weapons = this.weapons();
+			const weapon = weapons[0];
+			const motion = action.item().d9dInfo.motion;
+			if(weapon && weapon.d9dInfo.image !== undefined && motion !== undefined) {
+				this.requestMotion(motion);
+				this.startWeaponAnimation(weapon.d9dInfo.image);
+				this.startTrail(weapon.d9dInfo.trail);
+				return;
+			}
+		}
+		// TODO: handle pommel skill, which should use the weapon's idle frame instead of swing/thrust
+		// TODO: handle non-weapon techs, which probably shouldn't display the weapon.
+		// TODO: uuuh, need to handle unique actor animations or something.
+		
+		this.requestMotion("skill");
 	};
 	
 	Game_Actor.prototype.performMiss = function() {

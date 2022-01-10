@@ -1140,6 +1140,7 @@
 		// TODO: handle pommel skill, which should use the weapon's idle frame instead of swing/thrust
 		// TODO: handle non-weapon techs, which probably shouldn't display the weapon.
 		// TODO: uuuh, need to handle unique actor animations or something.
+		// frankly all these things should probably just get their own new unique motion types, and whatever handles motions handles all these things
 		
 		this.requestMotion("skill");
 	};
@@ -2286,7 +2287,7 @@
 	};
 	
 	Sprite_Actor.prototype.shouldStepForward = function() {
-		return this._actor.isActing() && (this._actor.motionType() === "swing" || this._actor.motionType() === "thrust");
+		return this._actor.isActing() && this.motionTypeIsMelee();
 	};
 	
 	Sprite_Actor.prototype.isMoving = function() {
@@ -2340,7 +2341,7 @@
 			} else if (actor.isDying()) {
 				this.startMotion("dying");
 			} else if (actor.isUndecided()) {
-				if(this._motionType === "swing" || this._motionType === "thrust") {
+				if(this.motionTypeIsMelee()) {
 					this.startMotion("walk");
 				} else {
 					this.startMotion("wait");
@@ -2349,6 +2350,10 @@
 				this.startMotion("wait");
 			}
 		}
+	};
+	
+	Sprite_Actor.prototype.motionTypeIsMelee = function() {
+		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "pommel";
 	};
 	
 	Sprite_Actor.prototype.startEntryMotion = function() {
@@ -2422,7 +2427,8 @@
 	};
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
-		const newMotion = Sprite_Actor.MOTIONS[motionType];
+		const actorMotionType = motionType === "pommel" ? "thrust" : motionType;
+		const newMotion = Sprite_Actor.MOTIONS[actorMotionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
 				this.startMove(0, 0, 0);
@@ -2444,25 +2450,6 @@
 				motionType === "victory"
 			) {
 				this.startWeaponIdleAnimation(motionType);
-				if(
-					motionType === "skill" ||
-					motionType === "spell" ||
-					motionType === "victory"
-				) {
-					this._weaponSprite.x = -4;
-					this._weaponSprite.y = -8;
-					this._weaponSprite.scale.x = -1;
-					this._weaponOverlaySprite.x = -4;
-					this._weaponOverlaySprite.y = -8;
-					this._weaponOverlaySprite.scale.x = -1;
-				} else {
-					this._weaponSprite.x = 0;
-					this._weaponSprite.y = 0;
-					this._weaponSprite.scale.x = 1;
-					this._weaponOverlaySprite.x = 0;
-					this._weaponOverlaySprite.y = 0;
-					this._weaponOverlaySprite.scale.x = 1;
-				}
 			} else {
 				this.clearWeaponIdleAnimation();
 			}
@@ -2479,16 +2466,10 @@
 				motionType === "victory" ||
 				motionType === "swing" ||
 				motionType === "thrust" ||
+				motionType === "pommel" ||
 				motionType === "missile"
 			) {
 				this.startShieldIdleAnimation(motionType);
-				if(motionType === "item") {
-					this._shieldSprite.y = -9;
-					this._shieldOverlaySprite.y = -9;
-				} else {
-					this._shieldSprite.y = 0;
-					this._shieldOverlaySprite.y = 0;
-				}
 			} else {
 				this.clearShieldIdleAnimation();
 			}
@@ -2804,7 +2785,11 @@
 	};
 	
 	Sprite_Weapon.prototype.isIdle = function() {
-		return this._motionType !== "thrust" && this._motionType !== "swing" && this._motionType !== "missile";
+		return !this.motionTypeIsAttack();
+	}
+	
+	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
+		return this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile" || this._motionType === "pommel";
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
@@ -2825,34 +2810,55 @@
 	
 	Sprite_Weapon.prototype.updateFrame = function() {
 		if (this._weaponImageId > 0) {
-			let pattern = this._pattern;
+			let displayPattern = this._pattern;
 			let shouldShow = false;
-			if(this._isShield) {
-				let shouldUnderlay = (this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile") && pattern > 0;
-				shouldShow = (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
-				pattern = 0;
+			if (this._isShield) {
+				displayPattern = 0;
+				if(this._motionType === "item") {
+					this.y = -9;
+				} else {
+					this.y = 0;
+				}
 			} else {
 				switch(this._motionType) {
 					case "thrust":
-						if(pattern > 0) { pattern = 1; }
+						if(displayPattern > 0) { displayPattern = 1; }
 						break;
 					case "swing":
-						if(pattern > 0) { pattern = 2; }
+						if(displayPattern > 0) { displayPattern = 2; }
 						break;
 					case "missile":
-						pattern = 1;
+						displayPattern = 1;
 						break;
 					default:
-						pattern = 0;
+						displayPattern = 0;
 						break;
 				}
-				shouldShow = (pattern === 0 && this._isOverlay) || (pattern > 0 && !this._isOverlay);
+				if (
+					this._motionType === "skill" ||
+					this._motionType === "spell" ||
+					this._motionType === "victory"
+				) {
+					this.x = -4;
+					this.y = -8;
+					this.scale.x = -1;
+				} else if (this._motionType === "pommel" && this._pattern > 0) {
+					this.x = 16;
+					this.y = 0;
+					this.scale.x = 1;
+				} else {
+					this.x = 0;
+					this.y = 0;
+					this.scale.x = 1;
+				}
 			}
+			let shouldUnderlay = this.motionTypeIsAttack() && this._pattern > 0;
+			shouldShow = (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
 			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 12;
 				const w = 64;
 				const h = 32;
-				const sx = (Math.floor(index / 6) * 3 + pattern) * w;
+				const sx = (Math.floor(index / 6) * 3 + displayPattern) * w;
 				const sy = Math.floor(index % 6) * h;
 				this.setFrame(sx, sy, w, h);
 			} else {

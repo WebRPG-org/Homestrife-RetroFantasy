@@ -1105,7 +1105,7 @@
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
-		if(weapon && weapon.d9dInfo.image !== undefined && weapon.d9dInfo.motion !== undefined) {
+		if(weapon && weapon.d9dInfo.motion !== undefined) {
 			this.requestMotion(weapon.d9dInfo.motion);
 			this.startWeaponAnimation(weapon.d9dInfo.image);
 			this.startTrail(weapon.d9dInfo.trail);
@@ -1126,22 +1126,17 @@
 	};
 	
 	Game_Actor.prototype.performSkill = function(action) {
-		if(action.item().id > 3 && action.item().id < 53) {
-			const weapons = this.weapons();
-			const weapon = weapons[0];
-			const motion = action.item().d9dInfo.motion;
-			if(weapon && weapon.d9dInfo.image !== undefined && motion !== undefined) {
-				this.requestMotion(motion);
-				this.startWeaponAnimation(weapon.d9dInfo.image);
-				this.startTrail(weapon.d9dInfo.trail);
-				return;
-			}
+		const weapons = this.weapons();
+		const weapon = weapons[0];
+		if(weapon) {
+			this.startWeaponAnimation(weapon.d9dInfo.image);
+			this.startTrail(weapon.d9dInfo.trail);
 		}
-		// TODO: handle pommel skill, which should use the weapon's idle frame instead of swing/thrust
-		// TODO: handle non-weapon techs, which probably shouldn't display the weapon.
-		// TODO: uuuh, need to handle unique actor animations or something.
-		// frankly all these things should probably just get their own new unique motion types, and whatever handles motions handles all these things
-		
+		const motion = action.item().d9dInfo.motion;
+		if(motion) {
+			this.requestMotion(motion);
+			return;
+		}
 		this.requestMotion("skill");
 	};
 	
@@ -2353,7 +2348,7 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
-		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "pommel";
+		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "pommel" || this._motionType === "unarmed";
 	};
 	
 	Sprite_Actor.prototype.startEntryMotion = function() {
@@ -2427,7 +2422,7 @@
 	};
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
-		const actorMotionType = motionType === "pommel" ? "thrust" : motionType;
+		const actorMotionType = motionType === "pommel" || motionType === "unarmed" ? "thrust" : (motionType === "throw" ? "swing" : motionType);
 		const newMotion = Sprite_Actor.MOTIONS[actorMotionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
@@ -2467,6 +2462,8 @@
 				motionType === "swing" ||
 				motionType === "thrust" ||
 				motionType === "pommel" ||
+				motionType === "unarmed" ||
+				motionType === "throw" ||
 				motionType === "missile"
 			) {
 				this.startShieldIdleAnimation(motionType);
@@ -2789,7 +2786,7 @@
 	}
 	
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
-		return this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile" || this._motionType === "pommel";
+		return this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile" || this._motionType === "pommel" || this._motionType === "throw" || this._motionType === "unarmed";
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
@@ -2809,9 +2806,10 @@
 	};
 	
 	Sprite_Weapon.prototype.updateFrame = function() {
+		// TODO: handle non-weapon techs, which probably shouldn't display the weapon.
+		// TODO: uuuh, need to handle unique actor animations or something.
 		if (this._weaponImageId > 0) {
 			let displayPattern = this._pattern;
-			let shouldShow = false;
 			if (this._isShield) {
 				displayPattern = 0;
 				if(this._motionType === "item") {
@@ -2822,9 +2820,11 @@
 			} else {
 				switch(this._motionType) {
 					case "thrust":
+					case "unarmed":
 						if(displayPattern > 0) { displayPattern = 1; }
 						break;
 					case "swing":
+					case "throw":
 						if(displayPattern > 0) { displayPattern = 2; }
 						break;
 					case "missile":
@@ -2853,7 +2853,7 @@
 				}
 			}
 			let shouldUnderlay = this.motionTypeIsAttack() && this._pattern > 0;
-			shouldShow = (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
+			const shouldShow = (this._isShield || (this._motionType !== "throw" && this._motionType !== "unarmed") || this._pattern === 0) && (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
 			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 12;
 				const w = 64;

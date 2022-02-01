@@ -3,5 +3,6 @@
 var $plugins =
 [
 {"name":"D9D_PixelPerfect","status":true,"description":"Adjustments and options for different resolutions.","parameters":{"renderPixelated":"true","forceWholeResolution":"true","screenWidth":"272","screenHeight":"208","uiAreaWidth":"272","uiAreaHeight":"208","tileWidth":"16","tileHeight":"16","imageFileTag":"_RUNTIME","balloonW":"16","balloonH":"16","buttonW":"16","buttonH":"16","iconW":"8","iconH":"8","faceW":"48","faceH":"48","stateW":"32","stateH":"32","weaponW":"192","weaponH":"32","windowFileSize":"64","windowBorderThickness":"8","cursorBorderThickness":"8"}},
-{"name":"D9D_OrcFantasy","status":true,"description":"Features for Orc Fantasy.","parameters":{"textImages":"[\"{\\\"file\\\":\\\"img/system/TextFont\\\",\\\"characterW\\\":\\\"8\\\",\\\"characterH\\\":\\\"8\\\"}\"]"}}
+{"name":"D9D_OrcFantasy","status":true,"description":"Features for Orc Fantasy.","parameters":{"textImages":"[\"{\\\"file\\\":\\\"img/system/TextFont\\\",\\\"characterW\\\":\\\"8\\\",\\\"characterH\\\":\\\"8\\\"}\"]"}},
+{"name":"D9D_PaletteJail","status":true,"description":"Converts to-be-displayed colors to a given palette.","parameters":{"paletteFile":"img/system/JailPalette"}}
 ];

@@ -2806,8 +2806,6 @@
 	};
 	
 	Sprite_Weapon.prototype.updateFrame = function() {
-		// TODO: handle non-weapon techs, which probably shouldn't display the weapon.
-		// TODO: uuuh, need to handle unique actor animations or something.
 		if (this._weaponImageId > 0) {
 			let displayPattern = this._pattern;
 			if (this._isShield) {

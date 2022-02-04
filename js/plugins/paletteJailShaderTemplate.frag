@@ -23,5 +23,6 @@ void main(){
 			}
 		}
 	}
+	outputColor.a = 1.0;
 	gl_FragColor = outputColor;
 }

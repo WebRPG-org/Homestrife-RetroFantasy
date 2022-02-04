@@ -84,12 +84,89 @@
 		} : null;
 	}
 	
+	// Sprite
+	Sprite.prototype._createColorFilter = function() {
+		// this._colorFilter = new ColorFilter();
+		// if (!this.filters) {
+			// this.filters = [];
+		// }
+		// this.filters.push(this._colorFilter);
+	};
+
+	Sprite.prototype._updateColorFilter = function() {
+		// if (!this._colorFilter) {
+			// this._createColorFilter();
+		// }
+		// this._colorFilter.setHue(this._hue);
+		// this._colorFilter.setBlendColor(this._blendColor);
+		// this._colorFilter.setColorTone(this._colorTone);
+	};
+	
+	// Window
+	Window.prototype._createClientArea = function() {
+		this._clientArea = new Sprite();
+		//this._clientArea.filters = [new PIXI.filters.AlphaFilter()];
+		//this._clientArea.filterArea = new Rectangle();
+		this._clientArea.move(this._padding, this._padding);
+		this.addChild(this._clientArea);
+	};
+	
 	// Scene Base
-	_Scene_Base__createColorFilter = Scene_Base.prototype.createColorFilter;
 	Scene_Base.prototype.createColorFilter = function() {
-		_Scene_Base__createColorFilter.call(this);
+		// this._colorFilter = new ColorFilter();
+		// this.filters = [this._colorFilter];
+		this.filters = [];
 		if(paletteJailFilter) {
 			this.filters.push(paletteJailFilter);
 		}
+	};
+	
+	Scene_Base.prototype.updateColorFilter = function() {
+		//const c = this._fadeWhite ? 255 : 0;
+		//const blendColor = [c, c, c, this._fadeOpacity];
+		//this._colorFilter.setBlendColor(blendColor);
+	};
+	
+	// Scene Menu Base
+	Scene_MenuBase.prototype.createBackground = function() {
+		//this._backgroundFilter = new PIXI.filters.BlurFilter();
+		this._backgroundSprite = new Sprite();
+		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
+		//this._backgroundSprite.filters = [this._backgroundFilter];
+		this.addChild(this._backgroundSprite);
+		this.setBackgroundOpacity(192);
+	};
+	
+	// Spriteset Base
+	Spriteset_Base.prototype.createBaseFilters = function() {
+		this._baseSprite.filters = [];
+		//this._baseColorFilter = new ColorFilter();
+		//this._baseSprite.filters.push(this._baseColorFilter);
+	};
+	
+	Spriteset_Base.prototype.createOverallFilters = function() {
+		this.filters = [];
+		//this._overallColorFilter = new ColorFilter();
+		//this.filters.push(this._overallColorFilter);
+	};
+	
+	Spriteset_Base.prototype.updateBaseFilters = function() {
+		//const filter = this._baseColorFilter;
+		//filter.setColorTone($gameScreen.tone());
+	};
+	
+	Spriteset_Base.prototype.updateOverallFilters = function() {
+		//const filter = this._overallColorFilter;
+		//filter.setBlendColor($gameScreen.flashColor());
+		//filter.setBrightness($gameScreen.brightness());
+	};
+	
+	// Spriteset Battle
+	Spriteset_Battle.prototype.createBackground = function() {
+		//this._backgroundFilter = new PIXI.filters.BlurFilter();
+		this._backgroundSprite = new Sprite();
+		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
+		//this._backgroundSprite.filters = [this._backgroundFilter];
+		this._baseSprite.addChild(this._backgroundSprite);
 	};
 })();

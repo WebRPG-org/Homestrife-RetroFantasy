@@ -28,6 +28,7 @@
 	
 	// plugin variables
 	let paletteJailFilter = null;
+	const paletteJailUniforms = {};
 	loadPaletteJailFiles();
 	
 	// helper functions
@@ -57,10 +58,9 @@
 			// get all the colors into a single array
 			const jailPalette = [];
 			const hexColors = [];
-			for(let ix = 0; ix < paletteImage.width; ix++) {
-				for(let iy = 0; iy < paletteImage.height; iy++) {
+			for(let iy = 0; iy < paletteImage.height; iy++) {
+				for(let ix = 0; ix < paletteImage.width; ix++) {
 					const hexColor = paletteImage.getPixel(ix, iy);
-					if(hexColors.indexOf(hexColor) >= 0) { continue; }
 					hexColors.push(hexColor);
 					const rgbColor = hexToRgb(hexColor);
 					jailPalette.push(rgbColor.r / 255);
@@ -68,10 +68,17 @@
 					jailPalette.push(rgbColor.b / 255);
 				}
 			}
+			pluginParams.hues = paletteImage.width - 1;
+			pluginParams.brightLevels = paletteImage.height;
 			
 			// compile the shader
 			const shaderSource = xhr.responseText.replaceAll('%%PALETTE_ARRAY_SIZE%%', hexColors.length+'');
-			paletteJailFilter = new PIXI.Filter(null, shaderSource, { palette: jailPalette });
+			paletteJailUniforms.palette = jailPalette;
+			paletteJailUniforms.hues = pluginParams.hues;
+			paletteJailUniforms.brightLevels = pluginParams.brightLevels;
+			paletteJailUniforms.hueOffset = 0;
+			paletteJailUniforms.brightOffset = 0;
+			paletteJailFilter = new PIXI.Filter(null, shaderSource, paletteJailUniforms);
 		}
 	}
 	
@@ -111,19 +118,34 @@
 		this.addChild(this._clientArea);
 	};
 	
+	Window.prototype._updateFilterArea = function() {
+		const pos = this._clientArea.worldTransform.apply(new Point(0, 0));
+		//const filterArea = this._clientArea.filterArea;
+		//filterArea.x = pos.x + this.origin.x;
+		//filterArea.y = pos.y + this.origin.y;
+		//filterArea.width = this.innerWidth;
+		//filterArea.height = this.innerHeight;
+	};
+	
 	// Scene Base
+	// const _Scene_Base_initialize = Scene_Base.prototype.initialize;
+	// Scene_Base.prototype.initialize = function() {
+		// _Scene_Base_initialize.call(this);
+		// this.hueOffset = 0;
+		// this.brightOffset = 0;
+	// };
+	
 	Scene_Base.prototype.createColorFilter = function() {
-		// this._colorFilter = new ColorFilter();
-		// this.filters = [this._colorFilter];
 		this.filters = [];
 		if(paletteJailFilter) {
+			this._colorFilter = paletteJailFilter;
 			this.filters.push(paletteJailFilter);
 		}
 	};
 	
 	Scene_Base.prototype.updateColorFilter = function() {
-		//const c = this._fadeWhite ? 255 : 0;
-		//const blendColor = [c, c, c, this._fadeOpacity];
+		paletteJailUniforms.brightOffset = Math.floor((pluginParams.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+		console.log(paletteJailUniforms.brightOffset);
 		//this._colorFilter.setBlendColor(blendColor);
 	};
 	
@@ -134,7 +156,7 @@
 		this._backgroundSprite.bitmap = SceneManager.backgroundBitmap();
 		//this._backgroundSprite.filters = [this._backgroundFilter];
 		this.addChild(this._backgroundSprite);
-		this.setBackgroundOpacity(192);
+		this.setBackgroundOpacity(255);
 	};
 	
 	// Spriteset Base

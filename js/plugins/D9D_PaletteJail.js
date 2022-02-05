@@ -27,7 +27,7 @@
 	const pluginParams = PluginManager.parameters('D9D_PaletteJail');
 	
 	// plugin variables
-	let paletteJailFilter = null;
+	let paletteJailBrightFilter = null;
 	const paletteJailUniforms = {};
 	loadPaletteJailFiles();
 	
@@ -42,43 +42,30 @@
 			compileShader();
 		});
 		
-		const xhr = new XMLHttpRequest();
-		xhr.open("GET", 'js/plugins/paletteJailShaderTemplate.frag');
-		xhr.onreadystatechange = () => {
-			if(xhr.readyState == 4 && (xhr.status === 200 || xhr.status === 0)) {
+		const brightXhr = new XMLHttpRequest();
+		brightXhr.open("GET", 'js/plugins/paletteJailBrightShader.frag');
+		brightXhr.onreadystatechange = () => {
+			if(brightXhr.readyState == 4 && (brightXhr.status === 200 || brightXhr.status === 0)) {
 				sourceReady = true;
 				compileShader();
 			}
 		};
-		xhr.send();
+		brightXhr.send();
 		
 		function compileShader() {
 			if(!imageReady || !sourceReady) { return; }
 			
-			// get all the colors into a single array
-			const jailPalette = [];
-			const hexColors = [];
-			for(let iy = 0; iy < paletteImage.height; iy++) {
-				for(let ix = 0; ix < paletteImage.width; ix++) {
-					const hexColor = paletteImage.getPixel(ix, iy);
-					hexColors.push(hexColor);
-					const rgbColor = hexToRgb(hexColor);
-					jailPalette.push(rgbColor.r / 255);
-					jailPalette.push(rgbColor.g / 255);
-					jailPalette.push(rgbColor.b / 255);
-				}
-			}
-			pluginParams.hues = paletteImage.width - 1;
-			pluginParams.brightLevels = paletteImage.height;
-			
-			// compile the shader
-			const shaderSource = xhr.responseText.replaceAll('%%PALETTE_ARRAY_SIZE%%', hexColors.length+'');
-			paletteJailUniforms.palette = jailPalette;
-			paletteJailUniforms.hues = pluginParams.hues;
-			paletteJailUniforms.brightLevels = pluginParams.brightLevels;
+			// compile the shaders
+			const brightShaderSource = brightXhr.responseText
+				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
+				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
+			paletteJailUniforms.paletteTex = paletteImage.baseTexture;
+			paletteJailUniforms.hues = paletteImage.width - 1;
+			paletteJailUniforms.brightLevels = paletteImage.height;
+			paletteJailUniforms.hueTarget = -1;
 			paletteJailUniforms.hueOffset = 0;
 			paletteJailUniforms.brightOffset = 0;
-			paletteJailFilter = new PIXI.Filter(null, shaderSource, paletteJailUniforms);
+			paletteJailBrightFilter = new PIXI.Filter(null, brightShaderSource, paletteJailUniforms);
 		}
 	}
 	
@@ -137,14 +124,14 @@
 	
 	Scene_Base.prototype.createColorFilter = function() {
 		this.filters = [];
-		if(paletteJailFilter) {
-			this._colorFilter = paletteJailFilter;
-			this.filters.push(paletteJailFilter);
+		if(paletteJailBrightFilter) {
+			this._colorFilter = paletteJailBrightFilter;
+			this.filters.push(paletteJailBrightFilter);
 		}
 	};
 	
 	Scene_Base.prototype.updateColorFilter = function() {
-		paletteJailUniforms.brightOffset = Math.floor((pluginParams.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+		paletteJailUniforms.brightOffset = Math.ceil((paletteJailUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
 		console.log(paletteJailUniforms.brightOffset);
 		//this._colorFilter.setBlendColor(blendColor);
 	};

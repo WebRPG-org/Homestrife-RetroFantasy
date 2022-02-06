@@ -1,6 +1,8 @@
 uniform sampler2D paletteTex;
 uniform float hues;
 uniform float brightLevels;
+uniform float hueTarget;
+uniform float hueOffset;
 uniform float brightOffset;
 
 varying vec2 vTextureCoord;

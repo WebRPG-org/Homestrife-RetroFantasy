@@ -27,14 +27,20 @@
 	const pluginParams = PluginManager.parameters('D9D_PaletteJail');
 	
 	// plugin variables
-	let paletteJailBrightFilter = null;
-	const paletteJailUniforms = {};
+	let emptyShaderSource = null;
+	let hueShaderSource = null;
+	let brightShaderSource = null;
+	let hueBrightShaderSource = null;
+	let paletteJailImage = null;
 	loadPaletteJailFiles();
 	
 	// helper functions
 	function loadPaletteJailFiles() {
 		let imageReady = false;
-		let sourceReady = false;
+		let emptySourceReady = false;
+		let hueSourceReady = false;
+		let brightSourceReady = false;
+		let hueBrightSourceReady = false;
 		
 		const paletteImage = ImageManager.loadBitmapFromUrl(pluginParams.paletteFile + ".png");
 		paletteImage.addLoadListener(() => {
@@ -42,30 +48,66 @@
 			compileShader();
 		});
 		
+		const emptyXhr = new XMLHttpRequest();
+		emptyXhr.open("GET", 'js/plugins/paletteJailEmptyShader.frag');
+		emptyXhr.onreadystatechange = () => {
+			if(emptyXhr.readyState == 4 && (emptyXhr.status === 200 || emptyXhr.status === 0)) {
+				emptySourceReady = true;
+				compileShader();
+			}
+		};
+		emptyXhr.send();
+		
+		const hueXhr = new XMLHttpRequest();
+		hueXhr.open("GET", 'js/plugins/paletteJailHueShader.frag');
+		hueXhr.onreadystatechange = () => {
+			if(hueXhr.readyState == 4 && (hueXhr.status === 200 || hueXhr.status === 0)) {
+				hueSourceReady = true;
+				compileShader();
+			}
+		};
+		hueXhr.send();
+		
 		const brightXhr = new XMLHttpRequest();
 		brightXhr.open("GET", 'js/plugins/paletteJailBrightShader.frag');
 		brightXhr.onreadystatechange = () => {
 			if(brightXhr.readyState == 4 && (brightXhr.status === 200 || brightXhr.status === 0)) {
-				sourceReady = true;
+				brightSourceReady = true;
 				compileShader();
 			}
 		};
 		brightXhr.send();
 		
+		const hueBrightXhr = new XMLHttpRequest();
+		hueBrightXhr.open("GET", 'js/plugins/paletteJailHueBrightShader.frag');
+		hueBrightXhr.onreadystatechange = () => {
+			if(hueBrightXhr.readyState == 4 && (hueBrightXhr.status === 200 || hueBrightXhr.status === 0)) {
+				hueBrightSourceReady = true;
+				compileShader();
+			}
+		};
+		hueBrightXhr.send();
+		
 		function compileShader() {
-			if(!imageReady || !sourceReady) { return; }
+			if(!imageReady || !emptySourceReady || !hueSourceReady || !brightSourceReady || !hueBrightSourceReady) { return; }
 			
-			// compile the shaders
-			const brightShaderSource = brightXhr.responseText
+			// save universal uniforms
+			paletteJailImage = paletteImage;
+			
+			// insert values into shader sources and save them
+			emptyShaderSource = emptyXhr.responseText;
+			
+			hueShaderSource = hueXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
-			paletteJailUniforms.paletteTex = paletteImage.baseTexture;
-			paletteJailUniforms.hues = paletteImage.width - 1;
-			paletteJailUniforms.brightLevels = paletteImage.height;
-			paletteJailUniforms.hueTarget = -1;
-			paletteJailUniforms.hueOffset = 0;
-			paletteJailUniforms.brightOffset = 0;
-			paletteJailBrightFilter = new PIXI.Filter(null, brightShaderSource, paletteJailUniforms);
+			
+			brightShaderSource = brightXhr.responseText
+				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
+				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
+			
+			hueBrightShaderSource = hueBrightXhr.responseText
+				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
+				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 		}
 	}
 	
@@ -115,25 +157,23 @@
 	};
 	
 	// Scene Base
-	// const _Scene_Base_initialize = Scene_Base.prototype.initialize;
-	// Scene_Base.prototype.initialize = function() {
-		// _Scene_Base_initialize.call(this);
-		// this.hueOffset = 0;
-		// this.brightOffset = 0;
-	// };
-	
 	Scene_Base.prototype.createColorFilter = function() {
 		this.filters = [];
-		if(paletteJailBrightFilter) {
-			this._colorFilter = paletteJailBrightFilter;
-			this.filters.push(paletteJailBrightFilter);
+		if(brightShaderSource) {
+			this._colorFilterUniforms = {};
+			this._colorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._colorFilterUniforms.hues = paletteJailImage.width;
+			this._colorFilterUniforms.brightLevels = paletteJailImage.height;
+			this._colorFilterUniforms.brightOffset = 0;
+			this._colorFilter = new PIXI.Filter(null, brightShaderSource, this._colorFilterUniforms);
+			this.filters.push(this._colorFilter);
 		}
 	};
 	
 	Scene_Base.prototype.updateColorFilter = function() {
-		paletteJailUniforms.brightOffset = Math.ceil((paletteJailUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
-		console.log(paletteJailUniforms.brightOffset);
-		//this._colorFilter.setBlendColor(blendColor);
+		if(this._colorFilter) {
+			this._colorFilterUniforms.brightOffset = Math.ceil((this._colorFilterUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+		}
 	};
 	
 	// Scene Menu Base

@@ -1,7 +1,7 @@
 uniform sampler2D paletteTex;
 uniform float hues;
 uniform float brightLevels;
-uniform float brightOffset;
+uniform float brightness;
 
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
@@ -11,13 +11,15 @@ void main(){
 	
 	bool colorFound = false;
 	vec2 paletteCoord = vec2(0.0, 0.0);
+	float brightLevel = 0.0;
 	float pIncX = 1.0 / hues;
 	float pIncY = 1.0 / brightLevels;
 	float pHalfIncX = pIncX / 2.0;
 	float pHalfIncY = pIncY / 2.0;
 	
 	for(int y = 0; y < %%PALETTE_HEIGHT%%; y++) {
-		paletteCoord.y = pIncY * float(y) + pHalfIncY;
+		brightLevel = float(y);
+		paletteCoord.y = pIncY * brightLevel + pHalfIncY;
 		for(int x = 0; x < %%PALETTE_WIDTH%%; x++) {
 			paletteCoord.x = pIncX * float(x) + pHalfIncX;
 			vec4 paletteColor = texture2D(paletteTex, paletteCoord);
@@ -31,9 +33,9 @@ void main(){
 		}
 	}
 	
-	paletteCoord.y += brightOffset * pIncY;
-	float brightMax = (brightLevels - 1.0) * pIncY + pHalfIncY;
-	paletteCoord.y = paletteCoord.y < pHalfIncY ? pHalfIncY : (paletteCoord.y > brightMax ? brightMax : paletteCoord.y);
+	brightLevel += brightness;
+	brightLevel = brightLevel < 0.0 ? 0.0 : brightLevel > brightLevels - 1.0 ? brightLevels - 1.0 : brightLevel;
+	paletteCoord.y = pIncY * brightLevel + pHalfIncY;
 	gl_FragColor = texture2D(paletteTex, paletteCoord);
 	gl_FragColor.a = inputColor.a == 0.0 ? 0.0 : 1.0;
 }

@@ -159,20 +159,30 @@
 	// Scene Base
 	Scene_Base.prototype.createColorFilter = function() {
 		this.filters = [];
+		if(emptyShaderSource) {
+			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
+			this.filters.push(this._emptyFilter);
+		}
 		if(brightShaderSource) {
 			this._colorFilterUniforms = {};
 			this._colorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
 			this._colorFilterUniforms.hues = paletteJailImage.width;
 			this._colorFilterUniforms.brightLevels = paletteJailImage.height;
-			this._colorFilterUniforms.brightOffset = 0;
+			this._colorFilterUniforms.brightness = 0;
 			this._colorFilter = new PIXI.Filter(null, brightShaderSource, this._colorFilterUniforms);
-			this.filters.push(this._colorFilter);
 		}
 	};
 	
 	Scene_Base.prototype.updateColorFilter = function() {
-		if(this._colorFilter) {
-			this._colorFilterUniforms.brightOffset = Math.ceil((this._colorFilterUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+		if(this._colorFilter && this._fadeOpacity > 0) {
+			if(this.filters.length === 0 || this.filters[0] === this._emptyFilter) {
+				this.filters[0] = this._colorFilter;
+			}
+			this._colorFilterUniforms.brightness = Math.ceil((this._colorFilterUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+		} else if(this._emptyFilter) {
+			if(this.filters.length === 0 || this.filters[0] === this._colorFilter) {
+				this.filters[0] = this._emptyFilter;
+			}
 		}
 	};
 	
@@ -189,8 +199,18 @@
 	// Spriteset Base
 	Spriteset_Base.prototype.createBaseFilters = function() {
 		this._baseSprite.filters = [];
-		//this._baseColorFilter = new ColorFilter();
-		//this._baseSprite.filters.push(this._baseColorFilter);
+		if(emptyShaderSource) {
+			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
+			this._baseSprite.filters.push(this._emptyFilter);
+		}
+		if(hueShaderSource) {
+			this._overallColorFilterUniforms = {};
+			this._overallColorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._overallColorFilterUniforms.hues = paletteJailImage.width;
+			this._overallColorFilterUniforms.brightLevels = paletteJailImage.height;
+			this._overallColorFilterUniforms.lightHue = 0;
+			this._overallColorFilter = new PIXI.Filter(null, hueShaderSource, this._overallColorFilterUniforms);
+		}
 	};
 	
 	Spriteset_Base.prototype.createOverallFilters = function() {
@@ -200,8 +220,17 @@
 	};
 	
 	Spriteset_Base.prototype.updateBaseFilters = function() {
-		//const filter = this._baseColorFilter;
-		//filter.setColorTone($gameScreen.tone());
+		const lightHue = 10;
+		if(this._overallColorFilter && lightHue >= 0) {
+			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._emptyFilter) {
+				this._baseSprite.filters[0] = this._overallColorFilter;
+			}
+			this._overallColorFilterUniforms.lightHue = lightHue;
+		} else if(this._emptyFilter) {
+			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._overallColorFilter) {
+				this._baseSprite.filters[0] = this._emptyFilter;
+			}
+		}
 	};
 	
 	Spriteset_Base.prototype.updateOverallFilters = function() {

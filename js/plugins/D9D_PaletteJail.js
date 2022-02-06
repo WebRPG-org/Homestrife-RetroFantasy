@@ -4,17 +4,21 @@
 
 /*:
  * @target MZ
- * @plugindesc Converts to-be-displayed colors to a given palette.
+ * @plugindesc Provides palette-limited color filters.
  * @author Jonathan "Darlos9D" Royal
  *
  * @help D9D_PaletteJail.js
  *
- * This plugin allows you to input an image file that contains a collection of
- * colors. The plugin will then pass the colors found in this file into RMMZ's
- * color shader. This shader will convert every incoming color to its closest
- * neighbor in the palette. This will help in limiting the effects of screen
- * fade in/out, tinting, and lighting to only result in certain colors. Of
- * course this will also do the same with the base colors of any assets used.
+ * This plugin limits color filter inputs and outputs to specific colors found
+ * in a provided palette image file.
+ *
+ * The image file should be constructed such that each pixel in it is a color
+ * in the palette. The leftmost column should represent grayscale, and the
+ * following columns represent color hues. The hues should be arranged in color
+ * wheel order, but it does not matter which colors are at the start or end.
+ * The rows are shades of colors, with the darkest at the top and the lightest
+ * at the bottom. The topmost row should be black for all, and the bottom most
+ * row should be white for all.
  *
  * @param paletteFile
  * @text Palette File
@@ -28,9 +32,9 @@
 	
 	// plugin variables
 	let emptyShaderSource = null;
-	let hueShaderSource = null;
-	let brightShaderSource = null;
-	let hueBrightShaderSource = null;
+	let monochromeShaderSource = null;
+	let brightnessShaderSource = null;
+	let lightingShaderSource = null;
 	let paletteJailImage = null;
 	loadPaletteJailFiles();
 	
@@ -38,9 +42,9 @@
 	function loadPaletteJailFiles() {
 		let imageReady = false;
 		let emptySourceReady = false;
-		let hueSourceReady = false;
-		let brightSourceReady = false;
-		let hueBrightSourceReady = false;
+		let monochromeSourceReady = false;
+		let brightnessSourceReady = false;
+		let lightingSourceReady = false;
 		
 		const paletteImage = ImageManager.loadBitmapFromUrl(pluginParams.paletteFile + ".png");
 		paletteImage.addLoadListener(() => {
@@ -58,38 +62,38 @@
 		};
 		emptyXhr.send();
 		
-		const hueXhr = new XMLHttpRequest();
-		hueXhr.open("GET", 'js/plugins/paletteJailHueShader.frag');
-		hueXhr.onreadystatechange = () => {
-			if(hueXhr.readyState == 4 && (hueXhr.status === 200 || hueXhr.status === 0)) {
-				hueSourceReady = true;
+		const monochromeXhr = new XMLHttpRequest();
+		monochromeXhr.open("GET", 'js/plugins/paletteJailMonochromeShader.frag');
+		monochromeXhr.onreadystatechange = () => {
+			if(monochromeXhr.readyState == 4 && (monochromeXhr.status === 200 || monochromeXhr.status === 0)) {
+				monochromeSourceReady = true;
 				compileShader();
 			}
 		};
-		hueXhr.send();
+		monochromeXhr.send();
 		
-		const brightXhr = new XMLHttpRequest();
-		brightXhr.open("GET", 'js/plugins/paletteJailBrightShader.frag');
-		brightXhr.onreadystatechange = () => {
-			if(brightXhr.readyState == 4 && (brightXhr.status === 200 || brightXhr.status === 0)) {
-				brightSourceReady = true;
+		const brightnessXhr = new XMLHttpRequest();
+		brightnessXhr.open("GET", 'js/plugins/paletteJailBrightnessShader.frag');
+		brightnessXhr.onreadystatechange = () => {
+			if(brightnessXhr.readyState == 4 && (brightnessXhr.status === 200 || brightnessXhr.status === 0)) {
+				brightnessSourceReady = true;
 				compileShader();
 			}
 		};
-		brightXhr.send();
+		brightnessXhr.send();
 		
-		const hueBrightXhr = new XMLHttpRequest();
-		hueBrightXhr.open("GET", 'js/plugins/paletteJailHueBrightShader.frag');
-		hueBrightXhr.onreadystatechange = () => {
-			if(hueBrightXhr.readyState == 4 && (hueBrightXhr.status === 200 || hueBrightXhr.status === 0)) {
-				hueBrightSourceReady = true;
+		const lightingXhr = new XMLHttpRequest();
+		lightingXhr.open("GET", 'js/plugins/paletteJailLightingShader.frag');
+		lightingXhr.onreadystatechange = () => {
+			if(lightingXhr.readyState == 4 && (lightingXhr.status === 200 || lightingXhr.status === 0)) {
+				lightingSourceReady = true;
 				compileShader();
 			}
 		};
-		hueBrightXhr.send();
+		lightingXhr.send();
 		
 		function compileShader() {
-			if(!imageReady || !emptySourceReady || !hueSourceReady || !brightSourceReady || !hueBrightSourceReady) { return; }
+			if(!imageReady || !emptySourceReady || !monochromeSourceReady || !brightnessSourceReady || !lightingSourceReady) { return; }
 			
 			// save universal uniforms
 			paletteJailImage = paletteImage;
@@ -97,15 +101,15 @@
 			// insert values into shader sources and save them
 			emptyShaderSource = emptyXhr.responseText;
 			
-			hueShaderSource = hueXhr.responseText
+			monochromeShaderSource = monochromeXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 			
-			brightShaderSource = brightXhr.responseText
+			brightnessShaderSource = brightnessXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 			
-			hueBrightShaderSource = hueBrightXhr.responseText
+			lightingShaderSource = lightingXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 		}
@@ -163,13 +167,13 @@
 			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
 			this.filters.push(this._emptyFilter);
 		}
-		if(brightShaderSource) {
+		if(brightnessShaderSource) {
 			this._colorFilterUniforms = {};
 			this._colorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
 			this._colorFilterUniforms.hues = paletteJailImage.width;
 			this._colorFilterUniforms.brightLevels = paletteJailImage.height;
 			this._colorFilterUniforms.brightness = 0;
-			this._colorFilter = new PIXI.Filter(null, brightShaderSource, this._colorFilterUniforms);
+			this._colorFilter = new PIXI.Filter(null, brightnessShaderSource, this._colorFilterUniforms);
 		}
 	};
 	
@@ -203,13 +207,13 @@
 			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
 			this._baseSprite.filters.push(this._emptyFilter);
 		}
-		if(hueShaderSource) {
+		if(lightingShaderSource) {
 			this._overallColorFilterUniforms = {};
 			this._overallColorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
 			this._overallColorFilterUniforms.hues = paletteJailImage.width;
 			this._overallColorFilterUniforms.brightLevels = paletteJailImage.height;
 			this._overallColorFilterUniforms.lightHue = 0;
-			this._overallColorFilter = new PIXI.Filter(null, hueShaderSource, this._overallColorFilterUniforms);
+			this._overallColorFilter = new PIXI.Filter(null, lightingShaderSource, this._overallColorFilterUniforms);
 		}
 	};
 	

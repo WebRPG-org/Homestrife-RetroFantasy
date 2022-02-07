@@ -2,6 +2,8 @@ uniform sampler2D paletteTex;
 uniform float hues;
 uniform float brightLevels;
 uniform float lightHue;
+uniform float hueIntensity;
+uniform float brightness;
 
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
@@ -41,11 +43,14 @@ void main(){
 	float hueDirection = hueDifference / (finalLightHue - hue);
 	hueDirection *= hueDifference > maxHueDifference ? -1.0 : 1.0;
 	hueDifference = hueDifference > maxHueDifference ? hueDifference - maxHueDifference : hueDifference;
-	float newHue = finalLightHue == 0.0 || hue == 0.0 ? finalLightHue : hue + hueDirection;
+	float finalHueIntensity = hueIntensity < 1.0 ? 1.0 : (hueIntensity > hueDifference ? hueDifference : hueIntensity);
+	float newHue = finalLightHue == 0.0 || hue == 0.0 ? finalLightHue : hue + finalHueIntensity * hueDirection;
 	newHue = finalLightHue == 0.0 || hue == 0.0 ? newHue : (newHue > hues - 1.0 ? newHue - (hues - 1.0) : (newHue < 1.0 ? newHue + (hues - 1.0) : newHue));
 	
-	float newBrightLevel = finalLightHue == 0.0 || hue == 0.0 ? brightLevel : ceil(brightLevel - floor(brightLevels / 2.0 - 1.0) * (hueDifference / maxHueDifference));
-	newBrightLevel = newBrightLevel < 0.0 ? 0.0 : newBrightLevel;
+	float brightVariance = brightLevels / 4.0 - 1.0;
+	brightVariance = brightVariance < 0.0 ? 0.0 : brightVariance;
+	float newBrightLevel = (finalLightHue == 0.0 || hue == 0.0 ? brightLevel : ceil(brightLevel - brightVariance * (hueDifference / maxHueDifference))) + brightness;
+	newBrightLevel = newBrightLevel < 0.0 ? 0.0 : (newBrightLevel > brightLevels - 1.0 ? brightLevels - 1.0 : newBrightLevel);
 	
 	paletteCoord.x = newHue * pIncX + pHalfIncX;
 	paletteCoord.y = newBrightLevel * pIncY + pHalfIncY;

@@ -208,12 +208,14 @@
 			this._baseSprite.filters.push(this._emptyFilter);
 		}
 		if(lightingShaderSource) {
-			this._overallColorFilterUniforms = {};
-			this._overallColorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
-			this._overallColorFilterUniforms.hues = paletteJailImage.width;
-			this._overallColorFilterUniforms.brightLevels = paletteJailImage.height;
-			this._overallColorFilterUniforms.lightHue = 0;
-			this._overallColorFilter = new PIXI.Filter(null, lightingShaderSource, this._overallColorFilterUniforms);
+			this._baseColorFilterUniforms = {};
+			this._baseColorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._baseColorFilterUniforms.hues = paletteJailImage.width;
+			this._baseColorFilterUniforms.brightLevels = paletteJailImage.height;
+			this._baseColorFilterUniforms.lightHue = 0;
+			this._baseColorFilterUniforms.hueIntensity = 0;
+			this._baseColorFilterUniforms.brightness = 0;
+			this._lightingFilter = new PIXI.Filter(null, lightingShaderSource, this._baseColorFilterUniforms);
 		}
 	};
 	
@@ -225,13 +227,17 @@
 	
 	Spriteset_Base.prototype.updateBaseFilters = function() {
 		const lightHue = 10;
-		if(this._overallColorFilter && lightHue >= 0) {
+		const hueIntensity = 1;
+		const brightness = -1;
+		if(this._lightingFilter && (hueIntensity > 0 || brightness != 0)) {
 			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._emptyFilter) {
-				this._baseSprite.filters[0] = this._overallColorFilter;
+				this._baseSprite.filters[0] = this._lightingFilter;
 			}
-			this._overallColorFilterUniforms.lightHue = lightHue;
+			this._baseColorFilterUniforms.lightHue = lightHue;
+			this._baseColorFilterUniforms.hueIntensity = hueIntensity;
+			this._baseColorFilterUniforms.brightness = brightness;
 		} else if(this._emptyFilter) {
-			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._overallColorFilter) {
+			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._lightingFilter) {
 				this._baseSprite.filters[0] = this._emptyFilter;
 			}
 		}

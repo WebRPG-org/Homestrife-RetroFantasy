@@ -188,6 +188,7 @@
 			this._lightingFilterUniforms.lightHue = 0;
 			this._lightingFilterUniforms.hueIntensity = 0;
 			this._lightingFilterUniforms.brightness = 0;
+			this._lightingFilterUniforms.hueDarkenThreshold = 0.0;
 			this._lightingFilter = new PIXI.Filter(null, lightingShaderSource, this._lightingFilterUniforms);
 			this._lightingFilter.padding = Graphics.width;
 		}
@@ -201,8 +202,9 @@
 	
 	Tilemap.prototype._updateFilters = function() {
 		const lightHue = 10;
-		const hueIntensity = 0;
-		const brightness = 0;
+		const hueIntensity = 1;
+		const brightness = -1;
+		const hueDarkenThreshold = 3;
 		if(this._lightingFilter && (hueIntensity > 0 || brightness != 0)) {
 			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._emptyFilter) {
 				this._lowerLayerContainer.filters[0] = this._lightingFilter;
@@ -210,6 +212,7 @@
 			this._lightingFilterUniforms.lightHue = lightHue;
 			this._lightingFilterUniforms.hueIntensity = hueIntensity;
 			this._lightingFilterUniforms.brightness = brightness;
+			this._lightingFilterUniforms.hueDarkenThreshold = hueDarkenThreshold;
 		} else if(this._emptyFilter) {
 			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._lightingFilter) {
 				this._lowerLayerContainer.filters[0] = this._emptyFilter;

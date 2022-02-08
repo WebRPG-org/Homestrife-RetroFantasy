@@ -142,6 +142,110 @@
 		// this._colorFilter.setColorTone(this._colorTone);
 	};
 	
+	// Tilemap
+	const _Tilemap_initialize = Tilemap.prototype.initialize;
+	Tilemap.prototype.initialize = function() {
+		_Tilemap_initialize.call(this);
+		this._createFilters();
+	};
+	
+	Tilemap.prototype._createLayers = function() {
+		/*
+		 * [Z coordinate]
+		 *  0 : Lower tiles
+		 *  1 : Lower characters
+		 *  3 : Normal characters
+		 *  4 : Upper tiles
+		 *  5 : Upper characters
+		 *  6 : Airship shadow
+		 *  7 : Balloon
+		 *  8 : Animation
+		 *  9 : Destination
+		 */
+		this._lowerLayer = new Tilemap.Layer();
+		this._lowerLayerContainer = new PIXI.Container();
+		this._lowerLayerContainer.z = 0;
+		this._lowerLayerContainer.addChild(this._lowerLayer);
+		this._upperLayer = new Tilemap.Layer();
+		this._upperLayer.z = 4;
+		this.addChild(this._lowerLayerContainer);
+		this.addChild(this._upperLayer);
+		this._needsRepaint = true;
+	};
+	
+	Tilemap.prototype._createFilters = function() {
+		this._lowerLayerContainer.filters = [];
+		if(emptyShaderSource) {
+			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
+			this._emptyFilter.padding = Graphics.width;
+			this._lowerLayerContainer.filters.push(this._emptyFilter);
+		}
+		if(lightingShaderSource) {
+			this._lightingFilterUniforms = {};
+			this._lightingFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._lightingFilterUniforms.hues = paletteJailImage.width;
+			this._lightingFilterUniforms.brightLevels = paletteJailImage.height;
+			this._lightingFilterUniforms.lightHue = 0;
+			this._lightingFilterUniforms.hueIntensity = 0;
+			this._lightingFilterUniforms.brightness = 0;
+			this._lightingFilter = new PIXI.Filter(null, lightingShaderSource, this._lightingFilterUniforms);
+			this._lightingFilter.padding = Graphics.width;
+		}
+	};
+	
+	const _Tilemap_update = Tilemap.prototype.update;
+	Tilemap.prototype.update = function() {
+		_Tilemap_update.call(this);
+		this._updateFilters();
+	};
+	
+	Tilemap.prototype._updateFilters = function() {
+		const lightHue = 10;
+		const hueIntensity = 0;
+		const brightness = 0;
+		if(this._lightingFilter && (hueIntensity > 0 || brightness != 0)) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._emptyFilter) {
+				this._lowerLayerContainer.filters[0] = this._lightingFilter;
+			}
+			this._lightingFilterUniforms.lightHue = lightHue;
+			this._lightingFilterUniforms.hueIntensity = hueIntensity;
+			this._lightingFilterUniforms.brightness = brightness;
+		} else if(this._emptyFilter) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._lightingFilter) {
+				this._lowerLayerContainer.filters[0] = this._emptyFilter;
+			}
+		}
+	};
+	
+	Tilemap.prototype._addSpot = function(startX, startY, x, y) {
+		const mx = startX + x;
+		const my = startY + y;
+		const dx = x * this._tileWidth;
+		const dy = y * this._tileHeight;
+		const tileId0 = this._readMapData(mx, my, 0);
+		const tileId1 = this._readMapData(mx, my, 1);
+		const tileId2 = this._readMapData(mx, my, 2);
+		const tileId3 = this._readMapData(mx, my, 3);
+		const shadowBits = this._readMapData(mx, my, 4);
+		const upperTileId1 = this._readMapData(mx, my - 1, 1);
+
+		this._addSpotTile(tileId0, dx, dy);
+		this._addSpotTile(tileId1, dx, dy);
+		//this._addShadow(this._lowerLayer, shadowBits, dx, dy);
+		if (this._isTableTile(upperTileId1) && !this._isTableTile(tileId1)) {
+			if (!Tilemap.isShadowingTile(tileId0)) {
+				this._addTableEdge(this._lowerLayer, upperTileId1, dx, dy);
+			}
+		}
+		if (this._isOverpassPosition(mx, my)) {
+			this._addTile(this._upperLayer, tileId2, dx, dy);
+			this._addTile(this._upperLayer, tileId3, dx, dy);
+		} else {
+			this._addSpotTile(tileId2, dx, dy);
+			this._addSpotTile(tileId3, dx, dy);
+		}
+	};
+	
 	// Window
 	Window.prototype._createClientArea = function() {
 		this._clientArea = new Sprite();
@@ -168,23 +272,23 @@
 			this.filters.push(this._emptyFilter);
 		}
 		if(brightnessShaderSource) {
-			this._colorFilterUniforms = {};
-			this._colorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
-			this._colorFilterUniforms.hues = paletteJailImage.width;
-			this._colorFilterUniforms.brightLevels = paletteJailImage.height;
-			this._colorFilterUniforms.brightness = 0;
-			this._colorFilter = new PIXI.Filter(null, brightnessShaderSource, this._colorFilterUniforms);
+			this._brightnessFilterUniforms = {};
+			this._brightnessFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._brightnessFilterUniforms.hues = paletteJailImage.width;
+			this._brightnessFilterUniforms.brightLevels = paletteJailImage.height;
+			this._brightnessFilterUniforms.brightness = 0;
+			this._brightnessFilter = new PIXI.Filter(null, brightnessShaderSource, this._brightnessFilterUniforms);
 		}
 	};
 	
 	Scene_Base.prototype.updateColorFilter = function() {
-		if(this._colorFilter && this._fadeOpacity > 0) {
-			if(this.filters.length === 0 || this.filters[0] === this._emptyFilter) {
-				this.filters[0] = this._colorFilter;
+		if(this._brightnessFilter && this._fadeOpacity > 0) {
+			if(this.filters.length === 0 || this.filters[0] !== this._brightnessFilter) {
+				this.filters[0] = this._brightnessFilter;
 			}
-			this._colorFilterUniforms.brightness = Math.ceil((this._colorFilterUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
+			this._brightnessFilterUniforms.brightness = Math.ceil((this._brightnessFilterUniforms.brightLevels-1) * (this._fadeOpacity / 255)) * (this._fadeWhite ? 1 : -1);
 		} else if(this._emptyFilter) {
-			if(this.filters.length === 0 || this.filters[0] === this._colorFilter) {
+			if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
 				this.filters[0] = this._emptyFilter;
 			}
 		}
@@ -202,45 +306,20 @@
 	
 	// Spriteset Base
 	Spriteset_Base.prototype.createBaseFilters = function() {
-		this._baseSprite.filters = [];
-		if(emptyShaderSource) {
-			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
-			this._baseSprite.filters.push(this._emptyFilter);
-		}
-		if(lightingShaderSource) {
-			this._baseColorFilterUniforms = {};
-			this._baseColorFilterUniforms.paletteTex = paletteJailImage.baseTexture;
-			this._baseColorFilterUniforms.hues = paletteJailImage.width;
-			this._baseColorFilterUniforms.brightLevels = paletteJailImage.height;
-			this._baseColorFilterUniforms.lightHue = 0;
-			this._baseColorFilterUniforms.hueIntensity = 0;
-			this._baseColorFilterUniforms.brightness = 0;
-			this._lightingFilter = new PIXI.Filter(null, lightingShaderSource, this._baseColorFilterUniforms);
-		}
+		//this._baseSprite.filters = [];
+		//this._baseColorFilter = new ColorFilter();
+		//this._baseSprite.filters.push(this._baseColorFilter);
 	};
 	
 	Spriteset_Base.prototype.createOverallFilters = function() {
-		this.filters = [];
+		//this.filters = [];
 		//this._overallColorFilter = new ColorFilter();
 		//this.filters.push(this._overallColorFilter);
 	};
 	
 	Spriteset_Base.prototype.updateBaseFilters = function() {
-		const lightHue = 10;
-		const hueIntensity = 1;
-		const brightness = -1;
-		if(this._lightingFilter && (hueIntensity > 0 || brightness != 0)) {
-			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._emptyFilter) {
-				this._baseSprite.filters[0] = this._lightingFilter;
-			}
-			this._baseColorFilterUniforms.lightHue = lightHue;
-			this._baseColorFilterUniforms.hueIntensity = hueIntensity;
-			this._baseColorFilterUniforms.brightness = brightness;
-		} else if(this._emptyFilter) {
-			if(this._baseSprite.filters.length === 0 || this._baseSprite.filters[0] === this._lightingFilter) {
-				this._baseSprite.filters[0] = this._emptyFilter;
-			}
-		}
+		//const filter = this._baseColorFilter;
+		//filter.setColorTone($gameScreen.tone());
 	};
 	
 	Spriteset_Base.prototype.updateOverallFilters = function() {

@@ -37,6 +37,7 @@
  * @type number
  * @default 0
  * @min 0
+ * @decimals 0
  *
  * @arg hueIntensity
  * @text Intensity
@@ -44,12 +45,15 @@
  * @type number
  * @default 0
  * @min 0
+ * @decimals 0
  *
  * @arg brightness
  * @text Brightness
  * @desc If non-zero, lightens or darkens the screen.
  * @type number
  * @default 0
+ * @min -9999
+ * @decimals 0
  *
  * @arg hueDarkenThreshold
  * @text Hue Darken Threshold
@@ -57,6 +61,7 @@
  * @type number
  * @default 1
  * @min 1
+ * @decimals 0
  */
  
 (() => {
@@ -224,15 +229,12 @@
 			this._lowerLayerContainer.filters.push(this._emptyFilter);
 		}
 		if(brightnessShaderSource) {
-			this._lightingFilterUniforms = {};
-			this._lightingFilterUniforms.paletteTex = paletteJailImage.baseTexture;
-			this._lightingFilterUniforms.hues = paletteJailImage.width;
-			this._lightingFilterUniforms.brightLevels = paletteJailImage.height;
-			this._lightingFilterUniforms.lightHue = 0;
-			this._lightingFilterUniforms.hueIntensity = 0;
-			this._lightingFilterUniforms.brightness = 0;
-			this._lightingFilterUniforms.hueDarkenThreshold = 0.0;
-			this._brightnessFilter = new PIXI.Filter(null, brightnessShaderSource, this._lightingFilterUniforms);
+			this._brightnessFilterUniforms = {};
+			this._brightnessFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._brightnessFilterUniforms.hues = paletteJailImage.width;
+			this._brightnessFilterUniforms.brightLevels = paletteJailImage.height;
+			this._brightnessFilterUniforms.brightness = 0;
+			this._brightnessFilter = new PIXI.Filter(null, brightnessShaderSource, this._brightnessFilterUniforms);
 			this._brightnessFilter.padding = Graphics.width;
 		}
 		if(lightingShaderSource) {
@@ -260,7 +262,7 @@
 			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._lightingFilter) {
 				this._lowerLayerContainer.filters[0] = this._lightingFilter;
 			}
-		} else if(this._brightnessFilter && this._lightingFilterUniforms.brightness != 0) {
+		} else if(this._brightnessFilter && this._brightnessFilterUniforms.brightness !== 0) {
 			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._brightnessFilter) {
 				this._lowerLayerContainer.filters[0] = this._brightnessFilter;
 			}
@@ -301,6 +303,7 @@
 	};
 	
 	Tilemap.prototype.setFilterParams = function(lightHue, hueIntensity, brightness, hueDarkenThreshold) {
+		this._brightnessFilterUniforms.brightness = brightness;
 		this._lightingFilterUniforms.lightHue = lightHue;
 		this._lightingFilterUniforms.hueIntensity = hueIntensity;
 		this._lightingFilterUniforms.brightness = brightness;

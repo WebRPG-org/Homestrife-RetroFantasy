@@ -24,11 +24,54 @@
  * @text Palette File
  * @desc The image file that contains the colors of the desired palette.
  * @type file
+ *
+ *
+ *
+ * @command Palette Jail Tint Screen
+ * @desc Screen tint command, to be used instead of the vanilla command, when
+ * using the Palette Jail plugin.
+ *
+ * @arg lightHue
+ * @text Hue
+ * @desc Starting from 0, represents a hue in the palette image. The grayscale hue will simply force grayscale.
+ * @type number
+ * @default 0
+ * @min 0
+ *
+ * @arg hueIntensity
+ * @text Intensity
+ * @desc Starting from 0, determines how strong the tint is.
+ * @type number
+ * @default 0
+ * @min 0
+ *
+ * @arg brightness
+ * @text Brightness
+ * @desc If non-zero, lightens or darkens the screen.
+ * @type number
+ * @default 0
+ *
+ * @arg hueDarkenThreshold
+ * @text Hue Darken Threshold
+ * @desc If higher than 1, only darkens colors further from the chosen hue. Set >= hue count for no darkening.
+ * @type number
+ * @default 1
+ * @min 1
  */
  
 (() => {
 	// plugin parameters
 	const pluginParams = PluginManager.parameters('D9D_PaletteJail');
+	
+	// plugin commands
+	PluginManager.registerCommand('D9D_PaletteJail', 'Palette Jail Tint Screen', args => {
+		$gameScreen.startPaletteJailTint(
+			Math.floor(parseInt(args.lightHue)),
+			Math.floor(parseInt(args.hueIntensity)),
+			Math.floor(parseInt(args.brightness)),
+			Math.floor(parseInt(args.hueDarkenThreshold))
+		);
+	});
 	
 	// plugin variables
 	let emptyShaderSource = null;
@@ -180,6 +223,18 @@
 			this._emptyFilter.padding = Graphics.width;
 			this._lowerLayerContainer.filters.push(this._emptyFilter);
 		}
+		if(brightnessShaderSource) {
+			this._lightingFilterUniforms = {};
+			this._lightingFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._lightingFilterUniforms.hues = paletteJailImage.width;
+			this._lightingFilterUniforms.brightLevels = paletteJailImage.height;
+			this._lightingFilterUniforms.lightHue = 0;
+			this._lightingFilterUniforms.hueIntensity = 0;
+			this._lightingFilterUniforms.brightness = 0;
+			this._lightingFilterUniforms.hueDarkenThreshold = 0.0;
+			this._brightnessFilter = new PIXI.Filter(null, brightnessShaderSource, this._lightingFilterUniforms);
+			this._brightnessFilter.padding = Graphics.width;
+		}
 		if(lightingShaderSource) {
 			this._lightingFilterUniforms = {};
 			this._lightingFilterUniforms.paletteTex = paletteJailImage.baseTexture;
@@ -201,20 +256,16 @@
 	};
 	
 	Tilemap.prototype._updateFilters = function() {
-		const lightHue = 10;
-		const hueIntensity = 1;
-		const brightness = -1;
-		const hueDarkenThreshold = 3;
-		if(this._lightingFilter && (hueIntensity > 0 || brightness != 0)) {
-			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._emptyFilter) {
+		if(this._lightingFilter && this._lightingFilterUniforms.hueIntensity > 0) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._lightingFilter) {
 				this._lowerLayerContainer.filters[0] = this._lightingFilter;
 			}
-			this._lightingFilterUniforms.lightHue = lightHue;
-			this._lightingFilterUniforms.hueIntensity = hueIntensity;
-			this._lightingFilterUniforms.brightness = brightness;
-			this._lightingFilterUniforms.hueDarkenThreshold = hueDarkenThreshold;
+		} else if(this._brightnessFilter && this._lightingFilterUniforms.brightness != 0) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._brightnessFilter) {
+				this._lowerLayerContainer.filters[0] = this._brightnessFilter;
+			}
 		} else if(this._emptyFilter) {
-			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] === this._lightingFilter) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._emptyFilter) {
 				this._lowerLayerContainer.filters[0] = this._emptyFilter;
 			}
 		}
@@ -249,6 +300,13 @@
 		}
 	};
 	
+	Tilemap.prototype.setFilterParams = function(lightHue, hueIntensity, brightness, hueDarkenThreshold) {
+		this._lightingFilterUniforms.lightHue = lightHue;
+		this._lightingFilterUniforms.hueIntensity = hueIntensity;
+		this._lightingFilterUniforms.brightness = brightness;
+		this._lightingFilterUniforms.hueDarkenThreshold = hueDarkenThreshold;
+	};
+	
 	// Window
 	Window.prototype._createClientArea = function() {
 		this._clientArea = new Sprite();
@@ -265,6 +323,35 @@
 		//filterArea.y = pos.y + this.origin.y;
 		//filterArea.width = this.innerWidth;
 		//filterArea.height = this.innerHeight;
+	};
+	
+	// Game Screen
+	const _Game_Screen_clear = Game_Screen.prototype.clear;
+	Game_Screen.prototype.clear = function() {
+		_Game_Screen_clear.call(this);
+		this.clearPaletteJailTint();
+	};
+	
+	Game_Screen.prototype.paletteJailTint = function() {
+		return this._paletteJailTint;
+	};
+	
+	Game_Screen.prototype.startPaletteJailTint = function(lightHue, hueIntensity, brightness, hueDarkenThreshold) {
+		this._paletteJailTint = {
+			lightHue: lightHue,
+			hueIntensity: hueIntensity,
+			brightness: brightness,
+			hueDarkenThreshold: hueDarkenThreshold
+		};
+	};
+	
+	Game_Screen.prototype.clearPaletteJailTint = function() {
+		this._paletteJailTint = {
+			lightHue: 0,
+			hueIntensity: 0,
+			brightness: 0,
+			hueDarkenThreshold: 1
+		};
 	};
 	
 	// Scene Base
@@ -329,6 +416,18 @@
 		//const filter = this._overallColorFilter;
 		//filter.setBlendColor($gameScreen.flashColor());
 		//filter.setBrightness($gameScreen.brightness());
+	};
+	
+	// Spriteset Base
+	const _Spriteset_Map_updateTilemap = Spriteset_Map.prototype.updateTilemap;
+	Spriteset_Map.prototype.updateTilemap = function() {
+		_Spriteset_Map_updateTilemap.call(this);
+		const tint = $gameScreen.paletteJailTint();
+		if(tint) {
+			this._tilemap.setFilterParams(tint.lightHue, tint.hueIntensity, tint.brightness, tint.hueDarkenThreshold);
+		} else {
+			this._tilemap.setFilterParams(0, 0, 0, 1);
+		}
 	};
 	
 	// Spriteset Battle

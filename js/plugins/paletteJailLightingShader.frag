@@ -48,10 +48,9 @@ void main(){
 	float newHue = finalLightHue == 0.0 || hue == 0.0 ? finalLightHue : hue + finalHueIntensity * hueDirection;
 	newHue = finalLightHue == 0.0 || hue == 0.0 ? newHue : (newHue > hues - 1.0 ? newHue - (hues - 1.0) : (newHue < 1.0 ? newHue + (hues - 1.0) : newHue));
 	
-	float finalHueDarkentThreshold = hueDarkenThreshold < 1.0 ? 1.0 : (hueDarkenThreshold > brightLevels ? brightLevels : hueDarkenThreshold);
-	float brightVariance = brightLevels / hueDarkenThreshold - 1.0;
-	brightVariance = brightVariance < 0.0 ? 0.0 : brightVariance;
-	float newBrightLevel = (finalLightHue == 0.0 || hue == 0.0 ? brightLevel : ceil(brightLevel - brightVariance * (hueDifference / maxHueDifference))) + brightness;
+	float finalHueDarkenThreshold = hueDarkenThreshold < 1.0 ? 1.0 : (hueDarkenThreshold > hues - 1.0 ? hues - 1.0 : hueDarkenThreshold);
+	float thresholdBrightReduce = floor(hueDifference / finalHueDarkenThreshold);
+	float newBrightLevel = (finalLightHue == 0.0 || hue == 0.0 ? brightLevel : brightLevel - thresholdBrightReduce) + brightness;
 	newBrightLevel = newBrightLevel < 0.0 ? 0.0 : (newBrightLevel > brightLevels - 1.0 ? brightLevels - 1.0 : newBrightLevel);
 	
 	paletteCoord.x = newHue * pIncX + pHalfIncX;

@@ -57,7 +57,7 @@
  *
  * @arg hueDarkenThreshold
  * @text Hue Darken Threshold
- * @desc If higher than 1, only darkens colors further from the chosen hue. Set >= hue count for no darkening.
+ * @desc If higher than 1, only darkens colors further from the chosen hue. Set >= hue count - 1 for no such darkening.
  * @type number
  * @default 1
  * @min 1
@@ -237,6 +237,16 @@
 			this._brightnessFilter = new PIXI.Filter(null, brightnessShaderSource, this._brightnessFilterUniforms);
 			this._brightnessFilter.padding = Graphics.width;
 		}
+		if(monochromeShaderSource) {
+			this._monochromeFilterUniforms = {};
+			this._monochromeFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._monochromeFilterUniforms.hues = paletteJailImage.width;
+			this._monochromeFilterUniforms.brightLevels = paletteJailImage.height;
+			this._monochromeFilterUniforms.hue = 0;
+			this._monochromeFilterUniforms.brightness = 0;
+			this._monochromeFilter = new PIXI.Filter(null, monochromeShaderSource, this._monochromeFilterUniforms);
+			this._monochromeFilter.padding = Graphics.width;
+		}
 		if(lightingShaderSource) {
 			this._lightingFilterUniforms = {};
 			this._lightingFilterUniforms.paletteTex = paletteJailImage.baseTexture;
@@ -258,7 +268,11 @@
 	};
 	
 	Tilemap.prototype._updateFilters = function() {
-		if(this._lightingFilter && this._lightingFilterUniforms.hueIntensity > 0) {
+		if(this._monochromeFilter && this._lightingFilterUniforms.hueIntensity >= this._lightingFilterUniforms.hues - 2 && this._lightingFilterUniforms.hueDarkenThreshold > this._lightingFilterUniforms.hues - 2) {
+			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._monochromeFilter) {
+				this._lowerLayerContainer.filters[0] = this._monochromeFilter;
+			}
+		} else if(this._lightingFilter && this._lightingFilterUniforms.hueIntensity > 0) {
 			if(this._lowerLayerContainer.filters.length === 0 || this._lowerLayerContainer.filters[0] !== this._lightingFilter) {
 				this._lowerLayerContainer.filters[0] = this._lightingFilter;
 			}
@@ -304,6 +318,8 @@
 	
 	Tilemap.prototype.setFilterParams = function(lightHue, hueIntensity, brightness, hueDarkenThreshold) {
 		this._brightnessFilterUniforms.brightness = brightness;
+		this._monochromeFilterUniforms.hue = lightHue;
+		this._monochromeFilterUniforms.brightness = brightness;
 		this._lightingFilterUniforms.lightHue = lightHue;
 		this._lightingFilterUniforms.hueIntensity = hueIntensity;
 		this._lightingFilterUniforms.brightness = brightness;

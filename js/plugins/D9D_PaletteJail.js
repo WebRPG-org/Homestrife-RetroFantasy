@@ -174,20 +174,20 @@
 	
 	// Sprite
 	Sprite.prototype._createColorFilter = function() {
-		// this._colorFilter = new ColorFilter();
-		// if (!this.filters) {
-			// this.filters = [];
-		// }
-		// this.filters.push(this._colorFilter);
+		this.filters = [];
+		if(emptyShaderSource) {
+			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
+			this.filters.push(this._emptyFilter);
+		}
 	};
 
 	Sprite.prototype._updateColorFilter = function() {
-		// if (!this._colorFilter) {
-			// this._createColorFilter();
-		// }
-		// this._colorFilter.setHue(this._hue);
-		// this._colorFilter.setBlendColor(this._blendColor);
-		// this._colorFilter.setColorTone(this._colorTone);
+		if (!this._emptyFilter) {
+			this._createColorFilter();
+		}
+		if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
+			this.filters[0] = this._emptyFilter;
+		}
 	};
 	
 	// Tilemap

@@ -83,6 +83,8 @@
 	let monochromeShaderSource = null;
 	let brightnessShaderSource = null;
 	let lightingShaderSource = null;
+	let hueRotateShaderSource = null;
+	let monochromeTumbleShaderSource = null;
 	let paletteJailImage = null;
 	loadPaletteJailFiles();
 	
@@ -93,6 +95,8 @@
 		let monochromeSourceReady = false;
 		let brightnessSourceReady = false;
 		let lightingSourceReady = false;
+		let hueRotateSourceReady = false;
+		let monochromeTumbleSourceReady = false;
 		
 		const paletteImage = ImageManager.loadBitmapFromUrl(pluginParams.paletteFile + ".png");
 		paletteImage.addLoadListener(() => {
@@ -140,8 +144,28 @@
 		};
 		lightingXhr.send();
 		
+		const hueRotateXhr = new XMLHttpRequest();
+		hueRotateXhr.open("GET", 'js/plugins/paletteJailHueRotateShader.frag');
+		hueRotateXhr.onreadystatechange = () => {
+			if(hueRotateXhr.readyState == 4 && (hueRotateXhr.status === 200 || hueRotateXhr.status === 0)) {
+				hueRotateSourceReady = true;
+				compileShader();
+			}
+		};
+		hueRotateXhr.send();
+		
+		const monochromeTumbleXhr = new XMLHttpRequest();
+		monochromeTumbleXhr.open("GET", 'js/plugins/paletteJailMonochromeTumbleShader.frag');
+		monochromeTumbleXhr.onreadystatechange = () => {
+			if(monochromeTumbleXhr.readyState == 4 && (monochromeTumbleXhr.status === 200 || monochromeTumbleXhr.status === 0)) {
+				monochromeTumbleSourceReady = true;
+				compileShader();
+			}
+		};
+		monochromeTumbleXhr.send();
+		
 		function compileShader() {
-			if(!imageReady || !emptySourceReady || !monochromeSourceReady || !brightnessSourceReady || !lightingSourceReady) { return; }
+			if(!imageReady || !emptySourceReady || !monochromeSourceReady || !brightnessSourceReady || !lightingSourceReady || !hueRotateSourceReady || !monochromeTumbleSourceReady) { return; }
 			
 			// save universal uniforms
 			paletteJailImage = paletteImage;
@@ -158,6 +182,14 @@
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 			
 			lightingShaderSource = lightingXhr.responseText
+				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
+				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
+			
+			hueRotateShaderSource = hueRotateXhr.responseText
+				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
+				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
+			
+			monochromeTumbleShaderSource = monochromeTumbleXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 		}

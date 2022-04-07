@@ -37,7 +37,7 @@ void main(){
 	float finalShiftAmount = shiftAmount < 0.0 ? 0.0 : (shiftAmount > hues - 2.0 ? hues - 2.0 : shiftAmount);
 	float finalShiftDirection = shiftDirection < 0.0 ? -1.0 : 1.0;
 	float newHue = hue + finalShiftAmount * finalShiftDirection;
-	newHue = hue == 0.0 ? 0.0 : (nueHue > hues - 1.0 ? newHue - (hues - 1.0) : (newHue < 1.0 ? newHue + (hues - 1.0)));
+	newHue = hue == 0.0 ? 0.0 : (newHue > hues - 1.0 ? newHue - (hues - 1.0) : (newHue < 1.0 ? newHue + (hues - 1.0) : newHue));
 	
 	paletteCoord.x = newHue * pIncX + pHalfIncX;
 	gl_FragColor = texture2D(paletteTex, paletteCoord);

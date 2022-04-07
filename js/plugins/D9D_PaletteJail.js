@@ -62,6 +62,37 @@
  * @default 1
  * @min 1
  * @decimals 0
+ *
+ *
+ * @command Palette Jail Hue Rotate
+ * @desc Shifts the event's or an actor's colors across the palette's hues. Ignores grayscale colors.
+ * 
+ * @arg shiftAmount
+ * @text Shift Amount
+ * @desc If non-zero, how many hues to shift by.
+ * @type number
+ * @default 0
+ * @min -9999
+ * @decimals 0
+ *
+ * @arg shiftAmountVar
+ * @text Shift Amount Variable
+ * @desc If not 0 (None), gets the shift amount from a variable.
+ * @type variable
+ * @default 0
+ *
+ * @arg target
+ * @text Target
+ * @desc Target actor. If 0 (None), targets the event.
+ * @type actor
+ * @default 0
+ *
+ * @arg targetVar
+ * @text Target Variable
+ * @desc If not 0 (None), gets the target from a variable.
+ * @type variable
+ * @default 0
+ *
  */
  
 (() => {
@@ -76,6 +107,12 @@
 			Math.floor(parseInt(args.brightness)),
 			Math.floor(parseInt(args.hueDarkenThreshold))
 		);
+	});
+	
+	PluginManager.registerCommand('D9D_PaletteJail', 'Palette Jail Hue Rotate', args => {
+		const shiftAmount = args.shiftAmountVar === 0 ? args.shiftAmount : $gameVariables.value(args.shiftAmountVar);
+		const target = args.targetVar === 0 ? args.target : $gameVariables.value(args.targetVar);
+		
 	});
 	
 	// plugin variables
@@ -205,11 +242,50 @@
 	}
 	
 	// Sprite
+	Sprite.prototype.setFilterParams = function(filter, shiftAmount, shiftDirection, hue) {
+		this.clearFilterParams();
+		if(filter === 'hueRotate') {
+			this._hueRotateFilterUniforms.shiftAmount = shiftAmount;
+			this._hueRotateFilterUniforms.shiftDirection = shiftDirection;
+		} else if(filter === 'monochromeTumble') {
+			this._monochromeTumbleFilterUniforms.hue = hue;
+			this._monochromeTumbleFilterUniforms.shiftAmount = shiftAmount;
+			this._monochromeTumbleFilterUniforms.shiftDirection = shiftDirection;
+		}
+	};
+	
+	Sprite.prototype.clearFilterParams = function() {
+		this._hueRotateFilterUniforms.shiftAmount = 0;
+		this._hueRotateFilterUniforms.shiftDirection = 1;
+		this._monochromeTumbleFilterUniforms.hue = 0;
+		this._monochromeTumbleFilterUniforms.shiftAmount = 0;
+		this._monochromeTumbleFilterUniforms.shiftDirection = 1;
+	};
+	
 	Sprite.prototype._createColorFilter = function() {
 		this.filters = [];
 		if(emptyShaderSource) {
 			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
 			this.filters.push(this._emptyFilter);
+		}
+		if(hueRotateShaderSource) {
+			this._hueRotateFilterUniforms = {};
+			this._hueRotateFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._hueRotateFilterUniforms.hues = paletteJailImage.width;
+			this._hueRotateFilterUniforms.brightLevels = paletteJailImage.height;
+			this._hueRotateFilterUniforms.shiftAmount = 0;
+			this._hueRotateFilterUniforms.shiftDirection = 1;
+			this._hueRotateFilter = new PIXI.Filter(null, hueRotateShaderSource, this._hueRotateFilterUniforms);
+		}
+		if(monochromeTumbleShaderSource) {
+			this._monochromeTumbleFilterUniforms = {};
+			this._monochromeTumbleFilterUniforms.paletteTex = paletteJailImage.baseTexture;
+			this._monochromeTumbleFilterUniforms.hues = paletteJailImage.width;
+			this._monochromeTumbleFilterUniforms.brightLevels = paletteJailImage.height;
+			this._monochromeTumbleFilterUniforms.hue = 0;
+			this._monochromeTumbleFilterUniforms.shiftAmount = 0;
+			this._monochromeTumbleFilterUniforms.shiftDirection = 1;
+			this._monochromeTumbleFilter = new PIXI.Filter(null, monochromeTumbleShaderSource, this._monochromeTumbleFilterUniforms);
 		}
 	};
 
@@ -217,8 +293,14 @@
 		if (!this._emptyFilter) {
 			this._createColorFilter();
 		}
-		if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
-			this.filters[0] = this._emptyFilter;
+		if(this._hueRotateFilter && this._hueRotateFilterUniforms.shiftAmount !== 0) {
+			if(this.filters.length === 0 || this.filters[0] !== this._hueRotateFilter) {
+				this.filters[0] = this._hueRotateFilter;
+			}
+		} else if(this._emptyFilter) {
+			if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
+				this.filters[0] = this._emptyFilter;
+			}
 		}
 	};
 	

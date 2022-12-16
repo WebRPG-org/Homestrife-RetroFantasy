@@ -2989,13 +2989,13 @@
 		width = 32;
 		height = 24;
 		const bitmap = ImageManager.loadSvActor(battlerName);
-		const pw = 32;
-		const ph = 24;
+		const pw = width;
+		const ph = height;
 		const sw = Math.min(width, pw);
 		const sh = Math.min(height, ph);
 		const dx = Math.floor(x + Math.max(width - pw, 0) / 2);
 		const dy = Math.floor(y + Math.max(height - ph, 0) / 2);
-		const sx = Math.floor((pw - sw) / 2);
+		const sx = Math.floor((pw - sw) / 2) + width;
 		const sy = Math.floor((ph - sh) / 2);
 		this.contents.blt(bitmap, sx, sy, sw, sh, dx, dy);
 	};
@@ -3813,10 +3813,10 @@
 				desc = "Unlock abilities for seeing the\nhidden, and uncanny aim.";
 				break;
 			case 12:
-				desc = "Unlock abilities for incredible\ntoughness and body purity.";
+				desc = "Unlock abilities that reduce\nstress, add focus, purify mind.";
 				break;
 			case 13:
-				desc = "Unlock abilities that reduce\nstress, add focus, purify mind.";
+				desc = "Unlock abilities for incredible\ntoughness and body purity.";
 				break;
 		}
 		const item = {};

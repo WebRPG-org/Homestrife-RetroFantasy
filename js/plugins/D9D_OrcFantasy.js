@@ -1137,7 +1137,7 @@
 			this.requestMotion(motion);
 			return;
 		}
-		this.requestMotion("skill");
+		this.requestMotion("spell");
 	};
 	
 	Game_Actor.prototype.performMiss = function() {

@@ -2441,8 +2441,7 @@
 				motionType === "evade" ||
 				motionType === "skill" ||
 				motionType === "spell" ||
-				motionType === "item" ||
-				motionType === "victory"
+				motionType === "item"
 			) {
 				this.startWeaponIdleAnimation(motionType);
 			} else {
@@ -2458,7 +2457,6 @@
 				motionType === "skill" ||
 				motionType === "spell" ||
 				motionType === "item" ||
-				motionType === "victory" ||
 				motionType === "swing" ||
 				motionType === "thrust" ||
 				motionType === "pommel" ||

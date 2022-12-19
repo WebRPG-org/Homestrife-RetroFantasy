@@ -556,7 +556,7 @@
 			case 0: // none
 			case 1: // piercing
 				// this stuff has a hard time getting around armor
-				critEva += 0.09;
+				critEva += 0.15;
 				break;
 			}
 			return critEva;

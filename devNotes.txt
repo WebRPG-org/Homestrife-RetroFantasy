@@ -39,14 +39,14 @@ Gain TP: Reduces the target's stress.
 
 ===Weapons===
 ==General Settings==
-Weapon Type: Everything before Throw is a melee type. Throw and onward is strictly ranged. MeleThrw, 2HMelThr, and GrMelThr grant a "shot" tech corresponding to the weapon's first Attack Element that is a weapon damage type.
+Weapon Type: Everything before Throw is a melee type. Throw and onward is strictly ranged. Reach and ranged weapons can attack without penalty when attacking the enemy back row from your front row, or the enemy front row from your back row. Attacking the enemy back row from your back row incurs half the penalty it normally would. 
 
 ==Traits==
-Attack Element: Blunt, Cut, Keen, Pierce, Siletto, Bullet, and Anti-Armor enable individual weapon Techs, and are known as weapon damage types. Regular attack and techs only utilize one of these, even if a weapon has more than one. Trip is a special type that enables a "trip" Tech that inflicts stress rather than damage. The remaining Attack Elements are elemental damage types. Each elemental damage type reprents 10% of the weapon's total power.
+Attack Element: Piercing turns part of the damage that is resisted by armor into more damage. HighCrit simply has an easier time bypassing armor altogether. A weapon with neither, to be effective, should simply have a relatively high attack power value. The remaining Attack Elements are elemental damage types. Each elemental damage type reprents 10% of the weapon's total attack power.
 
-Critical Hits: Critical hits are hits that ignore the target's armor. Crit chance is inherent to the Attack Element. Blunt, Cut, Keen has a low crit chance. Stiletto has a high crit chance. None and Trip can't crit. The rest have medium crit chance.
+Add Skill: Use this to add relevant skills to the weapon, such as techniques (4 to 102 in the Skills section of the database) that represent other ways to attack with the weapon. For instance, the MeleThrw weapon types should be given the Throw skill.
 
 ===Armors===
 ==Traits==
 =Ex-Parameter=
-Critial Evasion: Coverage. The higher this is, the lower chance that an attack will bypass armor. Over 90% and low crit chance attacks can't crit at all. Over 95% and the same is true of medium crit chance. Over 98% and not even high crit chance can, but you probably shouldn't do that because stiletto attacks should awalys be useful.
+Critial Evasion: Coverage. The higher this is, the lower chance that an attack will bypass armor. At 85% or above, only high crit attacks can hope to get through, as other attacks raise the targets effective coverage by 15% for the attack.

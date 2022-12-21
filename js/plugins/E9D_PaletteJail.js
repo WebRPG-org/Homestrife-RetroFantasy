@@ -1,13 +1,13 @@
 //=============================================================================
-// RPG Maker MZ - Darlos9D's Palette Jail
+// RPG Maker MZ - Emerald9D's Palette Jail
 //=============================================================================
 
 /*:
  * @target MZ
  * @plugindesc Provides palette-limited color filters.
- * @author Jonathan "Darlos9D" Royal
+ * @author Joule "Emerald9D" Royal
  *
- * @help D9D_PaletteJail.js
+ * @help E9D_PaletteJail.js
  *
  * This plugin limits color filter inputs and outputs to specific colors found
  * in a provided palette image file.
@@ -97,10 +97,10 @@
  
 (() => {
 	// plugin parameters
-	const pluginParams = PluginManager.parameters('D9D_PaletteJail');
+	const pluginParams = PluginManager.parameters('E9D_PaletteJail');
 	
 	// plugin commands
-	PluginManager.registerCommand('D9D_PaletteJail', 'Palette Jail Tint Screen', args => {
+	PluginManager.registerCommand('E9D_PaletteJail', 'Palette Jail Tint Screen', args => {
 		$gameScreen.startPaletteJailTint(
 			Math.floor(parseInt(args.lightHue)),
 			Math.floor(parseInt(args.hueIntensity)),
@@ -109,7 +109,7 @@
 		);
 	});
 	
-	PluginManager.registerCommand('D9D_PaletteJail', 'Palette Jail Hue Rotate', args => {
+	PluginManager.registerCommand('E9D_PaletteJail', 'Palette Jail Hue Rotate', args => {
 		const shiftAmount = args.shiftAmountVar === 0 ? args.shiftAmount : $gameVariables.value(args.shiftAmountVar);
 		const target = args.targetVar === 0 ? args.target : $gameVariables.value(args.targetVar);
 		

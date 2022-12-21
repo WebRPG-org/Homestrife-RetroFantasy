@@ -1,13 +1,13 @@
 //=============================================================================
-// RPG Maker MZ - Darlos9D's Orc Fantasy
+// RPG Maker MZ - Emerald9D's Orc Fantasy
 //=============================================================================
 
 /*:
  * @target MZ
  * @plugindesc Features for Orc Fantasy.
- * @author Jonathan "Darlos9D" Royal
+ * @author Joule "Emerald9D" Royal
  *
- * @help D9D_OrcFantasy.js
+ * @help E9D_OrcFantasy.js
  *
  * PLUGIN DESCRIPTION HERE.
  *
@@ -58,7 +58,7 @@
 
 (() => {
 	// plugin parameters
-	const pluginParams = PluginManager.parameters('D9D_OrcFantasy');
+	const pluginParams = PluginManager.parameters('E9D_OrcFantasy');
 	parsePluginParameters();
 	
 	// plugin variables
@@ -203,15 +203,15 @@
 	DataManager.parseNotes = function() {
 		for(const skill of $dataSkills) {
 			if(!skill) { continue; }
-			skill.d9dInfo = skill.note && skill.note.length > 0 ? JSON.parse(skill.note) : {};
+			skill.e9dInfo = skill.note && skill.note.length > 0 ? JSON.parse(skill.note) : {};
 		}
 		for(const weapon of $dataWeapons) {
 			if(!weapon) { continue; }
-			weapon.d9dInfo = weapon.note && weapon.note.length > 0 ? JSON.parse(weapon.note) : {};
+			weapon.e9dInfo = weapon.note && weapon.note.length > 0 ? JSON.parse(weapon.note) : {};
 		}
 		for(const armor of $dataArmors) {
 			if(!armor) { continue; }
-			armor.d9dInfo = armor.note && armor.note.length > 0 ? JSON.parse(armor.note) : {};
+			armor.e9dInfo = armor.note && armor.note.length > 0 ? JSON.parse(armor.note) : {};
 		}
 	};
 	
@@ -1105,10 +1105,10 @@
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
-		if(weapon && weapon.d9dInfo.motion !== undefined) {
-			this.requestMotion(weapon.d9dInfo.motion);
-			this.startWeaponAnimation(weapon.d9dInfo.image);
-			this.startTrail(weapon.d9dInfo.trail);
+		if(weapon && weapon.e9dInfo.motion !== undefined) {
+			this.requestMotion(weapon.e9dInfo.motion);
+			this.startWeaponAnimation(weapon.e9dInfo.image);
+			this.startTrail(weapon.e9dInfo.trail);
 		} else {
 			const wtypeId = weapon ? weapon.wtypeId : 0;
 			const attackMotion = $dataSystem.attackMotions[wtypeId];
@@ -1129,10 +1129,10 @@
 		const weapons = this.weapons();
 		const weapon = weapons[0];
 		if(weapon) {
-			this.startWeaponAnimation(weapon.d9dInfo.image);
-			this.startTrail(weapon.d9dInfo.trail);
+			this.startWeaponAnimation(weapon.e9dInfo.image);
+			this.startTrail(weapon.e9dInfo.trail);
 		}
-		const motion = action.item().d9dInfo.motion;
+		const motion = action.item().e9dInfo.motion;
 		if(motion) {
 			this.requestMotion(motion);
 			return;
@@ -2474,9 +2474,9 @@
 	Sprite_Actor.prototype.startWeaponIdleAnimation = function(motionType) {
 		const weapons = this._actor.weapons();
 		const weapon = weapons[0];
-		if(weapon && weapon.d9dInfo.image !== undefined) {
-			this._weaponSprite.setup(weapon.d9dInfo.image, motionType);
-			this._weaponOverlaySprite.setup(weapon.d9dInfo.image, motionType, true);
+		if(weapon && weapon.e9dInfo.image !== undefined) {
+			this._weaponSprite.setup(weapon.e9dInfo.image, motionType);
+			this._weaponOverlaySprite.setup(weapon.e9dInfo.image, motionType, true);
 		} else {
 			this.clearWeaponIdleAnimation();
 		}
@@ -2498,9 +2498,9 @@
 	Sprite_Actor.prototype.startShieldIdleAnimation = function(motionType) {
 		const armors = this._actor.armors();
 		const armor = armors[0];
-		if(armor && armor.d9dInfo.image !== undefined) {
-			this._shieldSprite.setup(armor.d9dInfo.image, motionType);
-			this._shieldOverlaySprite.setup(armor.d9dInfo.image, motionType, true);
+		if(armor && armor.e9dInfo.image !== undefined) {
+			this._shieldSprite.setup(armor.e9dInfo.image, motionType);
+			this._shieldOverlaySprite.setup(armor.e9dInfo.image, motionType, true);
 		} else {
 			this.clearShieldIdleAnimation();
 		}

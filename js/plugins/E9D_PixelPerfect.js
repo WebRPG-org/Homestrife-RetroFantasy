@@ -1,13 +1,13 @@
 //=============================================================================
-// RPG Maker MZ - Darlos9D's Pixel Perfect
+// RPG Maker MZ - Emerald9D's Pixel Perfect
 //=============================================================================
 
 /*:
  * @target MZ
  * @plugindesc Adjustments and options for different resolutions.
- * @author Jonathan "Darlos9D" Royal
+ * @author Joule "Emerald9D" Royal
  *
- * @help D9D_PixelPerfect.js
+ * @help E9D_PixelPerfect.js
  *
  * This plugin was created to aid in making games with different resolutions,
  * as well as different tile sizes. Any internal value that isn't exposed by
@@ -234,7 +234,7 @@
  
 (() => {
 	// plugin parameters
-	const ppParams = PluginManager.parameters('D9D_PixelPerfect');
+	const ppParams = PluginManager.parameters('E9D_PixelPerfect');
 	parsePPParameters();
 	
 	// plugin variables

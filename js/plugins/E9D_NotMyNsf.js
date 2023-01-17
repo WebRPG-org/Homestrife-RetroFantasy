@@ -10,8 +10,8 @@
  * @help E9D_NotMyNsf.js
  *
  * This plugin integrates a JavaScript NSF Player, made by okaybenji on github.
- * It also alters it somewhat to give more control over channels.
- * This plugin mostly exists to be used by other plugins.
+ * It also alters it somewhat to increase efficiency and give more control over
+ * channels. This plugin mostly exists to be used by other plugins.
  *
  *
  * @command Not My NSF Play Track
@@ -24,7 +24,7 @@
  *
  * @arg fileName
  * @text File Name
- * @desc The NSF file's name.
+ * @desc The NSF file's name, WITHOUT extension.
  * @type string
  *
  * @arg track

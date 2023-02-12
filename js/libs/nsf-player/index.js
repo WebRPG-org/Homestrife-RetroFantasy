@@ -3,6 +3,11 @@ const createNsfPlayer = (audioContext) => {
   const message = () => null;
 
   const play = (fileName, trackNo) => {
+	if(fileName === curFileName) {
+	  playMusicData(curPayload, trackNo);
+	  updateSongInfo(curFileName, trackNo);
+	}
+	  
     if (node) {
       node.disconnect();
       node = null;
@@ -22,24 +27,33 @@ const createNsfPlayer = (audioContext) => {
       const payload = new Uint8Array(this.response);
       playMusicData(payload, trackNo);
       updateSongInfo(fileName, trackNo);
+	  curFileName = fileName;
+	  curPayload = payload;
     };
     xhr.send();
   };
 
   const stop = () => {
-    if (!node) {
+    if (!node || emu === undefined) {
       return;
     }
 
     node.disconnect();
-    if (Module.ccall('gme_delete', 'number', ['number'], [emu]) != 0) {
-      console.error('Failed to stop track.');
+	
+    try {
+	  Module.ccall('gme_delete', 'number', ['number'], [emu])
+	  emu = undefined;
+	} catch(exception) {
+      console.log('Failed to stop track: ' + exception);
     }
   };
 
+  let curFileName;
+  let curPayload;
   let ref;
   let emu;
   let node;
+  let ctx = audioContext;
 
   const parseMetadata = ref => {
     let offset = 0;
@@ -99,13 +113,13 @@ const createNsfPlayer = (audioContext) => {
     }
 
     try {
-      ctx = audioContext || new AudioContext();
+      ctx = ctx || new AudioContext();
     } catch(err) {
       console.error(`Unable to create AudioContext. Error: ${err}`);
       return;
     }
 
-    ref = Module.allocate(1, 'i32', Module.ALLOC_STATIC);
+    ref = ref || Module.allocate(1, 'i32', Module.ALLOC_STATIC);
 
     const samplerate = ctx.sampleRate;
 

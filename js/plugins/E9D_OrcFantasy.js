@@ -804,14 +804,14 @@
 		this._skillLevels.Engineer = 0;
 		this._skillLevels.Stealth  = 0;
 		this._skillLevels.Wayfind  = 0;
-		this._skillLevels.WhiteMgc = 0;
-		this._skillLevels.Clairvoy = 0;
-		this._skillLevels.GrayMagc = 0;
-		this._skillLevels.SpellSwd = 0;
-		this._skillLevels.BlackMgc = 0;
-		this._skillLevels.DevilEye = 0;
 		this._skillLevels.Spirit   = 0;
 		this._skillLevels.IronBody = 0;
+		this._skillLevels.GrayMagc = 0;
+		this._skillLevels.SpellSwd = 0;
+		this._skillLevels.WhiteMgc = 0;
+		this._skillLevels.Clairvoy = 0;
+		this._skillLevels.BlackMgc = 0;
+		this._skillLevels.DevilEye = 0;
 	};
 	
 	Game_BattlerBase.prototype.skillLevel = function(skillName) {
@@ -3172,14 +3172,14 @@
 	Window_StatusBase.prototype.iconForElementType = function(type) {
 		let returnVal = 0;
 		switch(type) {
-			case  1: returnVal =  39; break;
-			case  2: returnVal =  36; break;
-			case  3: returnVal =  40; break;
-			case  4: returnVal =  41; break;
-			case  5: returnVal =  42; break;
-			case  6: returnVal =  43; break;
-			case  7: returnVal =  44; break;
-			case  8: returnVal =  45; break;
+			case  1: returnVal =  34; break; // piercing
+			case  2: returnVal =  35; break; // high crit
+			case  3: returnVal =  36; break; // fire
+			case  4: returnVal =  37; break; // ice
+			case  5: returnVal =  38; break; // corrode
+			case  6: returnVal =  39; break; // electric
+			case  7: returnVal =  40; break; // purify
+			case  8: returnVal =  41; break; // corrupt
 		}
 		return returnVal;
 	};
@@ -3187,11 +3187,11 @@
 	Window_StatusBase.prototype.iconForWeaponType = function(type) {
 		let returnVal = 0;
 		switch(type) {
-			case  7: case  8: case  9: returnVal = 50; break; // flail
-			case 10: case 11: case 12: returnVal = 51; break; // reach
-			case 13: case 14: case 15: returnVal = 49; break; // throwable melee
-			case 16: case 17: case 18: case 19: case 20: case 21: returnVal = 52; break; // strictly thrown
-			case 22: case 23: case 24: returnVal = 53; break; // fired
+			case  7: case  8: case  9:								returnVal = 49; break; // flail
+			case 10: case 11: case 12:								returnVal = 50; break; // reach
+			case 13: case 14: case 15:								returnVal = 51; break; // throwable melee
+			case 16: case 17: case 18: case 19: case 20: case 21:	returnVal = 52; break; // strictly thrown
+			case 22: case 23: case 24:								returnVal = 53; break; // fired
 		}
 		return returnVal;
 	};
@@ -3793,10 +3793,10 @@
 				desc = "Unlock abilities for finding\ntraps and paths, opening locks.";
 				break;
 			case  6:
-				desc = "Unlock healing and weather\nmagic, and reduce stress costs.";
+				desc = "Unlock abilities that reduce\nstress, add focus, purify mind.";
 				break;
 			case  7:
-				desc = "Unlock abilities that see the\netheral and predict events.";
+				desc = "Unlock abilities for incredible\ntoughness and impactful unarmed.";
 				break;
 			case  8:
 				desc = "Unlock both white and black\nmagic, and reduce stress costs.";
@@ -3805,16 +3805,16 @@
 				desc = "Unlock attack and cast in same\nturn, and reduce stress costs.";
 				break;
 			case 10:
-				desc = "Unlock attack and infernal\nmagic, and reduce stress costs.";
+				desc = "Unlock healing and weather\nmagic, and reduce stress costs.";
 				break;
 			case 11:
-				desc = "Unlock abilities for seeing the\nhidden, and uncanny aim.";
+				desc = "Unlock abilities that see the\netherial and predict events.";
 				break;
 			case 12:
-				desc = "Unlock abilities that reduce\nstress, add focus, purify mind.";
+				desc = "Unlock attack and infernal\nmagic, and reduce stress costs.";
 				break;
 			case 13:
-				desc = "Unlock abilities for incredible\ntoughness and body purity.";
+				desc = "Unlock abilities for seeing the\nhidden, and uncanny aim.";
 				break;
 		}
 		const item = {};

@@ -1,3 +1,11 @@
+===Things to do===
+Healing items that CANNOT be used in battle should automatically not cause stress or consume energy.
+Need a little "hand" graphic to overlay on weapons, so it looks like they're actually being held and not just vaguely hovering at a characters hand level.
+Making throwing a bit fancier looking?
+Show the names of actions at the top of the screen when they happen, even when just regular attacking. That way people get used to what basic weapon tech does what.
+Figure out how more complex tech/spell animations will work.
+
+
 ====Various Setting Explanations====
 ===Classes===
 ==Parameter Curves==
@@ -9,6 +17,7 @@ M.Attack: Nothing (always 0)
 M.Defense: Nothing (always 0)
 Agility: Agility (always 5)
 Luck: Nothing (always 0)
+
 
 ==Traits==
 =Sp-Parameter=
@@ -23,28 +32,34 @@ Critical Rate: Ranged Accuracy (Always 5%, actually represents a whole number)
 Magic Evasion: Special Accuracy, ranged accuracy but without weapon bonuses (Always 5%, actually represents a whole number)
 Magic Reflection: Parry, like a critical fail chance for a melee attacker, which inflicts stress on the attacker (Always 1%)
 
+
 ===Skills===
 ==General Settings==
 MP Cost: Does nothing.
 TP Cost: Inflicts stress on the user.
 Hit Type: Physical Attack is Melee, Magical Attack is Ranged (for Attack and Techniques) or Special (for all other skills)
 
+
 ==Damage==
 Type: HP Damage targets health, MP damage inflicts stress.
 Element: Does what you expect, but Trip doesn't really do anything here.
 Formula: Does nothing for Attack and weapon Techniques, otherwise is a flat value that represents attack power.
 
+
 ==Effects==
 Gain TP: Reduces the target's stress.
+
 
 ===Weapons===
 ==General Settings==
 Weapon Type: Everything before Throw is a melee type. Throw and onward is strictly ranged. Reach and ranged weapons can attack without penalty when attacking the enemy back row from your front row, or the enemy front row from your back row. Attacking the enemy back row from your back row incurs half the penalty it normally would. 
 
+
 ==Traits==
 Attack Element: Piercing turns part of the damage that is resisted by armor into more damage. HighCrit simply has an easier time bypassing armor altogether. A weapon with neither, to be effective, should simply have a relatively high attack power value. The remaining Attack Elements are elemental damage types. Each elemental damage type reprents 10% of the weapon's total attack power.
 
 Add Skill: Use this to add relevant skills to the weapon, such as techniques (4 to 102 in the Skills section of the database) that represent other ways to attack with the weapon. For instance, the MeleThrw weapon types should be given the Throw skill.
+
 
 ===Armors===
 ==Traits==

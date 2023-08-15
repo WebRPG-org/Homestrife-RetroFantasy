@@ -1000,7 +1000,6 @@
 		this.placeBasicGauges(actor, x2, y + lineHeight);
 	};
 	
-	
 	// Window Menu Status
 	Window_MenuStatus.prototype.drawItemImage = function(index) {
 		const actor = this.actor(index);

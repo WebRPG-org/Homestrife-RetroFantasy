@@ -2976,6 +2976,14 @@
 		}
 	};
 	
+	Window_Base.prototype.drawEmptyEquip = function(iconIndex, x, y, width) {
+		const iconY = y;
+		const textMargin = ImageManager.iconWidth;
+		const itemWidth = Math.max(0, width - textMargin);
+		this.resetTextColor();
+		this.drawIcon(iconIndex, x, iconY);
+	};
+	
 	Window_Base.prototype.drawCurrencyValue = function(value, unit, x, y, width) {
 		//this.resetTextColor();
 		this.drawText(unit, x, y, width);
@@ -3347,6 +3355,23 @@
 	Window_StatusBase.prototype.resistSymbol = function() {
 		return "RES";
 	};
+
+	Window_StatusBase.prototype.actorSlotIcon = function(actor, index) {
+		const slots = actor.equipSlots();
+		switch(slots[index]) {
+			case  1: returnVal =  97; break; // MainHand
+			case  2: returnVal = 129; break; // Off-Hand
+			case  3: returnVal = 134; break; // Head
+			case  4: returnVal = 146; break; // Back
+			case  5: returnVal = 137; break; // Torso
+			case  6: returnVal = 139; break; // Legs
+			case  7: returnVal = 142; break; // Hands
+			case  8: returnVal = 144; break; // Feet
+			case  9: returnVal = 153; break; // Accessory
+			case 10: returnVal = 153; break; // Accessory
+		}
+		return returnVal;
+	};
 	
 	// Window Menu Command
 	Window_MenuCommand.prototype.addMainCommands = function() {
@@ -3550,11 +3575,9 @@
 			const item = this.itemAt(index);
 			const rect = this.itemLineRect(index);
 			rect.y += $gameSystem.windowPadding();
-			//this.changeTextColor(ColorManager.systemColor());
-			//this.changePaintOpacity(this.isEnabled(index));
 			if(item === null) {
-				const slotName = this.actorSlotName(this._actor, index);
-				this.drawText(slotName, rect.x, rect.y, rect.width);
+				const slotIcon = this.actorSlotIcon(this._actor, index);
+				this.drawEmptyEquip(slotIcon, rect.x, rect.y, rect.width);
 			} else {
 				this.drawItemName(item, rect.x, rect.y, rect.width);
 			}

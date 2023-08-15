@@ -1,10 +1,11 @@
 ===Things to do===
-Healing items that CANNOT be used in battle should automatically not cause stress or consume energy.
-Need a little "hand" graphic to overlay on weapons, so it looks like they're actually being held and not just vaguely hovering at a characters hand level.
-Making throwing a bit fancier looking?
+Empty equipment slots should just have a relevant symbol, and no text
+Healing items that CANNOT be used in battle should automatically not cause stress or consume energy for the target. Same with spells, but those will still take resources from the user.
 Show the names of actions at the top of the screen when they happen, even when just regular attacking. That way people get used to what basic weapon tech does what.
+Need a little "hand" graphic to overlay on weapons, so it looks like they're actually being held and not just vaguely hovering at a characters hand level.
 Have an enemy flash when they take their action, rather than the cursor appearing around them. That's too confusing.
 Figure out how more complex tech/spell animations will work.
+Making throwing a bit fancier looking?
 
 
 ====Various Setting Explanations====
@@ -14,10 +15,10 @@ Max HP: Health (always 100)
 Max MP: Endurance (always 100)
 Attack: Power (always 5)
 Defense: Armor (always 0)
-M.Attack: Nothing (always 0)
-M.Defense: Nothing (always 0)
+M.Attack: -NOTHING- (always 0)
+M.Defense: -NOTHING- (always 0)
 Agility: Agility (always 5)
-Luck: Nothing (always 0)
+Luck: -NOTHING- (always 0)
 
 
 ==Traits==

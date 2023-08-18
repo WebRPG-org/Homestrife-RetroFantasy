@@ -1,5 +1,4 @@
 ===Things to do===
-Empty equipment slots should just have a relevant symbol, and no text
 Healing items that CANNOT be used in battle should automatically not cause stress or consume energy for the target. Same with spells, but those will still take resources from the user.
 Show the names of actions at the top of the screen when they happen, even when just regular attacking. That way people get used to what basic weapon tech does what.
 Need a little "hand" graphic to overlay on weapons, so it looks like they're actually being held and not just vaguely hovering at a characters hand level.

@@ -760,7 +760,7 @@
 			const stressRate = Math.min(target.mhp - target.hp, value);
 			if($gameParty.inBattle()) {
 				target.gainSilentTp(stressRate);
-			} else {
+			} else if(this.item().occasion !== 2) {
 				target.gainSilentMp(-stressRate/this.enduranceStressRatio());
 			}
 			target.gainHp(value);

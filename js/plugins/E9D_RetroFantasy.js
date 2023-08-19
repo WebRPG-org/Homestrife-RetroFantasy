@@ -1,13 +1,13 @@
 //=============================================================================
-// RPG Maker MZ - Emerald9D's Orc Fantasy
+// RPG Maker MZ - Emerald9D's Retro Fantasy
 //=============================================================================
 
 /*:
  * @target MZ
- * @plugindesc Features for Orc Fantasy.
+ * @plugindesc Features for Retro Fantasy.
  * @author Joule "Emerald9D" Royal
  *
- * @help E9D_OrcFantasy.js
+ * @help E9D_RetroFantasy.js
  *
  * PLUGIN DESCRIPTION HERE.
  *
@@ -58,7 +58,7 @@
 
 (() => {
 	// plugin parameters
-	const pluginParams = PluginManager.parameters('E9D_OrcFantasy');
+	const pluginParams = PluginManager.parameters('E9D_RetroFantasy');
 	parsePluginParameters();
 	
 	// plugin variables

@@ -240,6 +240,16 @@
 	};
 	
 	// Battle Manager
+	const _BattleManager_initMembers = BattleManager.initMembers;
+	BattleManager.initMembers = function() {
+		_BattleManager_initMembers.call(this);
+		this._actionWindow = null;
+	};
+	
+	BattleManager.setActionWindow = function(actionWindow) {
+		this._actionWindow = actionWindow;
+	};
+	
 	BattleManager.updateTpb = function() {
 		while(!this.updateAllTpbBattlers()) {
 			$gameParty.updateTpb();
@@ -297,6 +307,8 @@
 		subject.cancelMotionRefresh();
 		this._action.applyGlobal();
 		this._logWindow.startAction(subject, action, targets);
+		this._actionWindow.setItem(action.effectiveItem());
+		this._actionWindow.show();
 	};
 	
 	BattleManager.endAction = function() {
@@ -316,6 +328,7 @@
 		}
 		
 		this._logWindow.endAction(this._subject);
+		this._actionWindow.hide();
 		this._phase = "turn";
 		if (this._subject.numActions() === 0) {
 			this.endBattlerActions(this._subject);
@@ -488,7 +501,23 @@
 	
 	Game_Action.prototype.stressThreshold = function() {
 		return 10;
-	}
+	};
+	
+	Game_Action.prototype.effectiveItem = function() {
+		if(this.isAttack()) {
+			const weapon = this.subject().equips ? this.subject().equips()[0] : null;
+			if(weapon) {
+				for(const trait of weapon.traits) {
+					if(trait.code === 43) {
+						return $dataSkills[trait.dataId];
+					}
+				}
+			} else {
+				return $dataSkills[101];
+			}
+		}
+		return this.item();
+	};
 	
 	Game_Action.prototype.itemHit = function(target, rangeType, isReach) {
 		//const successRate = this.item().successRate;
@@ -1935,16 +1964,37 @@
 	
 	Scene_Battle.prototype.createAllWindows = function() {
 		this.createLogWindow();
+		this.createActionWindow();
 		this.createStatusWindow();
 		this.createPartyCommandWindow();
 		this.createActorCommandWindow();
 		this.createHelpWindow();
-		this.createActionWindow();
 		this.createSkillWindow();
 		this.createItemWindow();
 		this.createActorWindow();
 		this.createEnemyWindow();
 		Scene_Message.prototype.createAllWindows.call(this);
+	};
+	
+	const _Scene_Battle_createDisplayObjects = Scene_Battle.prototype.createDisplayObjects;
+	Scene_Battle.prototype.createDisplayObjects = function() {
+		_Scene_Battle_createDisplayObjects.call(this);
+		BattleManager.setActionWindow(this._actionWindow);
+	};
+	
+	Scene_Battle.prototype.createActionWindow = function() {
+		const rect = this.actionWindowRect();
+		this._actionWindow = new Window_BattleAction(rect);
+		this._actionWindow.hide();
+		this.addWindow(this._actionWindow);
+	};
+	
+	Scene_Battle.prototype.actionWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2;
+		const wx = Graphics.boxWidth/2-ww/2;
+		const wy = 0;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	Scene_Battle.prototype.statusWindowRect = function() {
@@ -1987,21 +2037,6 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
-	Scene_Battle.prototype.createActionWindow = function() {
-		const rect = this.actionWindowRect();
-		this._actionWindow = new Window_BattleAction(rect);
-		this._actionWindow.hide();
-		this.addWindow(this._actionWindow);
-	};
-	
-	Scene_Battle.prototype.actionWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2;
-		const wx = Graphics.boxWidth/2-ww/2;
-		const wy = 0;
-		return new Rectangle(wx, wy, ww, wh);
-	};
-	
 	Scene_Battle.prototype.skillWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
@@ -2034,7 +2069,6 @@
 		this._actorCommandWindow.setup(null);
 		this._actorCommandWindow.hide();
 		this._partyCommandWindow.setup();
-		this._actionWindow.hide();
 	};
 	
 	Scene_Battle.prototype.startActorCommandSelection = function() {
@@ -2042,7 +2076,6 @@
 		this._partyCommandWindow.hide();
 		this._actorCommandWindow.show();
 		this._actorCommandWindow.setup(BattleManager.actor());
-		this._actionWindow.hide();
 	};
 	
 	Scene_Battle.prototype.commandAttack = function() {
@@ -2136,8 +2169,6 @@
 		this.closeCommandWindows();
 		this.hideSubInputWindows();
 		this._statusWindow.deselect();
-		this._actionWindow.setItem(BattleManager.inputtingAction().item());
-		this._actionWindow.show();
 	};
 	
 	// Sprite Button

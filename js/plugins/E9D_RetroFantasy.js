@@ -1939,6 +1939,7 @@
 		this.createPartyCommandWindow();
 		this.createActorCommandWindow();
 		this.createHelpWindow();
+		this.createActionWindow();
 		this.createSkillWindow();
 		this.createItemWindow();
 		this.createActorWindow();
@@ -1986,6 +1987,21 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	Scene_Battle.prototype.createActionWindow = function() {
+		const rect = this.actionWindowRect();
+		this._actionWindow = new Window_BattleAction(rect);
+		this._actionWindow.hide();
+		this.addWindow(this._actionWindow);
+	};
+	
+	Scene_Battle.prototype.actionWindowRect = function() {
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2;
+		const wx = Graphics.boxWidth/2-ww/2;
+		const wy = 0;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
 	Scene_Battle.prototype.skillWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22;
 		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()/2*6;
@@ -2018,6 +2034,7 @@
 		this._actorCommandWindow.setup(null);
 		this._actorCommandWindow.hide();
 		this._partyCommandWindow.setup();
+		this._actionWindow.hide();
 	};
 	
 	Scene_Battle.prototype.startActorCommandSelection = function() {
@@ -2025,6 +2042,7 @@
 		this._partyCommandWindow.hide();
 		this._actorCommandWindow.show();
 		this._actorCommandWindow.setup(BattleManager.actor());
+		this._actionWindow.hide();
 	};
 	
 	Scene_Battle.prototype.commandAttack = function() {
@@ -2118,6 +2136,8 @@
 		this.closeCommandWindows();
 		this.hideSubInputWindows();
 		this._statusWindow.deselect();
+		this._actionWindow.setItem(BattleManager.inputtingAction().item());
+		this._actionWindow.show();
 	};
 	
 	// Sprite Button
@@ -4945,6 +4965,49 @@
 		}
 	};
 	
+	// Window Battle Action
+	function Window_BattleAction() {
+		this.initialize(...arguments);
+	}
+	
+	Window_BattleAction.prototype = Object.create(Window_Base.prototype);
+	Window_BattleAction.prototype.constructor = Window_BattleAction;
+	
+	Window_BattleAction.prototype.initialize = function(rect) {
+		Window_Base.prototype.initialize.call(this, rect);
+		this._icon = 0;
+		this._text = "";
+	};
+	
+	Window_BattleAction.prototype.setIconAndText = function(icon, text) {
+		let needRefresh = false;
+		if (this._icon !== icon) {
+			this._icon = icon;
+			needRefresh = true;
+		}
+		if (this._text !== text) {
+			this._text = text;
+			needRefresh = true;
+		}
+		if(needRefresh) { this.refresh(); }
+	};
+
+	Window_BattleAction.prototype.clear = function() {
+		this.setIconAndText(0, "");
+	};
+
+	Window_BattleAction.prototype.setItem = function(item) {
+		this.setIconAndText(item ? item.iconIndex : 0, item ? item.name : "");
+	};
+
+	Window_BattleAction.prototype.refresh = function() {
+		const rect = this.baseTextRect();
+		rect.y -= $gameMap.tileHeight()/2;
+		this.contents.clear();
+		this.drawIcon(this._icon, rect.x, rect.y);
+		this.drawText(this._text, rect.x+$gameMap.tileWidth()/2, rect.y, rect.width-$gameMap.tileWidth()/2);
+	};
+	
 	// Window Party Command
 	Window_PartyCommand.prototype.initialize = function(rect) {
 		Window_Command.prototype.initialize.call(this, rect);
@@ -5049,9 +5112,9 @@
 		const x2 = x + columnW;
 		const x3 = x2 + columnW;
 		const y = itemPadding;
-		this.drawText("Hlth", x, y, valueW);
-		this.drawText("Endr", x2, y, valueW);
-		this.drawText("Strs", x3, y, valueW);
+		this.drawText("Heal", x, y, valueW);
+		this.drawText("Endu", x2, y, valueW);
+		this.drawText("Stre", x3, y, valueW);
 	};
 	
 	Window_BattleStatus.prototype.preparePartyRefresh = function() {

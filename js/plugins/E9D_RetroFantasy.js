@@ -2845,7 +2845,7 @@
 	};
 	
 	Sprite_Weapon.prototype.loadBitmap = function() {
-		const pageId = Math.floor((this._weaponImageId - 1) / 12) + 1;
+		const pageId = Math.floor((this._weaponImageId - 1) / 3) + 1;
 		if (pageId >= 1) {
 			const baseName = this._isShield ? "Shields" : "Weapons";
 			this.bitmap = ImageManager.loadSystem(baseName + pageId);
@@ -2859,10 +2859,11 @@
 			let displayPattern = this._pattern;
 			if (this._isShield) {
 				displayPattern = 0;
+				this.x = -8;
 				if(this._motionType === "item") {
-					this.y = -9;
+					this.y = 7;
 				} else {
-					this.y = 0;
+					this.y = 16;
 				}
 			} else {
 				switch(this._motionType) {
@@ -2886,27 +2887,27 @@
 					this._motionType === "spell" ||
 					this._motionType === "victory"
 				) {
-					this.x = -4;
-					this.y = -8;
+					this.x = -12;
+					this.y = 8;
 					this.scale.x = -1;
 				} else if (this._motionType === "pommel" && this._pattern > 0) {
-					this.x = 16;
-					this.y = 0;
+					this.x = 8;
+					this.y = 16;
 					this.scale.x = 1;
 				} else {
-					this.x = 0;
-					this.y = 0;
+					this.x = -8;
+					this.y = 16;
 					this.scale.x = 1;
 				}
 			}
 			let shouldUnderlay = this.motionTypeIsAttack() && this._pattern > 0;
 			const shouldShow = (this._isShield || (this._motionType !== "throw" && this._motionType !== "unarmed") || this._pattern === 0) && (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
 			if(shouldShow) {
-				const index = (this._weaponImageId - 1) % 12;
-				const w = 64;
-				const h = 32;
-				const sx = (Math.floor(index / 6) * 3 + displayPattern) * w;
-				const sy = Math.floor(index % 6) * h;
+				const index = (this._weaponImageId - 1) % 3;
+				const w = 128;
+				const h = 64;
+				const sx = displayPattern * w;
+				const sy = index * h;
 				this.setFrame(sx, sy, w, h);
 			} else {
 				this.setFrame(0, 0, 0, 0);

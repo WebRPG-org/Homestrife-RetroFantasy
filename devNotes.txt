@@ -3,6 +3,8 @@ Need a little "hand" graphic to overlay on weapons, so it looks like they're act
 Have an enemy flash when they take their action, rather than the cursor appearing around them. That's too confusing.
 Figure out how more complex tech/spell animations will work.
 Making throwing a bit fancier looking?
+Make skill increases actually teach you skills. (and decreases take skills away)
+The auto-given skills for a class should be innate things like heavy armor or great weapon use. The skills themselves might not do anything, but they'll explain things to the player.
 
 
 ====Various Setting Explanations====

@@ -826,7 +826,7 @@
 		// universal ability
 		this._skillLevels.MeleeWpn = 0;
 		this._skillLevels.ThrowWpn = 0;
-		this._skillLevels.RangeWpn = 0;
+		this._skillLevels.FiredWpn = 0;
 		this._skillLevels.Unarmed  = 0;
 		// unique ability
 		this._skillLevels.Tactics  = 0;
@@ -1044,7 +1044,7 @@
 	};
 	
 	Game_Actor.prototype.purchaseNextSkillLevel = function(skillName) {
-		if(!this.canPurchaseNextSkillLevel()) { return; }
+		if(!this.canPurchaseNextSkillLevel(skillName)) { return; }
 		this._exp[this._classId] -= this.nextSkillLevelCost(skillName);
 		Game_BattlerBase.prototype.purchaseNextSkillLevel.call(this, skillName);
 	};

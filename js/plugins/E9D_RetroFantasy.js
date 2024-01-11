@@ -145,6 +145,20 @@
 		return text.length * textImage.characterW;
 	};
 	
+	// Tilemap
+	/**
+	 * Updates the tilemap for each frame.
+	 */
+	Tilemap.prototype.update = function() {
+		this.animationCount++;
+		this.animationFrame = Math.floor(this.animationCount / 15);
+		for (const child of this.children) {
+			if (child.update) {
+				child.update();
+			}
+		}
+	};
+	
 	// Window
 	const _Window_initialize = Window.prototype.initialize;
 	Window.prototype.initialize = function() {

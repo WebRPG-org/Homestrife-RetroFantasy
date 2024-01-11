@@ -1308,6 +1308,74 @@
 			this._bushDepth = 0;
 		}
 	};
+
+	Game_CharacterBase.prototype.moveDiagonally = function(horz, vert) {
+		this.setMovementSuccess(
+			this.canPassDiagonally(this._x, this._y, horz, vert)
+		);
+		if (this.isMovementSucceeded()) {
+			this._x = $gameMap.roundXWithDirection(this._x, horz);
+			this._y = $gameMap.roundYWithDirection(this._y, vert);
+			this._realX = $gameMap.xWithDirection(this._x, this.reverseDir(horz));
+			this._realY = $gameMap.yWithDirection(this._y, this.reverseDir(vert));
+			this.increaseSteps();
+			if (this._direction === this.reverseDir(horz)) {
+				this.setDirection(horz);
+			}
+			if (this._direction === this.reverseDir(vert)) {
+				this.setDirection(vert);
+			}
+			return;
+		}
+		this.moveStraight(horz);
+		if (!this.isMovementSucceeded()) {
+			this.moveStraight(vert);
+		}
+	};
+	
+	// Game Player
+	Game_Player.prototype.getInputDirection = function() {
+		return Input.dir8;
+	};
+	
+	Game_Player.prototype.getInputHoriz = function(direction) {
+		switch(direction) {
+			case 1:
+			case 4:
+			case 7:
+				return 4;
+			case 3:
+			case 6:
+			case 9:
+				return 6;
+		}
+		return 0;
+	};
+	
+	Game_Player.prototype.getInputVert = function(direction) {
+		switch(direction) {
+			case 1:
+			case 2:
+			case 3:
+				return 2;
+			case 7:
+			case 8:
+			case 9:
+				return 8;
+		}
+		return 0;
+	};
+
+	Game_Player.prototype.executeMove = function(direction) {
+		const horiz = this.getInputHoriz(direction);
+		const vert = this.getInputVert(direction);
+		
+		if(horiz === 0 || vert === 0) {
+			this.moveStraight(direction);
+			return;
+		}
+		this.moveDiagonally(horiz, vert);
+	};
 	
 	// Scene Boot
 	Scene_Boot.prototype.adjustBoxSize = function() {

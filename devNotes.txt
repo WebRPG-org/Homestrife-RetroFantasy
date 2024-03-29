@@ -10,7 +10,7 @@ The auto-given skills for a class should be innate things like heavy armor or gr
 ====Various Setting Explanations====
 ===Classes===
 ==Parameter Curves==
-Max HP: Health (always 100)
+Max HP: Health (always 500, in engine overridden to be Toughness * 100)
 Max MP: Endurance (always 100)
 Attack: Power (always 5)
 Defense: Armor (always 0)

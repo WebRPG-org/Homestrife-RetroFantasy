@@ -747,8 +747,7 @@
 		const bonusBlunt = isPiercing ? Math.min(power, armor) / 2 : 0;
 		
 		// get the final value
-		const value = Math.max(0, power + bonusBlunt + elementalPower - armor);
-		return Math.round(value / target.sparam(6)); // divide by toughness
+		return Math.round(Math.max(0, power + bonusBlunt + elementalPower - armor));
 	};
 
 	Game_Action.prototype.calcElementRate = function(target) {
@@ -800,7 +799,8 @@
 		}
 		value = Math.floor(value);
 		if (value !== 0) {
-			const stressRate = Math.min(target.mhp - target.hp, value);
+			const effectiveValue = Math.min(target.mhp - target.hp, value);
+			const stressRate = Math.round((effectiveValue / target.mhp) * 100);
 			if($gameParty.inBattle()) {
 				target.gainSilentTp(stressRate);
 			} else if(this.item().occasion !== 2) {
@@ -828,6 +828,7 @@
 	const _Game_BattlerBase_initMembers = Game_BattlerBase.prototype.initMembers;
 	Game_BattlerBase.prototype.initMembers = function() {
 		_Game_BattlerBase_initMembers.call(this);
+		this._prevMhp = 500;
 		this._backRow = false;
 		this._skillLevels = {};
 		// performance
@@ -870,6 +871,7 @@
 	
 	Game_BattlerBase.prototype.setSkillLevel = function(skillName, newLevel) {
 		if(this._skillLevels[skillName] !== undefined) { this._skillLevels[skillName] = Math.max(0, Math.min(9, newLevel)); }
+		this.refresh();
 	};
 	
 	Game_BattlerBase.prototype.incrementSkillLevel = function(skillName) {
@@ -898,6 +900,38 @@
 	
 	Game_BattlerBase.prototype.backRow = function() {
 		return this._backRow;
+	};
+	
+	Game_BattlerBase.prototype.param = function(paramId) {
+		if(paramId === 0) {
+			return this.sparam(6)*100;
+		}
+		
+		const value =
+			this.paramBasePlus(paramId) *
+			this.paramRate(paramId) *
+			this.paramBuffRate(paramId);
+		const maxValue = this.paramMax(paramId);
+		const minValue = this.paramMin(paramId);
+		return Math.round(value.clamp(minValue, maxValue));
+	};
+	
+	Game_BattlerBase.prototype.refresh = function() {
+		for (const stateId of this.stateResistSet()) {
+			this.eraseState(stateId);
+		}
+		
+		this._hp = this._hp.clamp(0, this.mhp);
+		
+		if(this._prevMhp !== this.mhp && this._hp > 0 && this._hp < this.mhp) {
+			const prevHpPercent = this._hp / this._prevMhp;
+			this._hp = this.mhp * prevHpPercent;
+		}
+		
+		this._mp = this._mp.clamp(0, this.mmp);
+		this._tp = this._tp.clamp(0, this.maxTp());
+		
+		this._prevMhp = this.mhp;
 	};
 	
 	const _Game_BattlerBase_param = Game_BattlerBase.prototype.param;
@@ -967,7 +1001,8 @@
 	};
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
-		this.gainSilentTp(Game_Action.prototype.stressThreshold()*2+damageRate);
+		const stressFromDamage = Math.round((damageRate / this.mhp) * 100);
+		this.gainSilentTp(Game_Action.prototype.stressThreshold()*2+stressFromDamage);
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
@@ -3247,10 +3282,12 @@
 	
 	// Window Status Base
 	Window_StatusBase.prototype.drawActorHpMp = function(actor, x, y, width) {
-		width = width || $gameMap.tileWidth()/2*7;
+		const charWidth = $gameMap.tileWidth()/2;
+		width = width || charWidth*8;
 		const lineHeight = this.lineHeight();
 		this.drawText("HL", x, y, width);
-		this.drawText(actor.hp + "%", x, y, width, "right");
+		this.drawText(actor.hp + "/", x, y, width, "right");
+		this.drawText(actor.mhp + "", x+width, y, width/2, "right");
 		this.drawText("EN", x, y + lineHeight/2, width);
 		this.drawText(Math.floor(actor.mp) + "%", x, y + lineHeight/2, width, "right");
 	};
@@ -3300,14 +3337,16 @@
 	};
 	
 	Window_StatusBase.prototype.drawActorSimpleStatus = function(actor, x, y) {
+		const width = 144;
+		const iconWidth = ImageManager.iconWidth;
 		const lineHeight = this.lineHeight();
 		const x2 = x + $gameMap.tileWidth()/2*9;
 		const x3 = x2 + $gameMap.tileWidth()/2*8;
 		this.drawActorName(actor, x, y);
-		this.drawActorSkillPoints(actor, x, y + lineHeight/2);
-		this.drawActorIcons(actor, x, y + lineHeight);
-		this.drawActorClass(actor, x2, y);
-		this.drawActorHpMp(actor, x2, y + lineHeight/2);
+		this.drawActorHpMp(actor, x, y + lineHeight/2);
+		const icons = actor.allIcons().slice(0, Math.floor(width / iconWidth));
+		icons.length > 0 ? this.drawActorIcons(actor, x2, y) : this.drawActorClass(actor, x2, y);
+		this.drawActorSkillPoints(actor, x2, y + lineHeight);
 		this.drawSvActor(actor, x3, y);
 	};
 	
@@ -5259,7 +5298,7 @@
 		const x4 = x3 + columnW;
 		const y = rect.y + this.itemPadding();
 		this.drawActorName(actor, x, y);
-		this.drawText(actor.hp + "%", x2, y, valueW, "right");
+		this.drawText(actor.hp + "", x2, y, valueW, "right");
 		this.drawText(Math.floor(actor.mp) + "%", x3, y, valueW, "right");
 		this.drawText(actor.tp + "%", x4, y, valueW, "right");
 		this.placeActorCursor(actor, x-1, y);

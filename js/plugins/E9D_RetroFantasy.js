@@ -832,30 +832,30 @@
 		this._backRow = false;
 		this._skillLevels = {};
 		// performance
-		this._skillLevels.MeleeAcc = 0;
-		this._skillLevels.RangeAcc = 0;
-		this._skillLevels.Evasion  = 0;
-		this._skillLevels.Balance  = 0;
-		this._skillLevels.Agility  = 0;
-		this._skillLevels.Focus    = 0;
+		this._skillLevels.MeleeAcc	= 0;
+		this._skillLevels.RangeAcc	= 0;
+		this._skillLevels.Defense	= 0;
+		this._skillLevels.Balance	= 0;
+		this._skillLevels.Agility	= 0;
+		this._skillLevels.Focus		= 0;
 		// universal ability
-		this._skillLevels.MeleeWpn = 0;
-		this._skillLevels.ThrowWpn = 0;
-		this._skillLevels.FiredWpn = 0;
-		this._skillLevels.Unarmed  = 0;
+		this._skillLevels.Melee		= 0;
+		this._skillLevels.Throwing	= 0;
+		this._skillLevels.Archery	= 0;
+		this._skillLevels.Firearms	= 0;
 		// unique ability
-		this._skillLevels.Tactics  = 0;
-		this._skillLevels.Engineer = 0;
-		this._skillLevels.Stealth  = 0;
-		this._skillLevels.Wayfind  = 0;
-		this._skillLevels.Spirit   = 0;
-		this._skillLevels.IronBody = 0;
-		this._skillLevels.GrayMagc = 0;
-		this._skillLevels.SpellSwd = 0;
-		this._skillLevels.WhiteMgc = 0;
-		this._skillLevels.Clairvoy = 0;
-		this._skillLevels.BlackMgc = 0;
-		this._skillLevels.DevilEye = 0;
+		this._skillLevels.Tactics	= 0;
+		this._skillLevels.Engineer	= 0;
+		this._skillLevels.Stealth	= 0;
+		this._skillLevels.Wayfare	= 0;
+		this._skillLevels.Spirit	= 0;
+		this._skillLevels.IronBody	= 0;
+		this._skillLevels.GrayMagc	= 0;
+		this._skillLevels.SpellSwd	= 0;
+		this._skillLevels.WhiteMgc	= 0;
+		this._skillLevels.Clairvoy	= 0;
+		this._skillLevels.BlackMgc	= 0;
+		this._skillLevels.DevilEye	= 0;
 	};
 	
 	Game_BattlerBase.prototype.skillLevel = function(skillName) {
@@ -953,7 +953,7 @@
 				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAcc");
 				break;
 			case 1: //evasion, using Evasion Rate
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Evasion");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Defense");
 				break;
 			case 2: //range accuracy, using Critical Rate
 			case 4: //special accuracy, using Magic Evasion (???)
@@ -3286,8 +3286,8 @@
 		width = width || charWidth*8;
 		const lineHeight = this.lineHeight();
 		this.drawText("HL", x, y, width);
-		this.drawText(actor.hp + "/", x, y, width, "right");
-		this.drawText(actor.mhp + "", x+width, y, width/2, "right");
+		this.drawText(actor.hp + " /", x+charWidth*4, y, width, "right");
+		this.drawText(actor.mhp + "", x+width+charWidth*5, y, width/2, "right");
 		this.drawText("EN", x, y + lineHeight/2, width);
 		this.drawText(Math.floor(actor.mp) + "%", x, y + lineHeight/2, width, "right");
 	};
@@ -3411,11 +3411,11 @@
 		if(skillNum >= classSkillStartsAt) { return this.classSkillName(skillNum-classSkillStartsAt); }
 		let name = "UNKNOWN";
 		switch(skillNum) {
-			case  0: name = "MeleeAcc"; break; case  1: name = "RangeAcc"; break; 
-			case  2: name =  "Evasion"; break; case  3: name =  "Balance"; break; 
-			case  4: name =  "Agility"; break; case  5: name =    "Focus"; break; 
-			case  6: name = "MeleeWpn"; break; case  7: name = "ThrowWpn"; break; 
-			case  8: name = "FiredWpn"; break; case  9: name =  "Unarmed"; break; 
+			case  0: name =	  "Melee"; break; case  1: name =	  "Ranged"; break; 
+			case  2: name =	"Defense"; break; case  3: name =	 "Balance"; break; 
+			case  4: name =	"Agility"; break; case  5: name =	   "Focus"; break; 
+			case  6: name =	  "Melee"; break; case  7: name =	"Throwing"; break; 
+			case  8: name =	"Archery"; break; case  9: name =	"Firearms"; break; 
 		}
 		return name;
 	};
@@ -3928,7 +3928,7 @@
 				desc = "Increase chances of striking\nwith melee attacks.";
 				break;
 			case  1:
-				desc = "Increase chances of striking\nwith thrown fired & magic atks.";
+				desc = "Increase chances of striking\nwith ranged and special attacks.";
 				break; 
 			case  2:
 				desc = "Increase chances of dodging and\nparrying attacks.";
@@ -3943,16 +3943,16 @@
 				desc = "Increase stress recovery and\nfocus gain.";
 				break; 
 			case  6:
-				desc = "Unlock melee weapon techniques.";
+				desc = "Unlock melee weapon, shield, and\nunarmed techniques.";
 				break;
 			case  7:
-				desc = "Unlock thrown weapon\ntechniques.";
+				desc = "Unlock thrown weapon and sling\ntechniques.";
 				break; 
 			case  8:
-				desc = "Unlock techniques for bows and\nguns.";
+				desc = "Unlock bow techniques.";
 				break;
 			case  9:
-				desc = "Unlock punch and kick\ntechniques.";
+				desc = "Unlock gun and crossbow\ntechniques.";
 				break; 
 		}
 		const item = {};

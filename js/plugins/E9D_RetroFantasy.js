@@ -1343,6 +1343,12 @@
 			this._bushDepth = 0;
 		}
 	};
+	
+	Game_CharacterBase.prototype.canPassDiagonally = function(x, y, horz, vert) {
+		const x2 = $gameMap.roundXWithDirection(x, horz);
+		const y2 = $gameMap.roundYWithDirection(y, vert);
+		return this.canPass(x, y, vert) && this.canPass(x, y2, horz) && this.canPass(x2, y, vert);
+	};
 
 	Game_CharacterBase.prototype.moveDiagonally = function(horz, vert) {
 		this.setMovementSuccess(

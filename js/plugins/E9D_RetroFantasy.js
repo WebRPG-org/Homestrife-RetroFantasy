@@ -3752,8 +3752,12 @@
 		if (this._actor) {
 			const skillTypes = this._actor.skillTypes();
 			for (const stypeId of skillTypes) {
-				const name = $dataSystem.skillTypes[stypeId];
-				this.addCommand(name, "skill", true, stypeId, 63+stypeId);
+				if(stypeId === 8) {
+					this.addCommand($dataSystem.skillTypes[10], "skill", true, 10, 73);
+					this.addCommand($dataSystem.skillTypes[12], "skill", true, 12, 75);
+				} else {
+					this.addCommand($dataSystem.skillTypes[stypeId], "skill", true, stypeId, 63+stypeId);
+				}
 			}
 		}
 	};
@@ -5351,8 +5355,12 @@
 	Window_ActorCommand.prototype.addSkillCommands = function() {
 		const skillTypes = this._actor.skillTypes();
 		for (const stypeId of skillTypes) {
-			const name = $dataSystem.skillTypes[stypeId];
-			this.addCommand(name, "skill", true, stypeId, 63+stypeId);
+			if(stypeId === 8) {
+				this.addCommand($dataSystem.skillTypes[10], "skill", true, 10, 73);
+				this.addCommand($dataSystem.skillTypes[12], "skill", true, 12, 75);
+			} else {
+				this.addCommand($dataSystem.skillTypes[stypeId], "skill", true, stypeId, 63+stypeId);
+			}
 		}
 	};
 

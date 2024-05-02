@@ -5315,8 +5315,9 @@
 	Window_BattleAction.prototype.refresh = function() {
 		const rect = this.baseTextRect();
 		rect.y -= $gameMap.tileHeight()/2;
+		rect.width -= $gameMap.tileWidth()/2
 		this.contents.clear();
-		this.drawIconAndText(this._icon, this_text, rect.x, rect.y, rect.width);
+		this.drawIconAndText(this._icon, this._text, rect.x, rect.y, rect.width);
 	};
 	
 	// Window Party Command

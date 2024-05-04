@@ -67,16 +67,16 @@
 	// helper functions
 	function parsePluginParameters() {
 		pluginParams.useTextImages = true;
-		pluginParams.textImages = parsePluginJSON(pluginParams.textImages, []);
+		pluginParams.textImages = parseStringToJson(pluginParams.textImages, []);
 		for(const textImageInfoStringIndex in pluginParams.textImages) {
 			const textImageInfo = JSON.parse(pluginParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parsePluginInt(textImageInfo.characterW, 32, 1);
-			textImageInfo.characterH = parsePluginInt(textImageInfo.characterH, 32, 1);
+			textImageInfo.characterW = parseJSONInt(textImageInfo.characterW, 32, 1);
+			textImageInfo.characterH = parseJSONInt(textImageInfo.characterH, 32, 1);
 			pluginParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
 	}
 	
-	function parsePluginInt(string, defaultValue, min, max) {
+	function parseJSONInt(string, defaultValue, min, max) {
 		let parsedValue = parseInt(string);
 		if(parsedValue === NaN) { return defaultValue; }
 		if(min !== undefined) { parsedValue = Math.max(min, parsedValue); }
@@ -84,7 +84,7 @@
 		return parsedValue;
 	}
 	
-	function parsePluginJSON(string, defaultValue) {
+	function parseStringToJson(string, defaultValue) {
 		if(string && string.length > 0) { return JSON.parse(string); }
 		return defaultValue;
 	}
@@ -473,7 +473,7 @@
 					return true;
 				}
 			} else {
-				// how does an enemy figure this out?
+				// how does an enemy figure this out? they probably just always choose specific skills
 			}
 		} else if(!this.isGuard()) {
 			// for other skills, just base it on the skill itself
@@ -523,7 +523,7 @@
 			if(weapon) {
 				for(const trait of weapon.traits) {
 					if(trait.code === 43) {
-						return $dataSkills[trait.dataId];
+						return $dataSkills[trait.dataId]; // just grab the very first skill
 					}
 				}
 			} else {
@@ -832,30 +832,34 @@
 		this._backRow = false;
 		this._skillLevels = {};
 		// performance
-		this._skillLevels.MeleeAcc	= 0;
-		this._skillLevels.RangeAcc	= 0;
+		this._skillLevels.MeleeAc	= 0;
+		this._skillLevels.RangeAc	= 0;
 		this._skillLevels.Defense	= 0;
 		this._skillLevels.Balance	= 0;
 		this._skillLevels.Agility	= 0;
 		this._skillLevels.Focus		= 0;
 		// universal ability
-		this._skillLevels.Melee		= 0;
-		this._skillLevels.Throwing	= 0;
+		this._skillLevels.MeleeWp	= 0;
+		this._skillLevels.Throw		= 0;
 		this._skillLevels.Archery	= 0;
-		this._skillLevels.Firearms	= 0;
+		this._skillLevels.Firearm	= 0;
 		// unique ability
 		this._skillLevels.Tactics	= 0;
-		this._skillLevels.Engineer	= 0;
+		this._skillLevels.Engine	= 0;
 		this._skillLevels.Stealth	= 0;
 		this._skillLevels.Wayfare	= 0;
 		this._skillLevels.Spirit	= 0;
-		this._skillLevels.IronBody	= 0;
-		this._skillLevels.GrayMagc	= 0;
-		this._skillLevels.SpellSwd	= 0;
-		this._skillLevels.WhiteMgc	= 0;
-		this._skillLevels.Clairvoy	= 0;
-		this._skillLevels.BlackMgc	= 0;
-		this._skillLevels.DevilEye	= 0;
+		this._skillLevels.Tough		= 0;
+		this._skillLevels.GrayMgc	= 0;
+		this._skillLevels.SpellSd	= 0;
+		this._skillLevels.WhiteMg	= 0;
+		this._skillLevels.Divine	= 0;
+		this._skillLevels.BlackMg	= 0;
+		this._skillLevels.DarkEye	= 0;
+	};
+	
+	Game_BattlerBase.prototype.updateAbilities = function() {
+		// this gets overrided in Game_Actor
 	};
 	
 	Game_BattlerBase.prototype.skillLevel = function(skillName) {
@@ -870,8 +874,31 @@
 	};
 	
 	Game_BattlerBase.prototype.setSkillLevel = function(skillName, newLevel) {
-		if(this._skillLevels[skillName] !== undefined) { this._skillLevels[skillName] = Math.max(0, Math.min(9, newLevel)); }
-		this.refresh();
+		if(undefined === this._skillLevels[skillName] || newLevel === this._skillLevels[skillName]) { return; }
+		this._skillLevels[skillName] = Math.max(0, Math.min(9, newLevel));
+		if(skillName === "Tough") {
+			this.refresh();
+		}
+		if(
+			skillName === "MeleeWp" ||
+			skillName === "Throw" 	||
+			skillName === "Archery"	||
+			skillName === "Firearm" ||
+			skillName === "Tactics" ||
+			skillName === "Engine" 	||
+			skillName === "Stealth" ||
+			skillName === "Wayfare" ||
+			skillName === "Spirit" 	||
+			skillName === "Tough" 	||
+			skillName === "GrayMgc" ||
+			skillName === "SpellSd" ||
+			skillName === "WhiteMg" ||
+			skillName === "Divine" 	||
+			skillName === "BlackMg" ||
+			skillName === "DarkEye"
+		) {
+			this.updateAbilities();
+		}
 	};
 	
 	Game_BattlerBase.prototype.incrementSkillLevel = function(skillName) {
@@ -950,14 +977,14 @@
 		let xparamTotal = _Game_BattlerBase_xparam.call(this, xparamId);
 		switch(xparamId) {
 			case 0: //melee accuracy, using Hit Rate
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAcc");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAc");
 				break;
 			case 1: //evasion, using Evasion Rate
 				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Defense");
 				break;
 			case 2: //range accuracy, using Critical Rate
 			case 4: //special accuracy, using Magic Evasion (???)
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("RangeAcc");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("RangeAc");
 				break;
 			case 9: //focus, using TP Regeneration
 				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Focus");
@@ -971,7 +998,7 @@
 		let sparamTotal = _Game_BattlerBase_sparam.call(this, sparamId);
 		switch(sparamId) {
 			case 6: //toughness, using Physical Damage
-				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("IronBody");
+				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("Tough");
 				break;
 			case 8: //balance, using Floor Damage
 				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("Balance");
@@ -1054,6 +1081,51 @@
 		_Game_Actor_initMembers.call(this);
 		this._justEquipped = null;
 		this._trailImage = null;
+	};
+	
+	const _Game_Actor_setup = Game_Actor.prototype.setup;
+	Game_Actor.prototype.setup = function(actorId) {
+		_Game_Actor_setup.call(this, actorId);
+		this.updateAbilities();
+	};
+	
+	Game_Actor.prototype.updateAbilities = function() {
+		this._skills = [];
+		$dataSkills.forEach((skill) => {
+			if(skill === undefined || skill === null || this._skills.indexOf(skill.id) >= 0) { return; }
+			if(this.meetsAbilityRequirements(skill.e9dInfo.requirements, true)) {
+				this._skills.push(skill.id);
+			}
+		});
+		this._skills.sort((a, b) => a - b);
+	};
+	
+	Game_Actor.prototype.meetsAbilityRequirements = function(reqs, ignoreEquipAbilities) {
+		if(!reqs || reqs.length === undefined || reqs.length === 0) { return false; }
+		for(let i = 0; i < reqs.length; i++) {
+			if(ignoreEquipAbilities && reqs[i].equipment) { continue; } //ignore requirements that come from equipment
+			if(
+				(reqs[i].meleeWp 	=== undefined || this._skillLevels.MeleeWp 	>= reqs[i].meleeWp) &&
+				(reqs[i].throw 		=== undefined || this._skillLevels.Throw 	>= reqs[i].throw) 	&&
+				(reqs[i].archery 	=== undefined || this._skillLevels.Archery 	>= reqs[i].archery) &&
+				(reqs[i].firearm 	=== undefined || this._skillLevels.Firearm 	>= reqs[i].firearm) &&
+				(reqs[i].tactics 	=== undefined || this._skillLevels.Tactics 	>= reqs[i].tactics) &&
+				(reqs[i].engine 	=== undefined || this._skillLevels.Engine 	>= reqs[i].engine) 	&&
+				(reqs[i].stealth 	=== undefined || this._skillLevels.Stealth 	>= reqs[i].stealth) &&
+				(reqs[i].wayfare 	=== undefined || this._skillLevels.Wayfare 	>= reqs[i].wayfare) &&
+				(reqs[i].spirit 	=== undefined || this._skillLevels.Spirit 	>= reqs[i].spirit) 	&&
+				(reqs[i].tough 		=== undefined || this._skillLevels.Tough 	>= reqs[i].tough) 	&&
+				(reqs[i].grayMgc 	=== undefined || this._skillLevels.GrayMgc	>= reqs[i].grayMgc)	&&
+				(reqs[i].spellSd 	=== undefined || this._skillLevels.SpellSd 	>= reqs[i].spellSd) &&
+				(reqs[i].whiteMg	=== undefined || this._skillLevels.WhiteMg 	>= reqs[i].whiteMg) &&
+				(reqs[i].divine 	=== undefined || this._skillLevels.Divine 	>= reqs[i].divine) 	&&
+				(reqs[i].blackMg 	=== undefined || this._skillLevels.BlackMg 	>= reqs[i].blackMg) &&
+				(reqs[i].darkEye 	=== undefined || this._skillLevels.DarkEye 	>= reqs[i].darkEye)
+			) {
+				return true;
+			}
+		}
+		return false;
 	};
 	
 	Game_Actor.prototype.clearTrail = function() {
@@ -1229,8 +1301,17 @@
 	
 	Game_Actor.prototype.skills = function() {
 		const list = [];
+		
+		// get added skills that the actor qualifies for
+		const addedSkills = [];
+		for (const id of this.addedSkills()) {
+			if(this.meetsAbilityRequirements($dataSkills[id].e9dInfo.requirements)) {
+				addedSkills.push(id);
+			}
+		}
+		
 		// get all the skill ids
-		let skillIds = this._skills.concat(this.addedSkills());
+		let skillIds = this._skills.concat(addedSkills);
 		
 		// filter out duplicates
 		skillIds = skillIds.filter(function(item, pos, self) {
@@ -3473,10 +3554,10 @@
 		if(skillNum >= classSkillStartsAt) { return this.classSkillName(skillNum-classSkillStartsAt); }
 		let name = "UNKNOWN";
 		switch(skillNum) {
-			case  0: name =	  "Melee"; break; case  1: name =	  "Ranged"; break; 
+			case  0: name =	"MeleeAc"; break; case  1: name =	 "RangeAc"; break; 
 			case  2: name =	"Defense"; break; case  3: name =	 "Balance"; break; 
 			case  4: name =	"Agility"; break; case  5: name =	   "Focus"; break; 
-			case  6: name =	  "Melee"; break; case  7: name =	   "Throw"; break; 
+			case  6: name =	"MeleeWp"; break; case  7: name =	   "Throw"; break; 
 			case  8: name =	"Archery"; break; case  9: name =	 "Firearm"; break; 
 		}
 		return name;

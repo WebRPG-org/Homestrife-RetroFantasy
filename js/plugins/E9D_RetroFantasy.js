@@ -25,11 +25,20 @@
  * to expand upon this further in this plugin, as such a feature probably
  * belongs in a plugin focused more on text options.
  *
+ * The effect images feature allows the specification of image files that
+ * contain simple animations. This is to bring back some functionality
+ * resembling older RPG Maker skill animations. They can be referenced in skill
+ * note json data.
+ *
  * @param textImages
  * @text Text Images
  * @desc An array of text image files and their specifications.
  * @type struct<textImageInfo>[]
- * @parent useTextImages
+ *
+ * @param effectImages
+ * @text Effect Images
+ * @desc An array of effect image files and their specifications.
+ * @type struct<effectImageInfo>[]
  */
  
 /*~struct~textImageInfo:
@@ -40,7 +49,7 @@
  * @type file
  *
  * @param characterW
- * @text Character width
+ * @text Character Width
  * @desc The width of an individual text character.
  * @type number
  * @default 8
@@ -52,6 +61,38 @@
  * @desc The height of an individual text character.
  * @type number
  * @default 8
+ * @min 1
+ * @decimals 0
+ */
+ 
+/*~struct~effectImageInfo:
+ *
+ * @param file
+ * @text File
+ * @desc The animation image file.
+ * @type file
+ *
+ * @param frameW
+ * @text Frame Width
+ * @desc The width of an individual animation frame.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param frameH
+ * @text Frame Height
+ * @desc The height of an individual animation frame.
+ * @type number
+ * @default 64
+ * @min 1
+ * @decimals 0
+ *
+ * @param frameCount
+ * @text Frame Count
+ * @desc The number of frames in the file.
+ * @type number
+ * @default 9
  * @min 1
  * @decimals 0
  */
@@ -70,9 +111,17 @@
 		pluginParams.textImages = parseStringToJson(pluginParams.textImages, []);
 		for(const textImageInfoStringIndex in pluginParams.textImages) {
 			const textImageInfo = JSON.parse(pluginParams.textImages[textImageInfoStringIndex]);
-			textImageInfo.characterW = parseJSONInt(textImageInfo.characterW, 32, 1);
-			textImageInfo.characterH = parseJSONInt(textImageInfo.characterH, 32, 1);
+			textImageInfo.characterW = parseJSONInt(textImageInfo.characterW, 8, 1);
+			textImageInfo.characterH = parseJSONInt(textImageInfo.characterH, 8, 1);
 			pluginParams.textImages[textImageInfoStringIndex] = textImageInfo;
+		}
+		pluginParams.effectImages = parseStringToJson(pluginParams.effectImages, []);
+		for(const effectImageInfoStringIndex in pluginParams.effectImages) {
+			const effectImageInfo = JSON.parse(pluginParams.effectImages[effectImageInfoStringIndex]);
+			effectImageInfo.frameW = parseJSONInt(effectImageInfo.frameW, 64, 1);
+			effectImageInfo.frameH = parseJSONInt(effectImageInfo.frameH, 64, 1);
+			effectImageInfo.frameCount = parseJSONInt(effectImageInfo.frameCount, 1, 1);
+			pluginParams.effectImages[effectImageInfoStringIndex] = effectImageInfo;
 		}
 	}
 	

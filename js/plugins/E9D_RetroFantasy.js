@@ -428,6 +428,31 @@
 		return this._windowskin.getPixel(px, py);
 	};
 	
+	// Game Temp
+	// prettier-ignore
+	Game_Temp.prototype.requestAnimation = function(
+		targets, effects
+	) {
+		for(const effect of effects) {
+			for(const effectImage of pluginParams.effectImages) {
+				if(effectImage.file && effectImage.file.replace("img/effects/", "") === effect.image) {
+					const request = {
+						targets: targets,
+						effectImage: effectImage,
+						effect: effect
+					};
+					this._animationQueue.push(request);
+					for (const target of targets) {
+						if (target.startAnimation) {
+							target.startAnimation();
+						}
+					}
+					break;
+				}
+			}
+		}
+	};
+	
 	// Game System
 	Game_System.prototype.windowPadding = function() {
 		return 4;
@@ -1443,7 +1468,9 @@
 			const battler = $dataSystem.testBattlers[i];
 			const actor = $gameActors.actor(battler.actorId);
 			if (actor) {
-				actor.changeLevel(battler.level, false);
+				actor.changeLevel(1, false);
+				actor.setSkillLevel("GrayMgc", 1);
+				actor.setSkillLevel("WhiteMg", 1);
 				actor.initEquips(battler.equips);
 				actor.recoverAll();
 				if(i > 1) {
@@ -2881,6 +2908,128 @@
 		return this._effectType === "whiten" || Sprite_Battler.prototype.isSelected.call(this);
 	}
 	
+	// Sprite Animation MV
+	Sprite_AnimationMV.prototype.initMembers = function() {
+		this._targets = [];
+		this._effectImage = null;
+		this._effect = null;
+		this._delay = 0;
+		this._rate = 4;
+		this._duration = 0;
+		this._bitmap = null;
+		this._cellSprite = null;
+		this.z = 8;
+	};
+	
+	// prettier-ignore
+	Sprite_AnimationMV.prototype.setup = function(
+		targets, effectImage, effect, delay
+	) {
+		this._targets = targets;
+		this._effectImage = effectImage;
+		this._effect = effect;
+		this._delay = delay;
+		if (this._effectImage) {
+			this.setupRate();
+			this.setupDuration();
+			this.loadBitmaps();
+			this.createCellSprite();
+		}
+	};
+	
+	Sprite_AnimationMV.prototype.setupDuration = function() {
+		this._duration = this._effectImage.frameCount * this._rate + 1;
+	};
+	
+	Sprite_AnimationMV.prototype.update = function() {
+		Sprite.prototype.update.call(this);
+		this.updateMain();
+	};
+	
+	Sprite_AnimationMV.prototype.loadBitmaps = function() {
+		this._bitmap = ImageManager.loadBitmap("img/effects/", this._effect.image);
+	};
+	
+	Sprite_AnimationMV.prototype.isReady = function() {
+		return (
+			this._bitmap &&
+			this._bitmap.isReady()
+		);
+	};
+	
+	Sprite_AnimationMV.prototype.createCellSprite = function() {
+		const sprite = new Sprite();
+		sprite.anchor.x = 0.5;
+		sprite.anchor.y = 0.5;
+		this._cellSprite = sprite;
+		this.addChild(sprite);
+	};
+	
+	Sprite_AnimationMV.prototype.updateMain = function() {
+		if (this.isPlaying() && this.isReady()) {
+			if (this._delay > 0) {
+				this._delay--;
+			} else {
+				this._duration--;
+				this.updatePosition();
+				if (this._duration % this._rate === 0) {
+					this.updateFrame();
+				}
+			}
+		}
+	};
+	
+	Sprite_AnimationMV.prototype.updatePosition = function() {
+		const target = this._targets[0];
+		const parent = target.parent;
+		const grandparent = parent ? parent.parent : null;
+		this.x = target.x;
+		this.y = target.y;
+		if (this.parent === grandparent) {
+			this.x += parent.x;
+			this.y += parent.y;
+		}
+		this.y -= target.height / 2;
+};
+
+	Sprite_AnimationMV.prototype.updateFrame = function() {
+		if (this._duration > 0) {
+			const frameIndex = this.currentFrameIndex();
+			this.updateCellSprite(this._effectImage, frameIndex);
+		}
+	};
+
+	Sprite_AnimationMV.prototype.currentFrameIndex = function() {
+		return (
+			this._effectImage.frameCount -
+			Math.floor((this._duration + this._rate - 1) / this._rate)
+		);
+	};
+	
+	Sprite_AnimationMV.prototype.updateCellSprite = function(effectImage, frameIndex) {
+		if (frameIndex >= 0 && frameIndex < effectImage.frameCount) {
+			const framesX = this._bitmap.width / effectImage.frameWidth;
+			const framesY = this._bitmap.height / effectImage.frameHeight;
+			const sx = (frameIndex % framesX) * effectImage.frameWidth;
+			const sy = Math.floor(frameIndex / framesX) * effectImage.frameHeight;
+			const mirror = this._effect.mirror;
+			this._cellSprite.bitmap = this._bitmap;
+			this._cellSprite.setFrame(sx, sy, effectImage.frameWidth, effectImage.frameHeight);
+			this._cellSprite.x = this.x;
+			this._cellSprite.y = this.y;
+
+			if (mirror) {
+				this._cellSprite.x *= -1;
+				this._cellSprite.rotation *= -1;
+				this._cellSprite.scale.x *= -1;
+			}
+			
+			this._cellSprite.visible = true;
+		} else {
+			this._cellSprite.visible = false;
+		}
+	};
+	
 	// Sprite Battleback
 	Sprite_Battleback.prototype.adjustPosition = function() {
 		this.width = 272;
@@ -3168,6 +3317,37 @@
 		} else {
 			this.setFrame(0, 0, 0, 0);
 		}
+	};
+	
+	// Spriteset Base
+	Spriteset_Base.prototype.createAnimation = function(request) {
+		const effectImage = request.effectImage;
+		const effect = request.effect;
+		const targets = request.targets;
+		let delay = this.animationBaseDelay();
+		const nextDelay = this.animationNextDelay();
+		for (const target of targets) {
+			this.createAnimationSprite([target], effectImage, effect, delay);
+			delay += nextDelay;
+		}
+	};
+	
+	// prettier-ignore
+	Spriteset_Base.prototype.createAnimationSprite = function(
+		targets, effectImage, effect, delay
+	) {
+		const sprite = new Sprite_AnimationMV();
+		const targetSprites = this.makeTargetSprites(targets);
+		const baseDelay = this.animationBaseDelay();
+		const previous = delay > baseDelay ? this.lastAnimationSprite() : null;
+		effect.mirror = !!effect.mirror;
+		if (this.animationShouldMirror(targets[0])) {
+			effect.mirror = !effect.mirror;
+		}
+		sprite.targetObjects = targets;
+		sprite.setup(targetSprites, effectImage, effect, delay, previous);
+		this._effectsContainer.addChild(sprite);
+		this._animationSprites.push(sprite);
 	};
 	
 	// Spriteset Battle
@@ -5368,6 +5548,35 @@
 			return true;
 		}
 		return false;
+	};
+	
+	// prettier-ignore
+	Window_BattleLog.prototype.showAnimation = function(
+		subject, targets, effects
+	) {
+		if(!effects || effects.length === undefined || effects.length === 0) {
+			this.showAttackAnimation(subject, targets);
+		} else {
+			this.showNormalAnimation(targets, effects);
+		}
+	};
+	
+	// prettier-ignore
+	Window_BattleLog.prototype.showNormalAnimation = function(
+		targets, effects
+	) {
+		if(effects && effects[0] && effects[0].image) {
+			$gameTemp.requestAnimation(targets, effects);
+		}
+	};
+	
+	Window_BattleLog.prototype.startAction = function(subject, action, targets) {
+		const item = action.item();
+		this.push("performActionStart", subject, action);
+		this.push("waitForMovement");
+		this.push("performAction", subject, action);
+		this.push("showAnimation", subject, targets.clone(), item.e9dInfo.effects);
+		this.displayAction(subject, item);
 	};
 	
 	Window_BattleLog.prototype.drawBackground = function() {

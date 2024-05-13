@@ -268,6 +268,10 @@
 			if(!skill) { continue; }
 			skill.e9dInfo = skill.note && skill.note.length > 0 ? JSON.parse(skill.note) : {};
 		}
+		for(const item of $dataItems) {
+			if(!item) { continue; }
+			item.e9dInfo = item.note && item.note.length > 0 ? JSON.parse(item.note) : {};
+		}
 		for(const weapon of $dataWeapons) {
 			if(!weapon) { continue; }
 			weapon.e9dInfo = weapon.note && weapon.note.length > 0 ? JSON.parse(weapon.note) : {};
@@ -3298,7 +3302,7 @@
 					this._motionType === "spell" ||
 					this._motionType === "victory"
 				) {
-					this.x = -12;
+					this.x = 4;
 					this.y = 8;
 					this.scale.x = -1;
 				} else if (this._motionType === "pommel" && this._pattern > 0) {

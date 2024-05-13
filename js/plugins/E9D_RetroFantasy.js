@@ -433,22 +433,20 @@
 	Game_Temp.prototype.requestAnimation = function(
 		targets, effects
 	) {
-		for(const effect of effects) {
-			for(const effectImage of pluginParams.effectImages) {
-				if(effectImage.file && effectImage.file.replace("img/effects/", "") === effect.image) {
-					const request = {
-						targets: targets,
-						effectImage: effectImage,
-						effect: effect
-					};
-					this._animationQueue.push(request);
-					for (const target of targets) {
-						if (target.startAnimation) {
-							target.startAnimation();
-						}
+		for(const effectImage of pluginParams.effectImages) {
+			if(effectImage.file && effectImage.file.replace("img/effects/", "") === effects.image) {
+				const request = {
+					targets: targets,
+					effectImage: effectImage,
+					effects: effects
+				};
+				this._animationQueue.push(request);
+				for (const target of targets) {
+					if (target.startAnimation) {
+						target.startAnimation();
 					}
-					break;
 				}
+				break;
 			}
 		}
 	};
@@ -2912,7 +2910,8 @@
 	Sprite_AnimationMV.prototype.initMembers = function() {
 		this._targets = [];
 		this._effectImage = null;
-		this._effect = null;
+		this._effects = null;
+		this._shouldMirror = false;
 		this._delay = 0;
 		this._rate = 4;
 		this._duration = 0;
@@ -2923,11 +2922,12 @@
 	
 	// prettier-ignore
 	Sprite_AnimationMV.prototype.setup = function(
-		targets, effectImage, effect, delay
+		targets, effectImage, effects, shouldMirror, delay
 	) {
 		this._targets = targets;
 		this._effectImage = effectImage;
-		this._effect = effect;
+		this._effects = effects;
+		this._shouldMirror = !!shouldMirror;
 		this._delay = delay;
 		if (this._effectImage) {
 			this.setupRate();
@@ -2935,6 +2935,10 @@
 			this.loadBitmaps();
 			this.createCellSprite();
 		}
+	};
+	
+	Sprite_AnimationMV.prototype.setupRate = function() {
+		this._rate = 4;
 	};
 	
 	Sprite_AnimationMV.prototype.setupDuration = function() {
@@ -2947,7 +2951,7 @@
 	};
 	
 	Sprite_AnimationMV.prototype.loadBitmaps = function() {
-		this._bitmap = ImageManager.loadBitmap("img/effects/", this._effect.image);
+		this._bitmap = ImageManager.loadBitmap("img/effects/", this._effects.image);
 	};
 	
 	Sprite_AnimationMV.prototype.isReady = function() {
@@ -2989,13 +2993,16 @@
 			this.x += parent.x;
 			this.y += parent.y;
 		}
-		this.y -= target.height / 2;
+		this.y -= this._effectImage.frameH / 2;
 };
 
 	Sprite_AnimationMV.prototype.updateFrame = function() {
 		if (this._duration > 0) {
 			const frameIndex = this.currentFrameIndex();
 			this.updateCellSprite(this._effectImage, frameIndex);
+			if (0 === frameIndex && !!this._effects.se) {
+				AudioManager.playSe(this._effects.se);
+			}
 		}
 	};
 
@@ -3008,16 +3015,18 @@
 	
 	Sprite_AnimationMV.prototype.updateCellSprite = function(effectImage, frameIndex) {
 		if (frameIndex >= 0 && frameIndex < effectImage.frameCount) {
-			const framesX = this._bitmap.width / effectImage.frameWidth;
-			const framesY = this._bitmap.height / effectImage.frameHeight;
-			const sx = (frameIndex % framesX) * effectImage.frameWidth;
-			const sy = Math.floor(frameIndex / framesX) * effectImage.frameHeight;
-			const mirror = this._effect.mirror;
+			const framesH = this._bitmap.width / effectImage.frameW;
+			const sx = (frameIndex % framesH) * effectImage.frameW;
+			const sy = Math.floor(frameIndex / framesH) * effectImage.frameH;
+			let mirror = !!this._effects.mirror;
+			if(this._shouldMirror) {
+				mirror = !mirror;
+			}
 			this._cellSprite.bitmap = this._bitmap;
-			this._cellSprite.setFrame(sx, sy, effectImage.frameWidth, effectImage.frameHeight);
-			this._cellSprite.x = this.x;
-			this._cellSprite.y = this.y;
+			this._cellSprite.setFrame(sx, sy, effectImage.frameW, effectImage.frameH);
 
+			this._cellSprite.rotation = 0;
+			this._cellSprite.scale.x = 1;
 			if (mirror) {
 				this._cellSprite.x *= -1;
 				this._cellSprite.rotation *= -1;
@@ -3322,30 +3331,27 @@
 	// Spriteset Base
 	Spriteset_Base.prototype.createAnimation = function(request) {
 		const effectImage = request.effectImage;
-		const effect = request.effect;
+		const effects = request.effects;
 		const targets = request.targets;
 		let delay = this.animationBaseDelay();
 		const nextDelay = this.animationNextDelay();
 		for (const target of targets) {
-			this.createAnimationSprite([target], effectImage, effect, delay);
+			this.createAnimationSprite([target], effectImage, effects, delay);
 			delay += nextDelay;
 		}
 	};
 	
 	// prettier-ignore
 	Spriteset_Base.prototype.createAnimationSprite = function(
-		targets, effectImage, effect, delay
+		targets, effectImage, effects, delay
 	) {
 		const sprite = new Sprite_AnimationMV();
 		const targetSprites = this.makeTargetSprites(targets);
 		const baseDelay = this.animationBaseDelay();
 		const previous = delay > baseDelay ? this.lastAnimationSprite() : null;
-		effect.mirror = !!effect.mirror;
-		if (this.animationShouldMirror(targets[0])) {
-			effect.mirror = !effect.mirror;
-		}
+		const shouldMirror = this.animationShouldMirror(targets[0]);
 		sprite.targetObjects = targets;
-		sprite.setup(targetSprites, effectImage, effect, delay, previous);
+		sprite.setup(targetSprites, effectImage, effects, shouldMirror, delay, previous);
 		this._effectsContainer.addChild(sprite);
 		this._animationSprites.push(sprite);
 	};
@@ -5554,10 +5560,10 @@
 	Window_BattleLog.prototype.showAnimation = function(
 		subject, targets, effects
 	) {
-		if(!effects || effects.length === undefined || effects.length === 0) {
-			this.showAttackAnimation(subject, targets);
-		} else {
+		if(effects) {
 			this.showNormalAnimation(targets, effects);
+		} else {
+			this.showAttackAnimation(subject, targets);
 		}
 	};
 	
@@ -5565,7 +5571,7 @@
 	Window_BattleLog.prototype.showNormalAnimation = function(
 		targets, effects
 	) {
-		if(effects && effects[0] && effects[0].image) {
+		if(effects) {
 			$gameTemp.requestAnimation(targets, effects);
 		}
 	};

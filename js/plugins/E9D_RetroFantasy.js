@@ -35,10 +35,10 @@
  * @desc An array of text image files and their specifications.
  * @type struct<textImageInfo>[]
  *
- * @param effectImages
- * @text Effect Images
- * @desc An array of effect image files and their specifications.
- * @type struct<effectImageInfo>[]
+ * @param effects
+ * @text Effects
+ * @desc An array of effects to be used by skills.
+ * @type struct<effectInfo>[]
  */
  
 /*~struct~textImageInfo:
@@ -47,6 +47,7 @@
  * @text File
  * @desc The text image file.
  * @type file
+ * @dir img/system
  *
  * @param characterW
  * @text Character Width
@@ -65,12 +66,18 @@
  * @decimals 0
  */
  
-/*~struct~effectImageInfo:
+/*~struct~effectInfo:
  *
- * @param file
- * @text File
+ * @param name
+ * @text Name
+ * @desc The name of the effect.
+ * @type string
+ *
+ * @param animFile
+ * @text Animation File
  * @desc The animation image file.
  * @type file
+ * @dir img/effects
  *
  * @param frameW
  * @text Frame Width
@@ -95,6 +102,92 @@
  * @default 9
  * @min 1
  * @decimals 0
+ *
+ * @param mirror
+ * @text Mirror
+ * @desc Whether or not to mirror the animation graphics.
+ * @type boolean
+ *
+ * @param filters
+ * @text Filters
+ * @desc An array of filters to be applied throughout the animation.
+ * @type struct<filterInfo>[]
+ *
+ * @param se
+ * @text SE
+ * @desc The sound effect.
+ * @type struct<seInfo>
+ */
+ 
+/*~struct~filterInfo:
+ *
+ * @param name
+ * @text Name
+ * @desc The name of the filter.
+ * @type string
+ *
+ * @param shiftDown
+ * @text Shift Down
+ * @desc Whether or not the hue/luminosity shift should be negative.
+ * @type boolean
+ *
+ * @param hue
+ * @text Hue
+ * @desc The hue to use.
+ * @type number
+ * @min 0
+ * @max 12
+ * @decimals 0
+ *
+ * @param startFrame
+ * @text Start Frame
+ * @desc Which frame in the animation the filter should begin in.
+ * @type number
+ * @min 0
+ * @decimals 0
+ *
+ * @param duration
+ * @text Duration
+ * @desc How many frames of the animation the filter should last through.
+ * @type number
+ * @min 1
+ * @decimals 0
+ */
+ 
+/*~struct~seInfo:
+ *
+ * @param name
+ * @text SE File
+ * @desc The sound effect file.
+ * @type file
+ * @dir audio/se
+ *
+ * @param volume
+ * @text Volume
+ * @desc The sound effect volume, from 0 to 100.
+ * @type number
+ * @default 90
+ * @min 0
+ * @max 100
+ * @decimals 0
+ *
+ * @param pitch
+ * @text Pitch
+ * @desc The sound effect pitch, from 50 to 150.
+ * @type number
+ * @default 100
+ * @min 50
+ * @max 150
+ * @decimals 0
+ *
+ * @param pan
+ * @text Pan
+ * @desc The sound effect panning, from -100 to 100.
+ * @type number
+ * @default 0
+ * @min -100
+ * @max 100
+ * @decimals 0
  */
 
 (() => {
@@ -115,22 +208,47 @@
 			textImageInfo.characterH = parseJSONInt(textImageInfo.characterH, 8, 1);
 			pluginParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
-		pluginParams.effectImages = parseStringToJson(pluginParams.effectImages, []);
-		for(const effectImageInfoStringIndex in pluginParams.effectImages) {
-			const effectImageInfo = JSON.parse(pluginParams.effectImages[effectImageInfoStringIndex]);
-			effectImageInfo.frameW = parseJSONInt(effectImageInfo.frameW, 64, 1);
-			effectImageInfo.frameH = parseJSONInt(effectImageInfo.frameH, 64, 1);
-			effectImageInfo.frameCount = parseJSONInt(effectImageInfo.frameCount, 1, 1);
-			pluginParams.effectImages[effectImageInfoStringIndex] = effectImageInfo;
+		pluginParams.effects = parseStringToJson(pluginParams.effects, []);
+		for(const effectInfoStringIndex in pluginParams.effects) {
+			const effectInfo = JSON.parse(pluginParams.effects[effectInfoStringIndex]);
+			effectInfo.frameW = parseJSONInt(effectInfo.frameW, 64, 1);
+			effectInfo.frameH = parseJSONInt(effectInfo.frameH, 64, 1);
+			effectInfo.frameCount = parseJSONInt(effectInfo.frameCount, 1, 1);
+			
+			effectInfo.filters = parseStringToJson(effectInfo.filters, []);
+			for(const filterInfoStringIndex in effectInfo.filters) {
+				const filterInfo = JSON.parse(effectInfo.filters[filterInfoStringIndex]);
+				filterInfo.shiftDirection = filterInfo.shiftDown === "true" ? -1 : 1;
+				filterInfo.hue = parseJSONInt(filterInfo.hue, 0, 0, 12);
+				filterInfo.startFrame = parseJSONInt(filterInfo.startFrame, 0, 0);
+				filterInfo.duration = parseJSONInt(filterInfo.duration, 1, 1);
+				effectInfo.filters[filterInfoStringIndex] = filterInfo;
+			}
+			
+			effectInfo.se = parseStringToJson(effectInfo.se, {});
+			effectInfo.se.volume = parseJSONInt(effectInfo.se.volume, 90, 0, 100);
+			effectInfo.se.pitch = parseJSONInt(effectInfo.se.pitch, 100, 50, 150);
+			effectInfo.se.pan = parseJSONInt(effectInfo.se.pan, 0, -100, 100);
+			
+			pluginParams.effects[effectInfoStringIndex] = effectInfo;
 		}
 	}
 	
 	function parseJSONInt(string, defaultValue, min, max) {
 		let parsedValue = parseInt(string);
-		if(parsedValue === NaN) { return defaultValue; }
-		if(min !== undefined) { parsedValue = Math.max(min, parsedValue); }
-		if(max !== undefined) { parsedValue = Math.min(max, parsedValue); }
-		return parsedValue;
+		return processNumber(parsedValue, defaultValue, min, max);
+	}
+	
+	function parseJSONFloat(string, defaultValue, min, max) {
+		let parsedValue = parseFloat(string);
+		return processNumber(parsedValue, defaultValue, min, max);
+	}
+	
+	function processNumber(number, defaultValue, min, max) {
+		if(number === NaN) { return defaultValue; }
+		if(min !== undefined) { number = Math.max(min, number); }
+		if(max !== undefined) { number = Math.min(max, number); }
+		return number;
 	}
 	
 	function parseStringToJson(string, defaultValue) {
@@ -160,7 +278,7 @@
 		if (align === "right") {
 			tx += maxWidth - text.length*textImage.characterW;
 		}
-		const bmp = ImageManager.loadBitmapFromUrl(textImage.file + ".png");
+		const bmp = ImageManager.loadBitmapFromUrl("img/system/" + textImage.file + ".png");
 		tx = Math.round(tx);
 		ty = Math.round(ty);
 		let curTx = tx;
@@ -279,30 +397,6 @@
 		for(const armor of $dataArmors) {
 			if(!armor) { continue; }
 			armor.e9dInfo = armor.note && armor.note.length > 0 ? JSON.parse(armor.note) : {};
-		}
-	};
-	
-	// Audio Manager
-	const _AudioManager_playSe = AudioManager.playSe;
-	AudioManager.playSe = function(se) {
-		this.stopSe();
-		for (const buffer of this._staticBuffers) {
-			buffer.stop();
-		}
-		_AudioManager_playSe.call(this, se);
-	}
-	
-	AudioManager.playStaticSe = function(se) {
-		this.stopSe();
-		if (se.name) {
-			this.loadStaticSe(se);
-			for (const buffer of this._staticBuffers) {
-				buffer.stop();
-				if (buffer.name === se.name) {
-					this.updateSeParameters(buffer, se);
-					buffer.play(false);
-				}
-			}
 		}
 	};
 	
@@ -435,14 +529,13 @@
 	// Game Temp
 	// prettier-ignore
 	Game_Temp.prototype.requestAnimation = function(
-		targets, effects
+		targets, effectName
 	) {
-		for(const effectImage of pluginParams.effectImages) {
-			if(effectImage.file && effectImage.file.replace("img/effects/", "") === effects.image) {
+		for(const effect of pluginParams.effects) {
+			if(effect.name && effect.name === effectName) {
 				const request = {
 					targets: targets,
-					effectImage: effectImage,
-					effects: effects
+					effect: effect
 				};
 				this._animationQueue.push(request);
 				for (const target of targets) {
@@ -2942,8 +3035,7 @@
 	// Sprite Animation MV
 	Sprite_AnimationMV.prototype.initMembers = function() {
 		this._targets = [];
-		this._effectImage = null;
-		this._effects = null;
+		this._effect = null;
 		this._shouldMirror = false;
 		this._delay = 0;
 		this._rate = 4;
@@ -2955,14 +3047,13 @@
 	
 	// prettier-ignore
 	Sprite_AnimationMV.prototype.setup = function(
-		targets, effectImage, effects, shouldMirror, delay
+		targets, effect, shouldMirror, delay
 	) {
 		this._targets = targets;
-		this._effectImage = effectImage;
-		this._effects = effects;
+		this._effect = effect;
 		this._shouldMirror = !!shouldMirror;
 		this._delay = delay;
-		if (this._effectImage) {
+		if (this._effect) {
 			this.setupRate();
 			this.setupDuration();
 			this.loadBitmaps();
@@ -2975,7 +3066,7 @@
 	};
 	
 	Sprite_AnimationMV.prototype.setupDuration = function() {
-		this._duration = this._effectImage.frameCount * this._rate + 1;
+		this._duration = this._effect.frameCount * this._rate + 1;
 	};
 	
 	Sprite_AnimationMV.prototype.update = function() {
@@ -2984,7 +3075,7 @@
 	};
 	
 	Sprite_AnimationMV.prototype.loadBitmaps = function() {
-		this._bitmap = ImageManager.loadBitmap("img/effects/", this._effects.image);
+		this._bitmap = ImageManager.loadBitmap("img/effects/", this._effect.animFile);
 	};
 	
 	Sprite_AnimationMV.prototype.isReady = function() {
@@ -3029,38 +3120,38 @@
 			this.x += parent.x;
 			this.y += parent.y;
 		}
-		this.y -= this._effectImage.frameH / 2;
+		this.y -= this._effect.frameH / 2;
 };
 
 	Sprite_AnimationMV.prototype.updateFrame = function() {
+		const frameIndex = this.currentFrameIndex();
 		if (this._duration > 0) {
-			const frameIndex = this.currentFrameIndex();
-			this.updateCellSprite(this._effectImage, frameIndex);
-			this.updateFilter(this._effects.filters, frameIndex);
-			if (0 === frameIndex && !!this._effects.se) {
-				AudioManager.playSe(this._effects.se);
-			}
+			this.updateCellSprite(this._effect, frameIndex);
+			this.updateFilter(this._effect.filters, frameIndex);
+		}
+		if(frameIndex === 0) {
+			AudioManager.playSe(this._effect.se);
 		}
 	};
 
 	Sprite_AnimationMV.prototype.currentFrameIndex = function() {
 		return (
-			this._effectImage.frameCount -
+			this._effect.frameCount -
 			Math.floor((this._duration + this._rate - 1) / this._rate)
 		);
 	};
 	
-	Sprite_AnimationMV.prototype.updateCellSprite = function(effectImage, frameIndex) {
-		if (frameIndex >= 0 && frameIndex < effectImage.frameCount) {
-			const framesH = this._bitmap.width / effectImage.frameW;
-			const sx = (frameIndex % framesH) * effectImage.frameW;
-			const sy = Math.floor(frameIndex / framesH) * effectImage.frameH;
-			let mirror = !!this._effects.mirror;
+	Sprite_AnimationMV.prototype.updateCellSprite = function(effect, frameIndex) {
+		if (frameIndex >= 0 && frameIndex < effect.frameCount) {
+			const framesH = this._bitmap.width / effect.frameW;
+			const sx = (frameIndex % framesH) * effect.frameW;
+			const sy = Math.floor(frameIndex / framesH) * effect.frameH;
+			let mirror = !!this._effect.mirror;
 			if(this._shouldMirror) {
 				mirror = !mirror;
 			}
 			this._cellSprite.bitmap = this._bitmap;
-			this._cellSprite.setFrame(sx, sy, effectImage.frameW, effectImage.frameH);
+			this._cellSprite.setFrame(sx, sy, effect.frameW, effect.frameH);
 
 			this._cellSprite.rotation = 0;
 			this._cellSprite.scale.x = 1;
@@ -3391,20 +3482,19 @@
 	
 	// Spriteset Base
 	Spriteset_Base.prototype.createAnimation = function(request) {
-		const effectImage = request.effectImage;
-		const effects = request.effects;
+		const effect = request.effect;
 		const targets = request.targets;
 		let delay = this.animationBaseDelay();
 		const nextDelay = this.animationNextDelay();
 		for (const target of targets) {
-			this.createAnimationSprite([target], effectImage, effects, delay);
+			this.createAnimationSprite([target], effect, delay);
 			delay += nextDelay;
 		}
 	};
 	
 	// prettier-ignore
 	Spriteset_Base.prototype.createAnimationSprite = function(
-		targets, effectImage, effects, delay
+		targets, effect, delay
 	) {
 		const sprite = new Sprite_AnimationMV();
 		const targetSprites = this.makeTargetSprites(targets);
@@ -3412,7 +3502,7 @@
 		const previous = delay > baseDelay ? this.lastAnimationSprite() : null;
 		const shouldMirror = this.animationShouldMirror(targets[0]);
 		sprite.targetObjects = targets;
-		sprite.setup(targetSprites, effectImage, effects, shouldMirror, delay, previous);
+		sprite.setup(targetSprites, effect, shouldMirror, delay, previous);
 		this._effectsContainer.addChild(sprite);
 		this._animationSprites.push(sprite);
 	};
@@ -5619,10 +5709,10 @@
 	
 	// prettier-ignore
 	Window_BattleLog.prototype.showAnimation = function(
-		subject, targets, effects
+		subject, targets, effect
 	) {
-		if(effects) {
-			this.showNormalAnimation(targets, effects);
+		if(effect) {
+			this.showNormalAnimation(targets, effect);
 		} else {
 			this.showAttackAnimation(subject, targets);
 		}
@@ -5630,10 +5720,10 @@
 	
 	// prettier-ignore
 	Window_BattleLog.prototype.showNormalAnimation = function(
-		targets, effects
+		targets, effect
 	) {
-		if(effects) {
-			$gameTemp.requestAnimation(targets, effects);
+		if(effect) {
+			$gameTemp.requestAnimation(targets, effect);
 		}
 	};
 	
@@ -5642,7 +5732,7 @@
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
 		this.push("performAction", subject, action);
-		this.push("showAnimation", subject, targets.clone(), item.e9dInfo.effects);
+		this.push("showAnimation", subject, targets.clone(), item.e9dInfo.effect);
 		this.displayAction(subject, item);
 	};
 	

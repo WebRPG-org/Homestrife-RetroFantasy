@@ -250,11 +250,15 @@
 	
 	Sprite.prototype.setFilterParams = function(filter, shiftAmount, shiftDirection, hue, ignoreBlack) {
 		if(filter === 'hueRotate') {
+			while(shiftAmount < 0) { shiftAmount += paletteJailImage.width; }
+			while(shiftAmount > paletteJailImage.width-1) { shiftAmount -= paletteJailImage.width; }
 			this._hueRotateFilterUniforms.shiftAmount = shiftAmount;
 			this._hueRotateFilterUniforms.shiftDirection = shiftDirection;
 			this._updateColorFilter();
 		} else if(filter === 'monochromeTumble') {
 			this._monochromeTumbleFilterUniforms.hue = hue;
+			while(shiftAmount < (ignoreBlack ? 1 : 0)) { shiftAmount += paletteJailImage.height - (ignoreBlack ? 1 : 0); }
+			while(shiftAmount > paletteJailImage.height-1) { shiftAmount -= paletteJailImage.height - (ignoreBlack ? 1 : 0); }
 			this._monochromeTumbleFilterUniforms.shiftAmount = shiftAmount;
 			this._monochromeTumbleFilterUniforms.shiftDirection = shiftDirection;
 			this._monochromeTumbleFilterUniforms.ignoreBlack = ignoreBlack ? 1 : 0;

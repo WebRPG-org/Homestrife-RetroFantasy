@@ -41,5 +41,5 @@ void main(){
 	
 	paletteCoord.x = newHue * pIncX + pHalfIncX;
 	gl_FragColor = texture2D(paletteTex, paletteCoord);
-	gl_FragColor.a = inputColor.a == 0.0 ? 0.0 : 1.0;
+	gl_FragColor = inputColor.a == 0.0 ? inputColor : gl_FragColor;
 }

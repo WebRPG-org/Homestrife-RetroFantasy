@@ -1151,6 +1151,18 @@
 		);
 	};
 	
+	Game_Battler.prototype.performMiss = function() {
+		//SoundManager.playMiss();
+	};
+	
+	Game_Battler.prototype.performRecovery = function() {
+		//SoundManager.playRecovery();
+	};
+	
+	Game_Battler.prototype.performEvasion = function() {
+		//SoundManager.playEvasion();
+	};
+	
 	// Game Actor
 	const _Game_Actor_initMembers = Game_Actor.prototype.initMembers;
 	Game_Actor.prototype.initMembers = function() {
@@ -1328,6 +1340,16 @@
 		}
 	};
 	
+	Game_Actor.prototype.performDamage = function() {
+		Game_Battler.prototype.performDamage.call(this);
+		if (this.isSpriteVisible()) {
+			this.requestMotion("damage");
+		} else {
+			$gameScreen.startShake(5, 5, 10);
+		}
+		//SoundManager.playActorDamage();
+	};
+	
 	Game_Actor.prototype.performAttack = function() {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
@@ -1405,6 +1427,13 @@
 			}
 		}
 		return list;
+	};
+	
+	// Game Enemy
+	Game_Enemy.prototype.performDamage = function() {
+		Game_Battler.prototype.performDamage.call(this);
+		//SoundManager.playEnemyDamage();
+		//this.requestEffect("blink");
 	};
 	
 	// Game Unit
@@ -2983,6 +3012,9 @@
 				if (this._duration % this._rate === 0) {
 					this.updateFrame();
 				}
+				if (this._duration <= 0) {
+					this.onEnd();
+				}
 			}
 		}
 	};
@@ -3004,6 +3036,7 @@
 		if (this._duration > 0) {
 			const frameIndex = this.currentFrameIndex();
 			this.updateCellSprite(this._effectImage, frameIndex);
+			this.updateFilter(this._effects.filters, frameIndex);
 			if (0 === frameIndex && !!this._effects.se) {
 				AudioManager.playSe(this._effects.se);
 			}
@@ -3040,6 +3073,30 @@
 			this._cellSprite.visible = true;
 		} else {
 			this._cellSprite.visible = false;
+		}
+	};
+	
+	Sprite_AnimationMV.prototype.updateFilter = function(filters, frameIndex) {
+		for (const filter of filters) {
+			for (const target of this._targets) {
+				if(frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
+					target.setFilterParams(
+						filter.name,
+						frameIndex - filter.startFrame,
+						filter.shiftDirection,
+						filter.hue,
+						true
+					);
+				} else {
+					target.clearFilterParams();
+				}
+			}
+		}
+	};
+
+	Sprite_AnimationMV.prototype.onEnd = function() {
+		for (const target of this._targets) {
+			target.clearFilterParams();
 		}
 	};
 	

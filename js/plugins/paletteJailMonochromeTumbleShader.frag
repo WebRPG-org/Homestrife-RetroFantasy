@@ -4,6 +4,7 @@ uniform float brightLevels;
 uniform float hue;
 uniform float shiftAmount;
 uniform float shiftDirection;
+uniform int ignoreBlack;
 
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
@@ -41,9 +42,12 @@ void main(){
 	float finalShiftDirection = shiftDirection < 0.0 ? -1.0 : 1.0;
 	float newBrightLevel = brightLevel + finalShiftAmount * finalShiftDirection;
 	newBrightLevel = newBrightLevel < 0.0 ? newBrightLevel + brightLevels : (newBrightLevel > brightLevels - 1.0 ? newBrightLevel - brightLevels : newBrightLevel);
+	if(ignoreBlack > 0) {
+		newBrightLevel = newBrightLevel < 1.0 ? newBrightLevel + (brightLevels - 1.0) : (newBrightLevel > brightLevels - 1.0 ? newBrightLevel - (brightLevels - 1.0) : newBrightLevel);
+	}
 	
 	paletteCoord.x = newHue * pIncX + pHalfIncX;
 	paletteCoord.y = pIncY * newBrightLevel + pHalfIncY;
 	gl_FragColor = texture2D(paletteTex, paletteCoord);
-	gl_FragColor.a = inputColor.a == 0.0 ? 0.0 : 1.0;
+	gl_FragColor = inputColor.a == 0.0 || (ignoreBlack > 0 && inputColor.r == 0.0 && inputColor.g == 0.0 && inputColor.b == 0.0) ? inputColor : gl_FragColor;
 }

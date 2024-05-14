@@ -37,5 +37,5 @@ void main(){
 	brightLevel = brightLevel < 0.0 ? 0.0 : brightLevel > brightLevels - 1.0 ? brightLevels - 1.0 : brightLevel;
 	paletteCoord.y = pIncY * brightLevel + pHalfIncY;
 	gl_FragColor = texture2D(paletteTex, paletteCoord);
-	gl_FragColor.a = inputColor.a == 0.0 ? 0.0 : 1.0;
+	gl_FragColor = inputColor.a == 0.0 ? inputColor : gl_FragColor;
 }

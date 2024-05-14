@@ -242,24 +242,36 @@
 	}
 	
 	// Sprite
-	Sprite.prototype.setFilterParams = function(filter, shiftAmount, shiftDirection, hue) {
-		this.clearFilterParams();
+	const _Sprite_initialize = Sprite.prototype.initialize;
+	Sprite.prototype.initialize = function(bitmap) {
+		_Sprite_initialize.call(this, bitmap);
+		this._createColorFilter();
+	};
+	
+	Sprite.prototype.setFilterParams = function(filter, shiftAmount, shiftDirection, hue, ignoreBlack) {
 		if(filter === 'hueRotate') {
 			this._hueRotateFilterUniforms.shiftAmount = shiftAmount;
 			this._hueRotateFilterUniforms.shiftDirection = shiftDirection;
+			this._updateColorFilter();
 		} else if(filter === 'monochromeTumble') {
 			this._monochromeTumbleFilterUniforms.hue = hue;
 			this._monochromeTumbleFilterUniforms.shiftAmount = shiftAmount;
 			this._monochromeTumbleFilterUniforms.shiftDirection = shiftDirection;
+			this._monochromeTumbleFilterUniforms.ignoreBlack = ignoreBlack ? 1 : 0;
+			this._updateColorFilter();
+		} else {
+			this.clearFilterParams();
 		}
 	};
 	
 	Sprite.prototype.clearFilterParams = function() {
 		this._hueRotateFilterUniforms.shiftAmount = 0;
 		this._hueRotateFilterUniforms.shiftDirection = 1;
-		this._monochromeTumbleFilterUniforms.hue = 0;
+		this._monochromeTumbleFilterUniforms.hue = -1;
 		this._monochromeTumbleFilterUniforms.shiftAmount = 0;
 		this._monochromeTumbleFilterUniforms.shiftDirection = 1;
+		this._monochromeTumbleFilterUniforms.ignoreBlack = 0;
+		this._updateColorFilter();
 	};
 	
 	Sprite.prototype._createColorFilter = function() {
@@ -285,19 +297,21 @@
 			this._monochromeTumbleFilterUniforms.hue = 0;
 			this._monochromeTumbleFilterUniforms.shiftAmount = 0;
 			this._monochromeTumbleFilterUniforms.shiftDirection = 1;
+			this._monochromeTumbleFilterUniforms.ignoreBlack = 0;
 			this._monochromeTumbleFilter = new PIXI.Filter(null, monochromeTumbleShaderSource, this._monochromeTumbleFilterUniforms);
 		}
 	};
 
 	Sprite.prototype._updateColorFilter = function() {
-		if (!this._emptyFilter) {
-			this._createColorFilter();
-		}
-		if(this._hueRotateFilter && this._hueRotateFilterUniforms.shiftAmount !== 0) {
+		if(this._hueRotateFilterUniforms.shiftAmount !== 0) {
 			if(this.filters.length === 0 || this.filters[0] !== this._hueRotateFilter) {
 				this.filters[0] = this._hueRotateFilter;
 			}
-		} else if(this._emptyFilter) {
+		} else if(this._monochromeTumbleFilterUniforms.hue >= 0) {
+			if(this.filters.length === 0 || this.filters[0] !== this._monochromeTumbleFilter) {
+				this.filters[0] = this._monochromeTumbleFilter;
+			}
+		} else {
 			if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
 				this.filters[0] = this._emptyFilter;
 			}

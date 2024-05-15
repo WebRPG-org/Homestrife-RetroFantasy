@@ -398,6 +398,20 @@
 			if(!armor) { continue; }
 			armor.e9dInfo = armor.note && armor.note.length > 0 ? JSON.parse(armor.note) : {};
 		}
+		for(const enemy of $dataEnemies) {
+			if(!enemy) { continue; }
+			enemy.e9dInfo = enemy.note && enemy.note.length > 0 ? JSON.parse(enemy.note) : {};
+		}
+	};
+	
+	// Sound Manager
+	SoundManager.playSwing = function(seWeight) {
+		const se = {};
+		se.name = seWeight === "heavy" ? "swingHeavy" : "swing";
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
 	};
 	
 	// Battle Manager
@@ -1324,6 +1338,10 @@
 	Game_Actor.prototype.startTrail = function(trailImage) {
 		if(trailImage !== "Small" && trailImage !== "Medium" && trailImage !== "Large" && trailImage !== "Huge") { return; }
 		this._trailImage = trailImage;
+	};
+	
+	Game_Actor.prototype.weaponSeWeight = function() {
+		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.seWeight ? this.weapons()[0].e9dInfo.seWeight : "light";
 	};
 	
 	Game_Actor.prototype.changeExp = function(exp, show) {
@@ -2750,6 +2768,9 @@
 				this._pattern = (this._pattern + 1) % 4;
 			} else if (this._pattern < 2) {
 				this._pattern++;
+				if(this._pattern === 1 && this.motionTypeIsMelee()) {
+					SoundManager.playSwing(this._actor.weaponSeWeight());
+				}
 				if(this._motionType === "swing") {
 					if(this._pattern === 1) {
 						this._trailSprite.show();
@@ -5709,12 +5730,28 @@
 	
 	// prettier-ignore
 	Window_BattleLog.prototype.showAnimation = function(
-		subject, targets, effect
+		subject, action, targets, effect
 	) {
 		if(effect) {
 			this.showNormalAnimation(targets, effect);
 		} else {
-			this.showAttackAnimation(subject, targets);
+			this.showAttackAnimation(subject, action, targets);
+		}
+	};
+	
+	Window_BattleLog.prototype.showAttackAnimation = function(subject, action, targets) {
+		if (subject.isActor()) {
+			this.showActorAttackAnimation(subject, targets);
+		} else {
+			this.showEnemyAttackAnimation(subject, action);
+		}
+	};
+	
+	// prettier-ignore
+	Window_BattleLog.prototype.showEnemyAttackAnimation = function(subject, action) {
+		const actionItem = action.effectiveItem();
+		if(!actionItem.e9dInfo.effect) {
+			SoundManager.playSwing(subject.enemy().e9dInfo.seWeight);
 		}
 	};
 	
@@ -5732,7 +5769,7 @@
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
 		this.push("performAction", subject, action);
-		this.push("showAnimation", subject, targets.clone(), item.e9dInfo.effect);
+		this.push("showAnimation", subject, action, targets.clone(), item.e9dInfo.effect);
 		this.displayAction(subject, item);
 	};
 	

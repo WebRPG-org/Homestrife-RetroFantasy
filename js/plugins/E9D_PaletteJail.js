@@ -433,7 +433,6 @@
 
 		this._addSpotTile(tileId0, dx, dy);
 		this._addSpotTile(tileId1, dx, dy);
-		//this._addShadow(this._lowerLayer, shadowBits, dx, dy);
 		if (this._isTableTile(upperTileId1) && !this._isTableTile(tileId1)) {
 			if (!Tilemap.isShadowingTile(tileId0)) {
 				this._addTableEdge(this._lowerLayer, upperTileId1, dx, dy);

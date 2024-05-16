@@ -122,6 +122,7 @@
 	let lightingShaderSource = null;
 	let hueRotateShaderSource = null;
 	let monochromeTumbleShaderSource = null;
+	let noiseFadeShaderSource = null;
 	let paletteJailImage = null;
 	loadPaletteJailFiles();
 	
@@ -134,6 +135,7 @@
 		let lightingSourceReady = false;
 		let hueRotateSourceReady = false;
 		let monochromeTumbleSourceReady = false;
+		let noiseFadeSourceReady = false;
 		
 		const paletteImage = ImageManager.loadBitmapFromUrl(pluginParams.paletteFile + ".png");
 		paletteImage.addLoadListener(() => {
@@ -201,8 +203,27 @@
 		};
 		monochromeTumbleXhr.send();
 		
+		const noiseFadeXhr = new XMLHttpRequest();
+		noiseFadeXhr.open("GET", 'js/plugins/paletteJailNoiseFadeShader.frag');
+		noiseFadeXhr.onreadystatechange = () => {
+			if(noiseFadeXhr.readyState == 4 && (noiseFadeXhr.status === 200 || noiseFadeXhr.status === 0)) {
+				noiseFadeSourceReady = true;
+				compileShader();
+			}
+		};
+		noiseFadeXhr.send();
+		
 		function compileShader() {
-			if(!imageReady || !emptySourceReady || !monochromeSourceReady || !brightnessSourceReady || !lightingSourceReady || !hueRotateSourceReady || !monochromeTumbleSourceReady) { return; }
+			if(
+				!imageReady 					||
+				!emptySourceReady 				||
+				!monochromeSourceReady 			||
+				!brightnessSourceReady 			||
+				!lightingSourceReady 			||
+				!hueRotateSourceReady			||
+				!monochromeTumbleSourceReady	||
+				!noiseFadeSourceReady
+			) { return; }
 			
 			// save universal uniforms
 			paletteJailImage = paletteImage;
@@ -229,6 +250,8 @@
 			monochromeTumbleShaderSource = monochromeTumbleXhr.responseText
 				.replaceAll('%%PALETTE_WIDTH%%', paletteImage.width)
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
+			
+			noiseFadeShaderSource = noiseFadeXhr.responseText;
 		}
 	}
 	
@@ -248,25 +271,41 @@
 		this._createColorFilter();
 	};
 	
-	Sprite.prototype.setFilterParams = function(filter, shiftAmount, shiftDirection, hue, ignoreBlack) {
-		if(filter === 'hueRotate') {
-			while(shiftAmount < 0) { shiftAmount += paletteJailImage.width; }
-			while(shiftAmount > paletteJailImage.width-1) { shiftAmount -= paletteJailImage.width; }
-			this._hueRotateFilterUniforms.shiftAmount = shiftAmount;
-			this._hueRotateFilterUniforms.shiftDirection = shiftDirection;
-			this._updateColorFilter();
-		} else if(filter === 'monochromeTumble') {
-			this._monochromeTumbleFilterUniforms.hue = hue;
-			while(shiftAmount < (ignoreBlack ? 1 : 0)) { shiftAmount += paletteJailImage.height - (ignoreBlack ? 1 : 0); }
-			while(shiftAmount > paletteJailImage.height-1) { shiftAmount -= paletteJailImage.height - (ignoreBlack ? 1 : 0); }
-			this._monochromeTumbleFilterUniforms.shiftAmount = shiftAmount;
-			this._monochromeTumbleFilterUniforms.shiftDirection = shiftDirection;
-			this._monochromeTumbleFilterUniforms.ignoreBlack = ignoreBlack ? 1 : 0;
-			this._updateColorFilter();
-		} else {
-			this.clearFilterParams();
+	Sprite.prototype.setHueRotateFilter = function(shiftAmount, shiftDirection) {
+		while(shiftAmount < 0) { shiftAmount += paletteJailImage.width; }
+		while(shiftAmount > paletteJailImage.width-1) { shiftAmount -= paletteJailImage.width; }
+		this._hueRotateFilterUniforms.shiftAmount = shiftAmount;
+		this._hueRotateFilterUniforms.shiftDirection = shiftDirection;
+		this._updateColorFilter();
+	}
+	
+	Sprite.prototype.setMonochromeTumbleFilter = function(shiftAmount, shiftDirection, hue, ignoreBlack) {
+		this._monochromeTumbleFilterUniforms.hue = hue;
+		while(shiftAmount < (ignoreBlack ? 1 : 0)) { shiftAmount += paletteJailImage.height - (ignoreBlack ? 1 : 0); }
+		while(shiftAmount > paletteJailImage.height-1) { shiftAmount -= paletteJailImage.height - (ignoreBlack ? 1 : 0); }
+		this._monochromeTumbleFilterUniforms.shiftAmount = shiftAmount;
+		this._monochromeTumbleFilterUniforms.shiftDirection = shiftDirection;
+		this._monochromeTumbleFilterUniforms.ignoreBlack = ignoreBlack ? 1 : 0;
+		this._updateColorFilter();
+	}
+	
+	Sprite.prototype.setNoiseFadeFilter = function(rate) {
+		const noiseBitmap = new Bitmap(this.width, this.height);
+		const imageData = noiseBitmap.context.getImageData(0, 0, noiseBitmap.width, noiseBitmap.height);
+		const data = imageData.data;
+		for (let i = 0; i < data.length; i += 4) {
+			data[i] = 0;								// red
+			data[i+1] = 0;								// green
+			data[i+2] = 0;								// blue
+			data[i+3] = Math.random() < rate ? 0 : 255;	// alpha
 		}
-	};
+		noiseBitmap.context.putImageData(imageData, 0, 0);
+		if(this._noiseFadeFilterUniforms.noiseSampler) {
+			this._noiseFadeFilterUniforms.noiseSampler.destroy();
+		}
+		this._noiseFadeFilterUniforms.noiseSampler = noiseBitmap;
+		this._updateColorFilter();
+	}
 	
 	Sprite.prototype.clearFilterParams = function() {
 		this._hueRotateFilterUniforms.shiftAmount = 0;
@@ -275,6 +314,10 @@
 		this._monochromeTumbleFilterUniforms.shiftAmount = 0;
 		this._monochromeTumbleFilterUniforms.shiftDirection = 1;
 		this._monochromeTumbleFilterUniforms.ignoreBlack = 0;
+		if(this._noiseFadeFilterUniforms.noiseSampler) {
+			this._noiseFadeFilterUniforms.noiseSampler.destroy();
+		}
+		this._noiseFadeFilterUniforms.noiseSampler = null;
 		this._updateColorFilter();
 	};
 	
@@ -304,6 +347,11 @@
 			this._monochromeTumbleFilterUniforms.ignoreBlack = 0;
 			this._monochromeTumbleFilter = new PIXI.Filter(null, monochromeTumbleShaderSource, this._monochromeTumbleFilterUniforms);
 		}
+		if(noiseFadeShaderSource) {
+			this._noiseFadeFilterUniforms = {};
+			this._noiseFadeFilterUniforms.noiseSampler = null;
+			this._noiseFadeFilter = new PIXI.Filter(null, noiseFadeShaderSource, this._noiseFadeFilterUniforms);
+		}
 	};
 
 	Sprite.prototype._updateColorFilter = function() {
@@ -314,6 +362,10 @@
 		} else if(this._monochromeTumbleFilterUniforms.hue >= 0) {
 			if(this.filters.length === 0 || this.filters[0] !== this._monochromeTumbleFilter) {
 				this.filters[0] = this._monochromeTumbleFilter;
+			}
+		} else if(this._noiseFadeFilterUniforms.noiseSampler) {
+			if(this.filters.length === 0 || this.filters[0] !== this._noiseFadeFilter) {
+				this.filters[0] = this._noiseFadeFilter;
 			}
 		} else {
 			if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {

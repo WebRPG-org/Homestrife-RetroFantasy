@@ -404,10 +404,48 @@
 		}
 	};
 	
+	// Audio Manager
+	AudioManager.playSe = function(se) {
+		if (se.name) {
+			// [Note] Do not play the same sound in the same frame.
+			const latestBuffers = this._seBuffers.filter(
+				buffer => buffer.frameCount === Graphics.frameCount
+			);
+			if (latestBuffers.find(buffer => buffer.name === se.name)) {
+				return;
+			}
+			const buffer = this.createBuffer("se/", se.name);
+			this.updateSeParameters(buffer, se);
+			buffer.play(false);
+			this._seBuffers.push(buffer);
+			this.cleanupSe();
+			return buffer;
+		}
+		return null;
+	};
+	
 	// Sound Manager
 	SoundManager.playSwing = function(seWeight) {
 		const se = {};
 		se.name = seWeight === "heavy" ? "swingHeavy" : "swing";
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
+	};
+	
+	SoundManager.playHit = function(critical) {
+		const se = {};
+		se.name = critical ? "hit" : "hitArmor";
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		return AudioManager.playSe(se);
+	};
+	
+	SoundManager.playParry = function() {
+		const se = {};
+		se.name = "parry";
 		se.volume = 90;
 		se.pitch = 100;
 		se.pan = 0;
@@ -470,6 +508,12 @@
 		this.invokeNormalAction(subject, target);
 		subject.setLastTarget(target);
 		this._logWindow.push("popBaseLine");
+	};
+	
+	BattleManager.invokeNormalAction = function(subject, target) {
+		const realTarget = this.applySubstitute(target);
+		this._action.apply(realTarget);
+		this._logWindow.displayActionResults(subject, this._action, realTarget);
 	};
 	
 	BattleManager.startAction = function() {
@@ -912,8 +956,8 @@
 					case 4: // ice
 					case 5: // corrode
 					case 6: // lightning
-					case 7: // purify
-					case 8: // corrupt
+					case 7: // banish
+					case 8: // curse
 						// TODO: elemental resistences should get applied at some point
 						elementalPower += power * this.elementalPowerRatio();
 						break;
@@ -1005,6 +1049,13 @@
 	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
 		const value = Math.floor(this.item().tpGain * this.subject().tcr);
 		this.subject().gainTp(value * (this.subject().isGuard() ? 2 : 1));
+	};
+	
+	// Game Action Result
+	_Game_ActionResult = Game_ActionResult.prototype.clear;
+	Game_ActionResult.prototype.clear = function() {
+		_Game_ActionResult.call(this);
+		this.parry = false;
 	};
 	
 	// Game Battler Base
@@ -1258,8 +1309,24 @@
 		);
 	};
 	
+	Game_Battler.prototype.performActionEnd = function() {
+		this.clearResult();
+	};
+	
+	Game_Battler.prototype.performDamage = function(action) {
+		let hitBuffer = null;
+		if(!action.effectiveItem().e9dInfo.effect) {
+			hitBuffer = SoundManager.playHit(this.result().critical);
+		}
+		this.clearResult();
+		return hitBuffer;
+	};
+	
 	Game_Battler.prototype.performMiss = function() {
-		//SoundManager.playMiss();
+		if(this.result().parry) {
+			SoundManager.playParry();
+		}
+		this.clearResult();
 	};
 	
 	Game_Battler.prototype.performRecovery = function() {
@@ -1267,7 +1334,10 @@
 	};
 	
 	Game_Battler.prototype.performEvasion = function() {
-		//SoundManager.playEvasion();
+		if(this.result().parry) {
+			SoundManager.playParry();
+		}
+		this.clearResult();
 	};
 	
 	// Game Actor
@@ -1451,14 +1521,13 @@
 		}
 	};
 	
-	Game_Actor.prototype.performDamage = function() {
-		Game_Battler.prototype.performDamage.call(this);
+	Game_Actor.prototype.performDamage = function(action) {
+		Game_Battler.prototype.performDamage.call(this, action);
 		if (this.isSpriteVisible()) {
 			this.requestMotion("damage");
 		} else {
 			$gameScreen.startShake(5, 5, 10);
 		}
-		//SoundManager.playActorDamage();
 	};
 	
 	Game_Actor.prototype.performAttack = function() {
@@ -1504,6 +1573,11 @@
 		this.requestMotion("evade");
 	};
 	
+	Game_Actor.prototype.performEvasion = function() {
+		Game_Battler.prototype.performEvasion.call(this);
+		this.requestMotion("evade");
+	};
+	
 	Game_Actor.prototype.bareHandsElementId = function() {
 		return 2;
 	};
@@ -1541,10 +1615,38 @@
 	};
 	
 	// Game Enemy
-	Game_Enemy.prototype.performDamage = function() {
-		Game_Battler.prototype.performDamage.call(this);
-		//SoundManager.playEnemyDamage();
-		//this.requestEffect("blink");
+	_Game_Enemy__initMembers = Game_Enemy.prototype.initMembers;
+	Game_Enemy.prototype.initMembers = function() {
+		_Game_Enemy__initMembers.call(this);
+		this._hitBuffer = null;
+	};
+	
+	Game_Enemy.prototype.performDamage = function(action) {
+		this._hitBuffer = Game_Battler.prototype.performDamage.call(this, action);
+		if(!action.effectiveItem().e9dInfo.effect) {
+			this.requestEffect("blink");
+		}
+	};
+	
+	Game_Enemy.prototype.performCollapse = function() {
+		Game_Battler.prototype.performCollapse.call(this);
+		if(this._hitBuffer) {
+			this._hitBuffer.destroy();
+			this._hitBuffer = null;
+		}
+		switch (this.collapseType()) {
+			case 0:
+				this.requestEffect("collapse");
+				SoundManager.playEnemyCollapse();
+				break;
+			case 1:
+				this.requestEffect("bossCollapse");
+				SoundManager.playBossCollapse1();
+				break;
+			case 2:
+				this.requestEffect("instantCollapse");
+				break;
+		}
 	};
 	
 	// Game Unit
@@ -2655,6 +2757,16 @@
 		return this._battler && this._battler.isSelected();
 	}
 	
+	Sprite_Battler.prototype.setupDamagePopup = function() {
+		if (this._battler.isDamagePopupRequested()) {
+			if (this._battler.isSpriteVisible()) {
+				this.createDamageSprite();
+			}
+			this._battler.clearDamagePopup();
+			//this._battler.clearResult();
+		}
+	};
+	
 	Sprite_Battler.prototype.createDamageSprite = function() {
 		const last = this._damages[this._damages.length - 1];
 		const sprite = new Sprite_Damage();
@@ -3018,11 +3130,62 @@
 	};
 	
 	Sprite_Enemy.prototype.startWhiten = function() {
-		this._effectDuration = 32;
+		this._effectDuration = 17;
+	};
+	
+	Sprite_Enemy.prototype.startBlink = function() {
+		this._effectDuration = 21;
+	};
+	
+	Sprite_Enemy.prototype.startCollapse = function() {
+		this._effectDuration = this.collapseDuration();
+		this._appeared = false;
+	};
+	
+	Sprite_Enemy.prototype.collapseDuration = function() {
+		return 33;
+	};
+	
+	Sprite_Enemy.prototype.updateEffect = function() {
+		this.setupEffect();
+		if (this._effectDuration > 0) {
+			this._effectDuration--;
+			switch (this._effectType) {
+				case "whiten":
+					this.updateWhiten();
+					break;
+				case "blink":
+					this.updateBlink();
+					break;
+				case "appear":
+					this.updateAppear();
+					break;
+				case "disappear":
+					this.updateDisappear();
+					break;
+				case "collapse":
+					this.updateCollapse();
+					break;
+				case "bossCollapse":
+					this.updateBossCollapse();
+					break;
+				case "instantCollapse":
+					this.updateInstantCollapse();
+					break;
+			}
+			if (this._effectDuration === 0) {
+				this._effectType = null;
+				this.clearFilterParams();
+			}
+		}
 	};
 	
 	Sprite_Enemy.prototype.updateWhiten = function() {
-		// do nothing
+		if(Math.ceil(this._effectDuration / 4) % 2 === 0) {
+			this.setMonochromeTumbleFilter(0, 1, 0, true);
+		} else {
+			this.clearFilterParams();
+		}
 	};
 
 	Sprite_Enemy.prototype.updateBlink = function() {
@@ -3038,7 +3201,11 @@
 	};
 
 	Sprite_Enemy.prototype.updateCollapse = function() {
-		this.opacity = 0;
+		if(this._effectDuration > 0) {
+			this.setNoiseFadeFilter(1 - (this._effectDuration / this.collapseDuration()));
+		} else {
+			this.opacity = 0;
+		}
 	};
 
 	Sprite_Enemy.prototype.updateBossCollapse = function() {
@@ -3050,7 +3217,7 @@
 	};
 	
 	Sprite_Enemy.prototype.isSelected = function() {
-		return this._effectType === "whiten" || Sprite_Battler.prototype.isSelected.call(this);
+		return Sprite_Battler.prototype.isSelected.call(this);
 	}
 	
 	// Sprite Animation MV
@@ -3192,13 +3359,15 @@
 		for (const filter of filters) {
 			for (const target of this._targets) {
 				if(frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
-					target.setFilterParams(
-						filter.name,
-						frameIndex - filter.startFrame,
-						filter.shiftDirection,
-						filter.hue,
-						true
-					);
+					const shiftAmount = frameIndex - filter.startFrame;
+					switch(filter.name) {
+						case "hueRotate":
+							target.setHueRotateFilter(shiftAmount, filter.shiftDirection);
+							break;
+						case "monochromeTumble":
+							target.monochromeTumble(shiftAmount, filter.shiftDirection, filter.hue, true);
+							break;
+					}
 				} else {
 					target.clearFilterParams();
 				}
@@ -3870,8 +4039,8 @@
 			case  4: returnVal =  37; break; // ice
 			case  5: returnVal =  38; break; // corrode
 			case  6: returnVal =  39; break; // electric
-			case  7: returnVal =  40; break; // purify
-			case  8: returnVal =  41; break; // corrupt
+			case  7: returnVal =  40; break; // banish
+			case  8: returnVal =  41; break; // curse
 		}
 		return returnVal;
 	};
@@ -5728,6 +5897,10 @@
 		return false;
 	};
 	
+	Window_BattleLog.prototype.performDamage = function(action, target) {
+		target.performDamage(action);
+	};
+	
 	// prettier-ignore
 	Window_BattleLog.prototype.showAnimation = function(
 		subject, action, targets, effect
@@ -5782,8 +5955,46 @@
 		this.contents.clearRect(rect.x, rect.y, rect.width, rect.height);
 	};
 	
+	Window_BattleLog.prototype.displayActionResults = function(subject, action, target) {
+		if (target.result().used) {
+			this.push("pushBaseLine");
+			this.displayCritical(target);
+			this.push("popupDamage", target);
+			this.push("popupDamage", subject);
+			this.displayDamage(action, target);
+			this.displayAffectedStatus(target);
+			this.displayFailure(target);
+			this.push("waitForNewLine");
+			this.push("popBaseLine");
+		}
+	};
+	
 	Window_BattleLog.prototype.displayCritical = function(target) {
 		// do nothing
+	};
+	
+	Window_BattleLog.prototype.displayDamage = function(action, target) {
+		if (target.result().missed) {
+			this.displayMiss(target);
+		} else if (target.result().evaded) {
+			this.displayEvasion(target);
+		} else {
+			this.displayHpDamage(action, target);
+			this.displayMpDamage(target);
+			this.displayTpDamage(target);
+		}
+	};
+	
+	Window_BattleLog.prototype.displayHpDamage = function(action, target) {
+		if (target.result().hpAffected) {
+			if (target.result().hpDamage > 0 && !target.result().drain) {
+				this.push("performDamage", action, target);
+			}
+			if (target.result().hpDamage < 0) {
+				this.push("performRecovery", target);
+			}
+			this.push("addText", this.makeHpDamageText(target));
+		}
 	};
 	
 	Window_BattleLog.prototype.displayAddedStates = function(target) {

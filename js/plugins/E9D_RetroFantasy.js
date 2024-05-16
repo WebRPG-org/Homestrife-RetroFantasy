@@ -748,11 +748,21 @@
 		if(this.isAttack()) {
 			const weapon = this.subject().equips ? this.subject().equips()[0] : null;
 			if(weapon) {
+				const target = this.opponentsUnit().members()[this._targetIndex];
+				const unarmored = target.def <= 0 || target.cev <= 0;
+				let firstSkill = -1;
 				for(const trait of weapon.traits) {
 					if(trait.code === 43) {
-						return $dataSkills[trait.dataId]; // just grab the very first skill
+						if(firstSkill === -1) { firstSkill = trait.dataId; } // hang onto the very first skill
+						if(
+							(unarmored && (trait.dataId === 5 || trait.dataId === 7)) || // use the first skill that is anti-armor
+							(!unarmored && (trait.dataId === 4 || trait.dataId === 6)) // use the first skill that is regular damage
+						) {
+							return $dataSkills[trait.dataId];
+						}
 					}
 				}
+				return $dataSkills[firstSkill]; // use the first skill found
 			} else {
 				return $dataSkills[101];
 			}
@@ -1511,11 +1521,11 @@
 	Game_Actor.prototype.performAction = function(action) {
 		Game_Battler.prototype.performAction.call(this, action);
 		if (action.isAttack()) {
-			this.performAttack();
+			this.performSkill(action.effectiveItem());
 		} else if (action.isGuard()) {
 			this.requestMotion("guard");
 		} else if (action.isSkill()) {
-			this.performSkill(action);
+			this.performSkill(action.item());
 		} else if (action.isItem()) {
 			this.requestMotion("item");
 		}
@@ -1530,37 +1540,14 @@
 		}
 	};
 	
-	Game_Actor.prototype.performAttack = function() {
-		const weapons = this.weapons();
-		const weapon = weapons[0];
-		if(weapon && weapon.e9dInfo.motion !== undefined) {
-			this.requestMotion(weapon.e9dInfo.motion);
-			this.startWeaponAnimation(weapon.e9dInfo.image);
-			this.startTrail(weapon.e9dInfo.trail);
-		} else {
-			const wtypeId = weapon ? weapon.wtypeId : 0;
-			const attackMotion = $dataSystem.attackMotions[wtypeId];
-			if (attackMotion) {
-				if (attackMotion.type === 0) {
-					this.requestMotion("thrust");
-				} else if (attackMotion.type === 1) {
-					this.requestMotion("swing");
-				} else if (attackMotion.type === 2) {
-					this.requestMotion("missile");
-				}
-				this.startWeaponAnimation(attackMotion.weaponImageId);
-			}
-		}
-	};
-	
-	Game_Actor.prototype.performSkill = function(action) {
+	Game_Actor.prototype.performSkill = function(item) {
 		const weapons = this.weapons();
 		const weapon = weapons[0];
 		if(weapon) {
 			this.startWeaponAnimation(weapon.e9dInfo.image);
 			this.startTrail(weapon.e9dInfo.trail);
 		}
-		const motion = action.item().e9dInfo.motion;
+		const motion = item.e9dInfo.motion;
 		if(motion) {
 			this.requestMotion(motion);
 			return;
@@ -1624,7 +1611,7 @@
 	Game_Enemy.prototype.performDamage = function(action) {
 		this._hitBuffer = Game_Battler.prototype.performDamage.call(this, action);
 		if(!action.effectiveItem().e9dInfo.effect) {
-			this.requestEffect("blink");
+			this.requestEffect(action.critical ? "blink" : "blinkFast");
 		}
 	};
 	
@@ -3129,11 +3116,46 @@
 		this._stateIconSprite.setup(battler);
 	};
 	
+	Sprite_Enemy.prototype.startEffect = function(effectType) {
+		this._effectType = effectType;
+		switch (this._effectType) {
+			case "appear":
+				this.startAppear();
+				break;
+			case "disappear":
+				this.startDisappear();
+				break;
+			case "whiten":
+				this.startWhiten();
+				break;
+			case "blink":
+				this.startBlink();
+				break;
+			case "blinkFast":
+				this.startBlinkFast();
+				break;
+			case "collapse":
+				this.startCollapse();
+				break;
+			case "bossCollapse":
+				this.startBossCollapse();
+				break;
+			case "instantCollapse":
+				this.startInstantCollapse();
+				break;
+		}
+		this.revertToNormal();
+	};
+	
 	Sprite_Enemy.prototype.startWhiten = function() {
 		this._effectDuration = 17;
 	};
 	
 	Sprite_Enemy.prototype.startBlink = function() {
+		this._effectDuration = 21;
+	};
+	
+	Sprite_Enemy.prototype.startBlinkFast = function() {
 		this._effectDuration = 21;
 	};
 	
@@ -3156,6 +3178,9 @@
 					break;
 				case "blink":
 					this.updateBlink();
+					break;
+				case "blinkFast":
+					this.updateBlinkFast();
 					break;
 				case "appear":
 					this.updateAppear();
@@ -3190,6 +3215,10 @@
 
 	Sprite_Enemy.prototype.updateBlink = function() {
 		this.opacity = this._effectDuration % 10 < 5 ? 255 : 0;
+	};
+
+	Sprite_Enemy.prototype.updateBlinkFast = function() {
+		this.opacity = this._effectDuration % 6 < 3 ? 255 : 0;
 	};
 
 	Sprite_Enemy.prototype.updateAppear = function() {
@@ -3365,7 +3394,7 @@
 							target.setHueRotateFilter(shiftAmount, filter.shiftDirection);
 							break;
 						case "monochromeTumble":
-							target.monochromeTumble(shiftAmount, filter.shiftDirection, filter.hue, true);
+							target.setMonochromeTumbleFilter(shiftAmount, filter.shiftDirection, filter.hue, true);
 							break;
 					}
 				} else {

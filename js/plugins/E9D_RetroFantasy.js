@@ -434,9 +434,9 @@
 		AudioManager.playSe(se);
 	};
 	
-	SoundManager.playHit = function(critical) {
+	SoundManager.playHit = function(result) {
 		const se = {};
-		se.name = critical ? "hit" : "hitArmor";
+		se.name = result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor");
 		se.volume = 90;
 		se.pitch = 100;
 		se.pan = 0;
@@ -1316,7 +1316,7 @@
 	Game_Battler.prototype.performDamage = function(action) {
 		let hitBuffer = null;
 		if(!action.effectiveItem().e9dInfo.effect) {
-			hitBuffer = SoundManager.playHit(this.result().critical);
+			hitBuffer = SoundManager.playHit(this.result());
 		}
 		this.clearResult();
 		return hitBuffer;

@@ -1523,7 +1523,7 @@
 		if (action.isAttack()) {
 			this.performSkill(action.effectiveItem());
 		} else if (action.isGuard()) {
-			this.requestMotion("guard");
+			this.requestMotion("evade");
 		} else if (action.isSkill()) {
 			this.performSkill(action.item());
 		} else if (action.isItem()) {
@@ -1552,7 +1552,7 @@
 			this.requestMotion(motion);
 			return;
 		}
-		this.requestMotion("spell");
+		this.requestMotion("skill");
 	};
 	
 	Game_Actor.prototype.performMiss = function() {
@@ -2770,6 +2770,27 @@
 	};
 	
 	// Sprite Actor
+	Sprite_Actor.MOTIONS = {
+		walk: { index: 0, loop: true },
+		wait: { index: 1, loop: true },
+		spear: { index: 2, loop: true },
+		longGun: { index: 3, loop: true },
+		damage: { index: 4, loop: false },
+		evade: { index: 5, loop: false },
+		swing: { index: 6, loop: false },
+		thrust: { index: 7, loop: false },
+		spearThrust: { index: 8, loop: false },
+		handGun: { index: 9, loop: false },
+		skill: { index: 10, loop: false },
+		item: { index: 11, loop: false },
+		escape: { index: 12, loop: true },
+		victory: { index: 13, loop: true },
+		dying: { index: 14, loop: true },
+		abnormal: { index: 15, loop: true },
+		sleep: { index: 16, loop: true },
+		dead: { index: 17, loop: true }
+	};
+	
 	Sprite_Actor.prototype.initMembers = function() {
 		Sprite_Battler.prototype.initMembers.call(this);
 		this._battlerName = "";
@@ -2903,9 +2924,9 @@
 			} else if (stateMotion === 2) {
 				this.startMotion("sleep");
 			} else if (actor.isChanting()) {
-				this.startMotion("chant");
+				this.startMotion("wait");
 			} else if (actor.isGuard() || actor.isGuardWaiting()) {
-				this.startMotion("guard");
+				this.startMotion("evade");
 			} else if (stateMotion === 1) {
 				this.startMotion("abnormal");
 			} else if (actor.isDying()) {

@@ -1308,6 +1308,30 @@
 		this.setTp(this.tp + value);
 	};
 	
+	Game_Battler.prototype.weaponStance = function() {
+		return "default";
+	};
+	
+	Game_Battler.prototype.motionType = function() {
+		const stance = this.weaponStance();
+		console.log(stance);
+		switch(this._motionType) {
+		case "wait":
+			if(stance === "spear") { return "spear"; }
+			break;
+		case "thrust":
+			if(stance === "spear") { return "spearThrust"; }
+			break;
+		case "pommel":
+		case "unarmed":
+			return "thrust";
+		case "throw":
+			return "swing";
+		}
+		
+		return this._motionType;
+	};
+	
 	Game_Battler.prototype.shouldPopupDamage = function() {
 		const result = this._result;
 		return (
@@ -1422,6 +1446,10 @@
 	
 	Game_Actor.prototype.weaponSeWeight = function() {
 		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.seWeight ? this.weapons()[0].e9dInfo.seWeight : "light";
+	};
+	
+	Game_Actor.prototype.weaponStance = function() {
+		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.stance ? this.weapons()[0].e9dInfo.stance : "default";
 	};
 	
 	Game_Actor.prototype.changeExp = function(exp, show) {
@@ -1700,8 +1728,13 @@
 			const actor = $gameActors.actor(battler.actorId);
 			if (actor) {
 				actor.changeLevel(1, false);
+				actor.setSkillLevel("MeleeWp", 1);
+				actor.setSkillLevel("Throw", 1);
+				actor.setSkillLevel("Archery", 1);
+				actor.setSkillLevel("Firearm", 1);
 				actor.setSkillLevel("GrayMgc", 1);
 				actor.setSkillLevel("WhiteMg", 1);
+				actor.setSkillLevel("BlackMg", 1);
 				actor.initEquips(battler.equips);
 				actor.recoverAll();
 				if(i > 1) {
@@ -2944,7 +2977,7 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
-		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "pommel" || this._motionType === "unarmed";
+		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "spearThrust" || this._motionType === "pommel" || this._motionType === "unarmed";
 	};
 	
 	Sprite_Actor.prototype.startEntryMotion = function() {
@@ -3018,8 +3051,8 @@
 	};
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
-		const actorMotionType = motionType === "pommel" || motionType === "unarmed" ? "thrust" : (motionType === "throw" ? "swing" : motionType);
-		const newMotion = Sprite_Actor.MOTIONS[actorMotionType];
+		motionType = motionType === "wait" && this._actor.weaponStance() === "spear" ? "spear" : motionType;
+		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
 				this.startMove(0, 0, 0);
@@ -3031,12 +3064,10 @@
 			if(
 				motionType === "walk" ||
 				motionType === "wait" ||
-				motionType === "chant" ||
-				motionType === "guard" ||
+				motionType === "spear" ||
 				motionType === "damage" ||
 				motionType === "evade" ||
 				motionType === "skill" ||
-				motionType === "spell" ||
 				motionType === "item"
 			) {
 				this.startWeaponIdleAnimation(motionType);
@@ -3046,19 +3077,16 @@
 			if(
 				motionType === "walk" ||
 				motionType === "wait" ||
-				motionType === "chant" ||
-				motionType === "guard" ||
 				motionType === "damage" ||
 				motionType === "evade" ||
 				motionType === "skill" ||
-				motionType === "spell" ||
 				motionType === "item" ||
 				motionType === "swing" ||
 				motionType === "thrust" ||
+				motionType === "spearThrust" ||
 				motionType === "pommel" ||
 				motionType === "unarmed" ||
-				motionType === "throw" ||
-				motionType === "missile"
+				motionType === "throw"
 			) {
 				this.startShieldIdleAnimation(motionType);
 			} else {
@@ -3638,7 +3666,21 @@
 	}
 	
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
-		return this._motionType === "thrust" || this._motionType === "swing" || this._motionType === "missile" || this._motionType === "pommel" || this._motionType === "throw" || this._motionType === "unarmed";
+		return 
+			this._motionType === "thrust" ||
+			this._motionType === "spearThrust" ||
+			this._motionType === "swing" ||
+			this._motionType === "pommel" ||
+			this._motionType === "throw" ||
+			this._motionType === "unarmed";
+	}
+	
+	Sprite_Weapon.prototype.motionTypeShouldUnderlay = function() {
+		return 
+			this._motionType === "thrust" ||
+			this._motionType === "swing" ||
+			this._motionType === "pommel" ||
+			this._motionType === "throw";
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
@@ -3670,6 +3712,9 @@
 				}
 			} else {
 				switch(this._motionType) {
+					case "spearThrust":
+						displayPattern = displayPattern === 0 ? 2 : 1;
+						break;
 					case "thrust":
 					case "unarmed":
 						if(displayPattern > 0) { displayPattern = 1; }
@@ -3677,6 +3722,9 @@
 					case "swing":
 					case "throw":
 						if(displayPattern > 0) { displayPattern = 2; }
+						break;
+					case "spear":
+						displayPattern = 2;
 						break;
 					case "missile":
 						displayPattern = 1;
@@ -3697,13 +3745,17 @@
 					this.x = 8;
 					this.y = 16;
 					this.scale.x = 1;
+				} else if (this._motionType === "spear" || this._motionType === "spearThrust" && this._pattern === 0) {
+					this.x = -16;
+					this.y = 12;
+					this.scale.x = 1;
 				} else {
 					this.x = -8;
 					this.y = 16;
 					this.scale.x = 1;
 				}
 			}
-			let shouldUnderlay = this.motionTypeIsAttack() && this._pattern > 0;
+			let shouldUnderlay = this.motionTypeShouldUnderlay() && this._pattern > 0;
 			const shouldShow = (this._isShield || (this._motionType !== "throw" && this._motionType !== "unarmed") || this._pattern === 0) && (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
 			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 3;

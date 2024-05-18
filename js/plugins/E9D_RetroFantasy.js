@@ -1320,7 +1320,7 @@
 			if(stance === "spear") { return "spear"; }
 			break;
 		case "thrust":
-			if(stance === "spear") { return "spearThrust"; }
+			if(stance === "spear") { return "thrustSpear"; }
 			break;
 		case "pommel":
 		case "unarmed":
@@ -2803,25 +2803,46 @@
 	};
 	
 	// Sprite Actor
+	Sprite_Actor.POSES = {
+		wait: { index: 0 },
+		spear: { index: 1 },
+		longGun: { index: 2 },
+		walk: { index: 3 },
+		walkSpear: { index: 4 },
+		charge: { index: 5 },
+		chargeSpear: { index: 6 },
+		swing: { index: 7 },
+		thrust: { index: 8 },
+		thrustSpear: { index: 9 },
+		handGun: { index: 10 },
+		skill: { index: 11 },
+		item: { index: 12 },
+		victory: { index: 13 },
+		evade: { index: 14 },
+		damage: { index: 15 },
+		abnormal: { index: 16 },
+		sleep: { index: 17 },
+		dead: { index: 18 }
+	};
+	
 	Sprite_Actor.MOTIONS = {
-		walk: { index: 0, loop: true },
-		wait: { index: 1, loop: true },
-		spear: { index: 2, loop: true },
-		longGun: { index: 3, loop: true },
-		damage: { index: 4, loop: false },
-		evade: { index: 5, loop: false },
-		swing: { index: 6, loop: false },
-		thrust: { index: 7, loop: false },
-		spearThrust: { index: 8, loop: false },
-		handGun: { index: 9, loop: false },
-		skill: { index: 10, loop: false },
-		item: { index: 11, loop: false },
-		escape: { index: 12, loop: true },
-		victory: { index: 13, loop: true },
-		dying: { index: 14, loop: true },
-		abnormal: { index: 15, loop: true },
-		sleep: { index: 16, loop: true },
-		dead: { index: 17, loop: true }
+		wait: { poses: ["wait", "wait", "wait"], loop: true },
+		spear: { poses: ["spear", "spear", "spear"], loop: true },
+		longGun: { poses: ["longGun", "longGun", "longGun"], loop: true },
+		walk: { poses: ["walk", "wait", "walk"], loop: true },
+		walkSpear: { poses: ["walkSpear", "spear", "walkSpear"], loop: true },
+		swing: { poses: ["charge", "swing", "swing"], loop: false },
+		thrust: { poses: ["charge", "thrust", "thrust"], loop: false },
+		thrustSpear: { poses: ["chargeSpear", "thrustSpear", "thrustSpear"], loop: false },
+		handGun: { poses: ["handGun", "handGun", "handGun"], loop: false },
+		skill: { poses: ["skill", "skill", "skill"], loop: false },
+		item: { poses: ["item", "item", "item"], loop: false },
+		victory: { poses: ["victory", "victory", "victory"], loop: true },
+		evade: { poses: ["evade", "evade", "evade"], loop: false },
+		damage: { poses: ["damage", "damage", "damage"], loop: false },
+		abnormal: { poses: ["abnormal", "abnormal", "abnormal"], loop: true },
+		sleep: { poses: ["sleep", "sleep", "sleep"], loop: true },
+		dead: { poses: ["dead", "dead", "dead"], loop: true }
 	};
 	
 	Sprite_Actor.prototype.initMembers = function() {
@@ -2896,10 +2917,6 @@
 			this.stepForward();
 		} else if (!this._actor.isActing() && this.inActingPosition()) {
 			this.stepBack();
-		} else if (this._actor.motionType() === "damage") {
-			this.stepBackDamage();
-		} else if (this._actor.motionType() === "evade") {
-			this.stepBackEvade();
 		}
 	};
 	
@@ -2977,7 +2994,7 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
-		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "spearThrust" || this._motionType === "pommel" || this._motionType === "unarmed";
+		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "thrustSpear" || this._motionType === "pommel" || this._motionType === "unarmed";
 	};
 	
 	Sprite_Actor.prototype.startEntryMotion = function() {
@@ -3002,14 +3019,6 @@
 	Sprite_Actor.prototype.retreat = function() {
 		const spriteW = $gameMap.tileWidth()/2;
 		this.startMove(-spriteW*5, 0, spriteW);
-	};
-	
-	Sprite_Actor.prototype.stepBackDamage = function() {
-		this.startMove(-1, 0, 0);
-	};
-	
-	Sprite_Actor.prototype.stepBackEvade = function() {
-		this.startMove(-2, 0, 0);
 	};
 	
 	Sprite_Actor.prototype.damageOffsetX = function() {
@@ -3052,6 +3061,7 @@
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		motionType = motionType === "wait" && this._actor.weaponStance() === "spear" ? "spear" : motionType;
+		motionType = motionType === "walk" && this._actor.weaponStance() === "spear" ? "walkSpear" : motionType;
 		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
@@ -3063,6 +3073,7 @@
 			this._pattern = 0;
 			if(
 				motionType === "walk" ||
+				motionType === "walkSpear" ||
 				motionType === "wait" ||
 				motionType === "spear" ||
 				motionType === "damage" ||
@@ -3076,6 +3087,7 @@
 			}
 			if(
 				motionType === "walk" ||
+				motionType === "walkSpear" ||
 				motionType === "wait" ||
 				motionType === "damage" ||
 				motionType === "evade" ||
@@ -3083,7 +3095,7 @@
 				motionType === "item" ||
 				motionType === "swing" ||
 				motionType === "thrust" ||
-				motionType === "spearThrust" ||
+				motionType === "thrustSpear" ||
 				motionType === "pommel" ||
 				motionType === "unarmed" ||
 				motionType === "throw"
@@ -3137,6 +3149,22 @@
 		this._shieldSprite.y = 0;
 		this._shieldOverlaySprite.x = 0;
 		this._shieldOverlaySprite.y = 0;
+	};
+	
+	Sprite_Actor.prototype.updateFrame = function() {
+		Sprite_Battler.prototype.updateFrame.call(this);
+		const bitmap = this._mainSprite.bitmap;
+		if (bitmap) {
+			const motion = this._motion ? this._motion : (this._actor.weaponStance() === "spear" ? Sprite_Actor.MOTIONS.spear : Sprite_Actor.MOTIONS.wait);
+			const pattern = this._pattern < 3 ? this._pattern : 1;
+			const poseIndex = Sprite_Actor.POSES[motion.poses[pattern]].index;
+			const cw = bitmap.width / 9;
+			const ch = bitmap.height / 6;
+			const cx = poseIndex % 9;
+			const cy = Math.floor(poseIndex / 9);
+			this._mainSprite.setFrame(cx * cw, cy * ch, cw, ch);
+			this.setFrame(0, 0, cw, ch);
+		}
 	};
 	
 	Sprite_Actor.prototype.updateMotion = function() {
@@ -3668,7 +3696,7 @@
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
 		return 
 			this._motionType === "thrust" ||
-			this._motionType === "spearThrust" ||
+			this._motionType === "thrustSpear" ||
 			this._motionType === "swing" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
@@ -3704,15 +3732,19 @@
 			let displayPattern = this._pattern;
 			if (this._isShield) {
 				displayPattern = 0;
-				this.x = -8;
 				if(this._motionType === "item") {
+					this.x = -8;
 					this.y = 7;
+				} else if(this._motionType === "evade") {
+					this.x = -10;
+					this.y = 16;
 				} else {
+					this.x = -8;
 					this.y = 16;
 				}
 			} else {
 				switch(this._motionType) {
-					case "spearThrust":
+					case "thrustSpear":
 						displayPattern = displayPattern === 0 ? 2 : 1;
 						break;
 					case "thrust":
@@ -3724,6 +3756,7 @@
 						if(displayPattern > 0) { displayPattern = 2; }
 						break;
 					case "spear":
+					case "walkSpear":
 						displayPattern = 2;
 						break;
 					case "missile":
@@ -3741,11 +3774,15 @@
 					this.x = 4;
 					this.y = 8;
 					this.scale.x = -1;
+				} else if (this._motionType === "evade") {
+					this.x = -10;
+					this.y = 16;
+					this.scale.x = 1;
 				} else if (this._motionType === "pommel" && this._pattern > 0) {
 					this.x = 8;
 					this.y = 16;
 					this.scale.x = 1;
-				} else if (this._motionType === "spear" || this._motionType === "spearThrust" && this._pattern === 0) {
+				} else if (this._motionType === "spear" || this._motionType === "walkSpear" || this._motionType === "thrustSpear" && this._pattern === 0) {
 					this.x = -16;
 					this.y = 12;
 					this.scale.x = 1;

@@ -1324,8 +1324,6 @@
 		case "pommel":
 		case "unarmed":
 			return "thrust";
-		case "throw":
-			return "swing";
 		}
 		
 		return this._motionType;
@@ -1524,9 +1522,11 @@
 	};
 	
 	Game_Actor.prototype.correctEType = function(item, slot) {
-		return item.etypeId === slot ||
+		return (
+			item.etypeId === slot ||
 			(item.etypeId === 9 && slot === 10) ||
-			(item.etypeId === 10 && slot === 9);
+			(item.etypeId === 10 && slot === 9)
+		);
 	};
 	
 	Game_Actor.prototype.shouldReleaseEquipDueToOtherItem = function(item) {
@@ -2831,6 +2831,7 @@
 		walk: { poses: ["walk", "wait", "walk"], loop: true },
 		walkSpear: { poses: ["walkSpear", "spear", "walkSpear"], loop: true },
 		swing: { poses: ["charge", "swing", "swing"], loop: false },
+		throw: { poses: ["charge", "swing", "swing"], loop: false },
 		thrust: { poses: ["charge", "thrust", "thrust"], loop: false },
 		thrustSpear: { poses: ["chargeSpear", "thrustSpear", "thrustSpear"], loop: false },
 		handGun: { poses: ["handGun", "handGun", "handGun"], loop: false },
@@ -2942,7 +2943,7 @@
 				if(this._pattern === 1 && this.motionTypeIsMelee()) {
 					SoundManager.playSwing(this._actor.weaponSeWeight());
 				}
-				if(this._motionType === "swing") {
+				if(this._motionType === "swing" || this._motionType === "throw") {
 					if(this._pattern === 1) {
 						this._trailSprite.show();
 					} else {
@@ -2995,7 +2996,14 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
-		return this._motionType === "swing" || this._motionType === "thrust" || this._motionType === "thrustSpear" || this._motionType === "pommel" || this._motionType === "unarmed";
+		return (
+			this._motionType === "swing" ||
+			this._motionType === "throw" ||
+			this._motionType === "thrust" ||
+			this._motionType === "thrustSpear" ||
+			this._motionType === "pommel" ||
+			this._motionType === "unarmed"
+		);
 	};
 	
 	Sprite_Actor.prototype.startEntryMotion = function() {
@@ -3019,7 +3027,7 @@
 	
 	Sprite_Actor.prototype.retreat = function() {
 		const spriteW = $gameMap.tileWidth()/2;
-		this.startMove(-spriteW*5, 0, spriteW);
+		this.startMove(-spriteW*10, 0, spriteW*2);
 	};
 	
 	Sprite_Actor.prototype.damageOffsetX = function() {
@@ -3700,21 +3708,23 @@
 	}
 	
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
-		return 
+		return (
 			this._motionType === "thrust" ||
 			this._motionType === "thrustSpear" ||
 			this._motionType === "swing" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
-			this._motionType === "unarmed";
+			this._motionType === "unarmed"
+		);
 	}
 	
 	Sprite_Weapon.prototype.motionTypeShouldUnderlay = function() {
-		return 
+		return (
 			this._motionType === "thrust" ||
 			this._motionType === "swing" ||
 			this._motionType === "pommel" ||
-			this._motionType === "throw";
+			this._motionType === "throw"
+		);
 	}
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
@@ -4726,9 +4736,11 @@
 	
 	Window_EquipItem.prototype.correctEType = function(item) {
 		const slot = this.etypeId();
-		return item.etypeId === slot ||
+		return (
+			item.etypeId === slot ||
 			(item.etypeId === 9 && slot === 10) ||
-			(item.etypeId === 10 && slot === 9);
+			(item.etypeId === 10 && slot === 9)
+		);
 	};
 	
 	// Window Skill Levels

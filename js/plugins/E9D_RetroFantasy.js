@@ -753,6 +753,12 @@
 				let firstSkill = -1;
 				for(const trait of weapon.traits) {
 					if(trait.code === 43) {
+						if(weapon.wtypeId >= 16 && weapon.wtypeId <= 21 && trait.dataId === 7) {
+							return $dataSkills[7]; // dedicated throwing weapons and slings always use throw
+						}
+						if(weapon.wtypeId >= 22 && weapon.wtypeId <= 26 && trait.dataId === 8) {
+							return $dataSkills[8]; // bows and guns always use shot
+						}
 						if(firstSkill === -1) { firstSkill = trait.dataId; } // hang onto the very first skill
 						if(
 							(unarmored && (trait.dataId === 5 || trait.dataId === 7)) || // use the first skill that is anti-armor
@@ -1444,6 +1450,35 @@
 	
 	Game_Actor.prototype.weaponStance = function() {
 		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.stance ? this.weapons()[0].e9dInfo.stance : "default";
+	};
+	
+	Game_Actor.prototype.motionType = function() {
+		const weaponTypes = this.weaponTypes();
+		if(weaponTypes.length > 0) {
+			const weaponType = weaponTypes[0];
+			switch(this._motionType) {
+			case "thrust":
+				if(weaponType === 22 || weaponType === 23) {
+					return "thrust";
+				}
+				break;
+			case "swing":
+				if(weaponType === 22 || weaponType === 23) {
+					return "swingBow";
+				}
+				break;
+			case "missile":
+				if(weaponType === 22 || weaponType === 23) {
+					return "bow";
+				} else if(weaponType === 24) {
+					return "handGun";
+				} else if(weaponType === 25 || weaponType === 26) {
+					return "longGun";
+				}
+			}
+		}
+		
+		return Game_Battler.prototype.motionType.call(this);
 	};
 	
 	Game_Actor.prototype.changeExp = function(exp, show) {
@@ -2832,9 +2867,10 @@
 		pommel: { poses: ["charge", "thrust", "thrust"], loop: false },
 		unarmed: { poses: ["charge", "thrust", "thrust"], loop: false },
 		swing: { poses: ["charge", "swing", "swing"], loop: false },
+		swingBow: { poses: ["charge", "swing", "swing"], loop: false },
 		throw: { poses: ["swing", "swing", "swing"], loop: false },
-		bow: { poses: ["bow", "bow", "bow"], loop: true },
-		longGun: { poses: ["longGun", "longGun", "longGun"], loop: true },
+		bow: { poses: ["bow", "bow", "bow"], loop: false },
+		longGun: { poses: ["longGun", "longGun", "longGun"], loop: false },
 		handGun: { poses: ["handGun", "handGun", "handGun"], loop: false },
 		skill: { poses: ["skill", "skill", "skill"], loop: false },
 		item: { poses: ["item", "item", "item"], loop: false },
@@ -2859,6 +2895,7 @@
 		this.createTrailSprite();
 		this.createMainSprite();
 		this.createShieldSprite();
+		this.createBowSprite();
 		this.createWeaponSprite();
 		this.createStateSprite();
 	};
@@ -2867,15 +2904,18 @@
 		this.removeChild(this._mainSprite);
 		this.removeChild(this._weaponSprite);
 		this.removeChild(this._shieldSprite);
+		this.removeChild(this._bowSprite);
 		this.removeChild(this._stateSprite);
 		if(this._pattern > 0 && this.motionTypeShouldUnderlay()) {
 			this.addChild(this._shieldSprite);
+			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
 			this.addChild(this._mainSprite);
 			this.addChild(this._stateSprite);
 		} else {
 			this.addChild(this._mainSprite);
 			this.addChild(this._shieldSprite);
+			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
 			this.addChild(this._stateSprite);
 		}
@@ -2886,8 +2926,13 @@
 	};
 	
 	Sprite_Actor.prototype.createShieldSprite = function() {
-		this._shieldSprite = new Sprite_Weapon(true);
+		this._shieldSprite = new Sprite_Weapon("shield");
 		this.addChild(this._shieldSprite);
+	};
+	
+	Sprite_Actor.prototype.createBowSprite = function() {
+		this._bowSprite = new Sprite_Weapon("bow");
+		this.addChild(this._bowSprite);
 	};
 	
 	Sprite_Actor.prototype.createTrailSprite = function() {
@@ -2950,13 +2995,13 @@
 				this._pattern++;
 				if(
 					this._pattern === 1 &&
-					this.motionTypeIsMelee()
+					(this.motionTypeIsMelee() || this._motionType === "bow")
 				) {
 					SoundManager.playSwing(this._actor.weaponSeWeight());
 				}
 				if(
 					this._pattern === 1 &&
-					this._motionType === "swing"
+					(this._motionType === "swing" || this._motionType === "swingBow")
 				) {
 					this._trailSprite.show();
 				} else {
@@ -3010,6 +3055,7 @@
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
 		return (
 			this._motionType === "swing" ||
+			this._motionType === "swingBow" ||
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
 			this._motionType === "pommel" ||
@@ -3021,8 +3067,10 @@
 		return (
 			this._motionType === "thrust" ||
 			this._motionType === "swing" ||
+			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
-			this._motionType === "throw"
+			this._motionType === "throw" ||
+			this._motionType === "unarmed"
 		);
 	}
 	
@@ -3083,6 +3131,7 @@
 	};
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
+		this.scale.x = motionType === "escape" ? -1 : 1;
 		motionType = motionType === "wait" && this._actor.weaponStance() === "low" ? "waitLow" : motionType;
 		motionType = motionType === "walk" && this._actor.weaponStance() === "low" ? "walkLow" : motionType;
 		motionType = motionType === "escape" && this._actor.weaponStance() === "low" ? "escapeLow" : motionType;
@@ -3098,8 +3147,6 @@
 			if(
 				motionType === "walk" ||
 				motionType === "walkLow" ||
-				motionType === "escape" ||
-				motionType === "escapeLow" ||
 				motionType === "wait" ||
 				motionType === "waitLow" ||
 				motionType === "damage" ||
@@ -3113,15 +3160,13 @@
 			}
 			if(
 				motionType === "walk" ||
-				motionType === "walkLow" ||
-				motionType === "escape" ||
-				motionType === "escapeLow" ||
 				motionType === "wait" ||
 				motionType === "damage" ||
 				motionType === "evade" ||
 				motionType === "skill" ||
 				motionType === "item" ||
 				motionType === "swing" ||
+				motionType === "swingBow" ||
 				motionType === "thrust" ||
 				motionType === "thrust2H" ||
 				motionType === "pommel" ||
@@ -3131,6 +3176,23 @@
 				this.startShieldIdleAnimation(motionType);
 			} else {
 				this.clearShieldIdleAnimation();
+			}
+			if(
+				motionType === "walkLow" ||
+				motionType === "waitLow" ||
+				motionType === "damage" ||
+				motionType === "evade" ||
+				motionType === "skill" ||
+				motionType === "item" ||
+				motionType === "swing" ||
+				motionType === "swingBow" ||
+				motionType === "thrust" ||
+				motionType === "unarmed" ||
+				motionType === "bow"
+			) {
+				this.startBowIdleAnimation(motionType);
+			} else {
+				this.clearBowIdleAnimation();
 			}
 			if(motionType === "throw") {
 				SoundManager.playSwing(this._actor.weaponSeWeight());
@@ -3171,6 +3233,22 @@
 		this._shieldSprite.setup(0);
 		this._shieldSprite.x = 0;
 		this._shieldSprite.y = 0;
+	};
+	
+	Sprite_Actor.prototype.startBowIdleAnimation = function(motionType) {
+		const weapons = this._actor.weapons();
+		const weapon = weapons[0];
+		if(weapon && weapon.e9dInfo.bow !== undefined) {
+			this._bowSprite.setup(weapon.e9dInfo.bow, motionType);
+		} else {
+			this.clearBowIdleAnimation();
+		}
+	};
+	
+	Sprite_Actor.prototype.clearBowIdleAnimation = function() {
+		this._bowSprite.setup(0);
+		this._bowSprite.x = 0;
+		this._bowSprite.y = 0;
 	};
 	
 	Sprite_Actor.prototype.updateFrame = function() {
@@ -3689,19 +3767,19 @@
 	};
 	
 	// Sprite Weapon
-	Sprite_Weapon.prototype.initialize = function(isShield) {
+	Sprite_Weapon.prototype.initialize = function(type) {
 		Sprite.prototype.initialize.call(this);
-		this.initMembers(isShield);
+		this.initMembers(type);
 	};
 	
 	const _Sprite_Weapon_initMembers = Sprite_Weapon.prototype.initMembers;
-	Sprite_Weapon.prototype.initMembers = function(isShield) {
+	Sprite_Weapon.prototype.initMembers = function(type) {
 		_Sprite_Weapon_initMembers.call(this);
 		this._motionType = null;
 		this.anchor.x = 0.375;
 		this.x = 0;
 		this._isOverlay = true;
-		this._isShield = isShield;
+		this._type = type;
 	};
 
 	const _Sprite_Weapon_setup = Sprite_Weapon.prototype.setup;
@@ -3712,18 +3790,28 @@
 	
 	Sprite_Weapon.prototype.isIdle = function() {
 		return !this.motionTypeIsAttack();
-	}
+	};
+	
+	Sprite_Weapon.prototype.isShield = function() {
+		return this._type === "shield";
+	};
+	
+	
+	Sprite_Weapon.prototype.isBow = function() {
+		return this._type === "bow";
+	};
 	
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
 		return (
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
 			this._motionType === "swing" ||
+			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
 			this._motionType === "unarmed"
 		);
-	}
+	};
 	
 	Sprite_Weapon.prototype.updatePattern = function() {
 		if (this._pattern < 2) {
@@ -3734,7 +3822,7 @@
 	Sprite_Weapon.prototype.loadBitmap = function() {
 		const pageId = Math.floor((this._weaponImageId - 1) / 3) + 1;
 		if (pageId >= 1) {
-			const baseName = this._isShield ? "Shields" : "Weapons";
+			const baseName = this.isShield() ? "Shields" : (this.isBow() ? "Bows" : "Weapons");
 			this.bitmap = ImageManager.loadSystem(baseName + pageId);
 		} else {
 			this.bitmap = ImageManager.loadSystem("");
@@ -3744,67 +3832,106 @@
 	Sprite_Weapon.prototype.updateFrame = function() {
 		if (this._weaponImageId > 0) {
 			let displayPattern = this._pattern;
-			if (this._isShield) {
+			if (this.isShield()) {
 				displayPattern = 0;
 				if(this._motionType === "item") {
 					this.x = -8;
 					this.y = 7;
 				} else if(this._motionType === "evade") {
 					this.x = -10;
+					this.y = 17;
+				} else {
+					this.x = -8;
+					this.y = 17;
+				}
+			} else if (this.isBow()) {
+				switch(this._motionType) {
+				case "waitLow":
+				case "walkLow":
+				case "swingBow":
+					displayPattern = 2;
+					break;
+				case "bow":
+					displayPattern = displayPattern === 0 ? 1 : 0;
+					break;
+				default:
+					displayPattern = 0;
+					break;
+				}
+				if(
+					this._motionType === "waitLow" || this._motionType === "walkLow"
+				) {
+					this.x = 32;
+					this.y = 12;
+					this.scale.x = 1;
+					this.rotation = 270 * Math.PI / 180;
+				} else if (this._motionType === "evade") {
+					this.x = -10;
 					this.y = 16;
+					this.scale.x = 1;
+					this.rotation = 0;
+				} else if (this._motionType === "swingBow" && this._pattern === 0) {
+					this.x = 15;
+					this.y = -41;
+					this.scale.x = 1;
+					this.rotation = 180 * Math.PI / 180;
+				} else if (this._motionType === "bow" && displayPattern === 0) {
+					this.x = -1;
+					this.y = 14;
+					this.scale.x = 1;
+					this.rotation = 0;
 				} else {
 					this.x = -8;
 					this.y = 16;
+					this.scale.x = 1;
+					this.rotation = 0;
 				}
 			} else {
 				switch(this._motionType) {
-					case "thrust2H":
-						displayPattern = displayPattern === 0 ? 2 : 1;
-						break;
-					case "thrust":
-					case "unarmed":
-						if(displayPattern > 0) { displayPattern = 1; }
-						break;
-					case "swing":
-						if(displayPattern > 0) { displayPattern = 2; }
-						break;
-					case "waitLow":
-					case "walkLow":
-					case "escape":
-					case "escapeLow":
-						displayPattern = 2;
-						break;
-					case "throw":
-						displayPattern = 1;
-						break;
-					default:
-						displayPattern = 0;
-						break;
+				case "thrust2H":
+					displayPattern = displayPattern === 0 ? 2 : 1;
+					break;
+				case "thrust":
+				case "unarmed":
+					if(displayPattern > 0) { displayPattern = 1; }
+					break;
+				case "swing":
+					if(displayPattern > 0) { displayPattern = 2; }
+					break;
+				case "waitLow":
+				case "walkLow":
+					displayPattern = 2;
+					break;
+				case "throw":
+				case "bow":
+					displayPattern = 1;
+					break;
+				default:
+					displayPattern = 0;
+					break;
 				}
 				if (
 					this._motionType === "skill" ||
-					this._motionType === "spell" ||
-					this._motionType === "victory"
+					this._motionType === "spell"
 				) {
 					this.x = 4;
 					this.y = 8;
 					this.scale.x = -1;
 				} else if (this._motionType === "evade") {
 					this.x = -10;
-					this.y = 16;
+					this.y = 17;
 					this.scale.x = 1;
 				} else if (this._motionType === "damage") {
 					this.x = -9;
-					this.y = 16;
+					this.y = 17;
 					this.scale.x = 1;
 				} else if (this._motionType === "pommel" && this._pattern > 0) {
 					this.x = 8;
-					this.y = 16;
+					this.y = 17;
 					this.scale.x = 1;
 				} else if (
 					this._motionType === "waitLow" ||
 					this._motionType === "walkLow" ||
-					this._motionType === "escapeLow" ||
 					(this._motionType === "thrust2H" && this._pattern === 0)
 				) {
 					this.x = -18;
@@ -3812,18 +3939,27 @@
 					this.scale.x = 1;
 				} else if (this._motionType === "throw") {
 					this.x = 16;
-					this.y = 16;
+					this.y = 17;
+					this.scale.x = 1;
+				} else if (this._motionType === "bow") {
+					this.x = -20;
+					this.y = 15;
 					this.scale.x = 1;
 				} else {
 					this.x = -8;
-					this.y = 16;
+					this.y = 17;
 					this.scale.x = 1;
 				}
 			}
 			const shouldShow = (
-					this._isShield ||
-					this._pattern === 0 ||
-					(this._motionType !== "throw" && this._motionType !== "unarmed")
+					this.isShield() || this.isBow() ||
+					(this._pattern === 0 && this._motionType !== "swingBow" ) ||
+					(
+						this._motionType !== "swingBow" &&
+						this._motionType !== "throw" &&
+						this._motionType !== "unarmed" &&
+						this._motionType !== "bow"
+					)
 				);
 			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 3;

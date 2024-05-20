@@ -2831,7 +2831,7 @@
 		walk: { poses: ["walk", "wait", "walk"], loop: true },
 		walkSpear: { poses: ["walkSpear", "spear", "walkSpear"], loop: true },
 		swing: { poses: ["charge", "swing", "swing"], loop: false },
-		throw: { poses: ["charge", "swing", "swing"], loop: false },
+		throw: { poses: ["swing", "swing", "swing"], loop: false },
 		thrust: { poses: ["charge", "thrust", "thrust"], loop: false },
 		thrustSpear: { poses: ["chargeSpear", "thrustSpear", "thrustSpear"], loop: false },
 		handGun: { poses: ["handGun", "handGun", "handGun"], loop: false },
@@ -2938,22 +2938,26 @@
 		if (this._motion && ++this._motionCount >= this.motionSpeed()) {
 			if (this._motion.loop) {
 				this._pattern = (this._pattern + 1) % 4;
+				this._trailSprite.hide();
 			} else if (this._pattern < 2) {
 				this._pattern++;
-				if(this._pattern === 1 && this.motionTypeIsMelee()) {
+				if(
+					this._pattern === 1 &&
+					this.motionTypeIsMelee()
+				) {
 					SoundManager.playSwing(this._actor.weaponSeWeight());
 				}
-				if(this._motionType === "swing" || this._motionType === "throw") {
-					if(this._pattern === 1) {
-						this._trailSprite.show();
-					} else {
-						this._trailSprite.hide();
-					}
+				if(
+					this._pattern === 1 &&
+					this._motionType === "swing"
+				) {
+					this._trailSprite.show();
 				} else {
 					this._trailSprite.hide();
 				}
 			} else {
 				this.refreshMotion();
+				this._trailSprite.hide();
 			}
 			this._motionCount = 0;
 		}
@@ -2998,7 +3002,6 @@
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
 		return (
 			this._motionType === "swing" ||
-			this._motionType === "throw" ||
 			this._motionType === "thrust" ||
 			this._motionType === "thrustSpear" ||
 			this._motionType === "pommel" ||
@@ -3117,6 +3120,10 @@
 				this.startShieldIdleAnimation(motionType);
 			} else {
 				this.clearShieldIdleAnimation();
+			}
+			if(motionType === "throw") {
+				SoundManager.playSwing(this._actor.weaponSeWeight());
+				this._trailSprite.show();
 			}
 		}
 	};
@@ -3768,7 +3775,6 @@
 						if(displayPattern > 0) { displayPattern = 1; }
 						break;
 					case "swing":
-					case "throw":
 						if(displayPattern > 0) { displayPattern = 2; }
 						break;
 					case "spear":
@@ -3777,7 +3783,7 @@
 					case "escapeSpear":
 						displayPattern = 2;
 						break;
-					case "missile":
+					case "throw":
 						displayPattern = 1;
 						break;
 					default:
@@ -3813,6 +3819,10 @@
 					this.x = -18;
 					this.y = 17;
 					this.scale.x = 1;
+				} else if (this._motionType === "throw") {
+					this.x = 16;
+					this.y = 16;
+					this.scale.x = 1;
 				} else {
 					this.x = -8;
 					this.y = 16;
@@ -3820,7 +3830,12 @@
 				}
 			}
 			let shouldUnderlay = this.motionTypeShouldUnderlay() && this._pattern > 0;
-			const shouldShow = (this._isShield || (this._motionType !== "throw" && this._motionType !== "unarmed") || this._pattern === 0) && (shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
+			const shouldShow = (
+					this._isShield ||
+					(this._motionType !== "throw" && this._motionType !== "unarmed") ||
+					this._pattern === 0
+				) &&
+				(shouldUnderlay && !this._isOverlay) || (!shouldUnderlay && this._isOverlay);
 			if(shouldShow) {
 				const index = (this._weaponImageId - 1) % 3;
 				const w = 128;

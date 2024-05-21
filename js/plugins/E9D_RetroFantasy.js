@@ -433,6 +433,14 @@
 		se.pan = 0;
 		AudioManager.playSe(se);
 	};
+	SoundManager.playTwirl = function(seWeight) {
+		const se = {};
+		se.name = seWeight === "heavy" ? "twirlHeavy" : "twirl";
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
+	};
 	
 	SoundManager.playHit = function(result) {
 		const se = {};
@@ -540,7 +548,7 @@
 				const skill = this._action.item();
 				if(skill.id === 1 || skill.id === 4) {
 					this._subject._tp += Game_Action.prototype.stressThreshold()*2;
-					this._subject._tp = this._subject._tp.clamp(0, this.maxTp());
+					this._subject._tp = this._subject._tp.clamp(0, this._subject.maxTp());
 					$gameTemp.requestBattleRefresh();
 				}
 			}
@@ -1380,6 +1388,7 @@
 		_Game_Actor_initMembers.call(this);
 		this._justEquipped = null;
 		this._trailImage = null;
+		this._twirlImage = null;
 	};
 	
 	const _Game_Actor_setup = Game_Actor.prototype.setup;
@@ -1444,6 +1453,23 @@
 		this._trailImage = trailImage;
 	};
 	
+	Game_Actor.prototype.clearTwirl = function() {
+		this._twirlImage = null;
+	};
+	
+	Game_Actor.prototype.isTwirlRequested = function() {
+		return this._twirlImage !==  null;
+	};
+	
+	Game_Actor.prototype.twirlImage = function() {
+		return this._twirlImage;
+	};
+	
+	Game_Actor.prototype.startTwirl = function(twirlImage) {
+		if(twirlImage !== "Small" && twirlImage !== "Medium" && twirlImage !== "Large" && twirlImage !== "Huge") { return; }
+		this._twirlImage = twirlImage;
+	};
+	
 	Game_Actor.prototype.weaponSeWeight = function() {
 		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.seWeight ? this.weapons()[0].e9dInfo.seWeight : "light";
 	};
@@ -1465,6 +1491,8 @@
 			case "swing":
 				if(weaponType === 22 || weaponType === 23) {
 					return "swingBow";
+				} else if(weaponType >= 7 && weaponType <= 9) {
+					return "swingTwirl";
 				}
 				break;
 			case "missile":
@@ -1474,6 +1502,8 @@
 					return "handGun";
 				} else if(weaponType === 25 || weaponType === 26) {
 					return "longGun";
+				} else if(weaponType >= 19 && weaponType <= 21) {
+					return "swingTwirl";
 				}
 			}
 		}
@@ -1605,6 +1635,7 @@
 		if(weapon) {
 			this.startWeaponAnimation(weapon.e9dInfo.image);
 			this.startTrail(weapon.e9dInfo.trail);
+			this.startTwirl(weapon.e9dInfo.twirl);
 		}
 		const motion = item.e9dInfo.motion;
 		if(motion) {
@@ -2867,6 +2898,7 @@
 		pommel: { poses: ["charge", "thrust", "thrust"], loop: false },
 		unarmed: { poses: ["charge", "thrust", "thrust"], loop: false },
 		swing: { poses: ["charge", "swing", "swing"], loop: false },
+		swingTwirl: { poses: ["charge", "swing", "swing"], loop: false },
 		swingBow: { poses: ["charge", "swing", "swing"], loop: false },
 		throw: { poses: ["swing", "swing", "swing"], loop: false },
 		bow: { poses: ["bow", "bow", "bow"], loop: false },
@@ -2891,8 +2923,8 @@
 		this._motionCount = 0;
 		this._motionType = null;
 		this._pattern = 0;
-		this.createShadowSprite();
 		this.createTrailSprite();
+		this.createTwirlSprite();
 		this.createMainSprite();
 		this.createShieldSprite();
 		this.createBowSprite();
@@ -2906,7 +2938,7 @@
 		this.removeChild(this._shieldSprite);
 		this.removeChild(this._bowSprite);
 		this.removeChild(this._stateSprite);
-		if(this._pattern > 0 && this.motionTypeShouldUnderlay()) {
+		if((this._pattern || this._motionType === "throw") > 0 && this.motionTypeShouldUnderlay()) {
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
@@ -2919,10 +2951,6 @@
 			this.addChild(this._weaponSprite);
 			this.addChild(this._stateSprite);
 		}
-	};
-	
-	Sprite_Actor.prototype.createShadowSprite = function() {
-		// do nothing
 	};
 	
 	Sprite_Actor.prototype.createShieldSprite = function() {
@@ -2943,6 +2971,16 @@
 		this._trailSprite.y = 8;
 		this._trailSprite.hide();
 		this.addChild(this._trailSprite);
+	};
+	
+	Sprite_Actor.prototype.createTwirlSprite = function() {
+		this._twirlSprite = new Sprite();
+		this._twirlSprite.anchor.x = 0.5;
+		this._twirlSprite.anchor.y = 0.5;
+		this._twirlSprite.x = 0;
+		this._twirlSprite.y = 0;
+		this._twirlSprite.hide();
+		this.addChild(this._twirlSprite);
 	};
 	
 	Sprite_Actor.prototype.updateShadow = function() {
@@ -3013,6 +3051,7 @@
 			}
 			this._motionCount = 0;
 			this.refreshSpriteOrder();
+			this._twirlSprite.hide();
 		}
 	};
 	
@@ -3053,8 +3092,11 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
+		weaponTypes = this._actor.weaponTypes();
+		weaponType = weaponTypes.length > 0 ? weaponTypes[0] : 0;
 		return (
 			this._motionType === "swing" ||
+			(this._motionType === "swingTwirl" && weaponType >= 7 && weaponType <= 9 ) ||
 			this._motionType === "swingBow" ||
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
@@ -3067,6 +3109,7 @@
 		return (
 			this._motionType === "thrust" ||
 			this._motionType === "swing" ||
+			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
@@ -3130,6 +3173,32 @@
 		};
 	};
 	
+	Sprite_Actor.prototype.setupTwirl = function() {
+		if(this._actor.isTwirlRequested()) {
+			const twirlImage = this._actor.twirlImage();
+			this._twirlSprite.bitmap = ImageManager.loadSystem("WeaponTwirl" + twirlImage);
+			let twirlSize = 0;
+			switch(twirlImage) {
+				case "Small":
+					twirlSize = 40;
+					this._twirlSprite.x = -12;
+					this._twirlSprite.y = -20;
+					break;
+				case "Medium":
+					twirlSize = 48;
+					break;
+				case "Large":
+					twirlSize = 56;
+					break;
+				case "Huge":
+					twirlSize = 64;
+					break;
+			}
+			this._twirlSprite.setFrame(0, 0, twirlSize, twirlSize);
+			this._actor.clearTwirl();
+		};
+	};
+	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		this.scale.x = motionType === "escape" ? -1 : 1;
 		motionType = motionType === "wait" && this._actor.weaponStance() === "low" ? "waitLow" : motionType;
@@ -3166,6 +3235,7 @@
 				motionType === "skill" ||
 				motionType === "item" ||
 				motionType === "swing" ||
+				motionType === "swingTwirl" ||
 				motionType === "swingBow" ||
 				motionType === "thrust" ||
 				motionType === "thrust2H" ||
@@ -3196,6 +3266,10 @@
 			}
 			if(motionType === "throw") {
 				SoundManager.playSwing(this._actor.weaponSeWeight());
+			}
+			if(motionType === "swingTwirl") {
+				SoundManager.playTwirl(this._actor.weaponSeWeight());
+				this._twirlSprite.show();
 			}
 			this.refreshSpriteOrder();
 		}
@@ -3271,6 +3345,7 @@
 		this.setupMotion();
 		this.setupWeaponAnimation();
 		this.setupTrail();
+		this.setupTwirl();
 		this._actor.clearMotion();
 		this._actor.clearWeaponAnimation();
 		if (this._actor.isMotionRefreshRequested()) {
@@ -3806,9 +3881,11 @@
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
 			this._motionType === "swing" ||
+			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
+			this._motionType === "bow" ||
 			this._motionType === "unarmed"
 		);
 	};
@@ -3839,10 +3916,10 @@
 					this.y = 7;
 				} else if(this._motionType === "evade") {
 					this.x = -10;
-					this.y = 17;
+					this.y = 16;
 				} else {
 					this.x = -8;
-					this.y = 17;
+					this.y = 16;
 				}
 			} else if (this.isBow()) {
 				switch(this._motionType) {
@@ -3898,6 +3975,9 @@
 				case "swing":
 					if(displayPattern > 0) { displayPattern = 2; }
 					break;
+				case "swingTwirl":
+					displayPattern = displayPattern === 0 ? 1 : 2;
+					break;
 				case "waitLow":
 				case "walkLow":
 					displayPattern = 2;
@@ -3919,15 +3999,15 @@
 					this.scale.x = -1;
 				} else if (this._motionType === "evade") {
 					this.x = -10;
-					this.y = 17;
+					this.y = 16;
 					this.scale.x = 1;
 				} else if (this._motionType === "damage") {
 					this.x = -9;
-					this.y = 17;
+					this.y = 16;
 					this.scale.x = 1;
 				} else if (this._motionType === "pommel" && this._pattern > 0) {
 					this.x = 8;
-					this.y = 17;
+					this.y = 16;
 					this.scale.x = 1;
 				} else if (
 					this._motionType === "waitLow" ||
@@ -3939,15 +4019,15 @@
 					this.scale.x = 1;
 				} else if (this._motionType === "throw") {
 					this.x = 16;
-					this.y = 17;
+					this.y = 16;
 					this.scale.x = 1;
 				} else if (this._motionType === "bow") {
 					this.x = -20;
-					this.y = 15;
+					this.y = 16;
 					this.scale.x = 1;
 				} else {
 					this.x = -8;
-					this.y = 17;
+					this.y = 16;
 					this.scale.x = 1;
 				}
 			}

@@ -444,6 +444,7 @@
 	
 	SoundManager.playHit = function(result) {
 		const se = {};
+		console.log(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
 		se.name = result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor");
 		se.volume = 90;
 		se.pitch = 100;
@@ -761,11 +762,11 @@
 				let firstSkill = -1;
 				for(const trait of weapon.traits) {
 					if(trait.code === 43) {
-						if(weapon.wtypeId >= 16 && weapon.wtypeId <= 21 && trait.dataId === 7) {
-							return $dataSkills[7]; // dedicated throwing weapons and slings always use throw
+						if(trait.dataId === 7 && weapon.wtypeId >= 16 && weapon.wtypeId <= 21) {
+							return $dataSkills[7]; // dedicated throwing weapons always use throw
 						}
-						if(weapon.wtypeId >= 22 && weapon.wtypeId <= 26 && trait.dataId === 8) {
-							return $dataSkills[8]; // bows and guns always use shot
+						if(trait.dataId === 8 && weapon.wtypeId >= 19 && weapon.wtypeId <= 26) {
+							return $dataSkills[8]; // slings, bows, and guns always use shot
 						}
 						if(firstSkill === -1) { firstSkill = trait.dataId; } // hang onto the very first skill
 						if(
@@ -1358,7 +1359,9 @@
 	Game_Battler.prototype.performDamage = function(action) {
 		let hitBuffer = null;
 		if(!action.effectiveItem().e9dInfo.effect) {
-			hitBuffer = SoundManager.playHit(this.result());
+			const result = this.result();
+			hitBuffer = SoundManager.playHit(result);
+			this.requestEffect(result.critical ? "blink" : "blinkFast");
 		}
 		this.clearResult();
 		return hitBuffer;
@@ -1411,7 +1414,19 @@
 	Game_Actor.prototype.meetsAbilityRequirements = function(reqs, ignoreEquipAbilities) {
 		if(!reqs || reqs.length === undefined || reqs.length === 0) { return false; }
 		for(let i = 0; i < reqs.length; i++) {
-			if(ignoreEquipAbilities && reqs[i].equipment) { continue; } //ignore requirements that come from equipment
+			if(reqs[i].equipment) {
+				if(ignoreEquipAbilities) { continue; } //ignore requirements that come from equipment
+				if(reqs[i].for) {
+					const wtypeIds = this.weaponTypes();
+					if(reqs[i].for && wtypeIds.length === 0) { continue; }
+					wtypeId = wtypeIds[0];
+					if(
+						(reqs[i].for === "sling" && (wtypeId < 19 || wtypeId > 21)) ||
+						(reqs[i].for === "bow" && (wtypeId < 22 || wtypeId > 23)) ||
+						(reqs[i].for === "firearm" && (wtypeId < 24 || wtypeId > 26))
+					) { continue; }
+				}
+			}
 			if(
 				(reqs[i].meleeWp 	=== undefined || this._skillLevels.MeleeWp 	>= reqs[i].meleeWp) &&
 				(reqs[i].throw 		=== undefined || this._skillLevels.Throw 	>= reqs[i].throw) 	&&
@@ -1491,7 +1506,10 @@
 			case "swing":
 				if(weaponType === 22 || weaponType === 23) {
 					return "swingBow";
-				} else if(weaponType >= 7 && weaponType <= 9) {
+				} else if(
+					(weaponType >= 7 && weaponType <= 9) ||
+					(weaponType >= 19 && weaponType <= 21)
+				) {
 					return "swingTwirl";
 				}
 				break;
@@ -1503,7 +1521,7 @@
 				} else if(weaponType === 25 || weaponType === 26) {
 					return "longGun";
 				} else if(weaponType >= 19 && weaponType <= 21) {
-					return "swingTwirl";
+					return "sling";
 				}
 			}
 		}
@@ -1700,9 +1718,7 @@
 	
 	Game_Enemy.prototype.performDamage = function(action) {
 		this._hitBuffer = Game_Battler.prototype.performDamage.call(this, action);
-		if(!action.effectiveItem().e9dInfo.effect) {
-			this.requestEffect(action.critical ? "blink" : "blinkFast");
-		}
+		// nothing
 	};
 	
 	Game_Enemy.prototype.performCollapse = function() {
@@ -2816,6 +2832,227 @@
 	};
 	
 	// Sprite Battler
+	Sprite_Battler.prototype.initMembers = function() {
+		this.anchor.x = 0.5;
+		this.anchor.y = 1;
+		this._battler = null;
+		this._damages = [];
+		this._homeX = 0;
+		this._homeY = 0;
+		this._offsetX = 0;
+		this._offsetY = 0;
+		this._targetOffsetX = NaN;
+		this._targetOffsetY = NaN;
+		this._movementDuration = 0;
+		this._selectionEffectCount = 0;
+		this._effectType = null;
+		this._effectDuration = 0;
+		this._shake = 0;
+	};
+	
+	Sprite_Battler.prototype.update = function() {
+		Sprite_Clickable.prototype.update.call(this);
+		if (this._battler) {
+			this.updateMain();
+			this.updateDamagePopup();
+			this.updateSelectionEffect();
+			this.updateVisibility();
+			this.updateEffect();
+		} else {
+			this.bitmap = null;
+		}
+	};
+	
+	Sprite_Battler.prototype.updateFrame = function() {
+		if(!this.bitmap) { return; }
+		if (this._effectType === "bossCollapse") {
+			this.setFrame(0, 0, this.bitmap.width, this._effectDuration);
+		} else {
+			this.setFrame(0, 0, this.bitmap.width, this.bitmap.height);
+		}
+	};
+	
+	Sprite_Battler.prototype.initVisibility = function() {
+		const appeared = true;
+		if(this._enemy) {
+			this._appeared = this._enemy.isAlive();
+			appeared = this._appeared;
+		}
+		if (!appeared) {
+			this.opacity = 0;
+		}
+	};
+	
+	Sprite_Battler.prototype.setupEffect = function() {
+		const subject = this._enemy ? this._enemy : (this._actor ? this._actor : null);
+		const appeared = this._enemy ? this._appeared : true;
+		if(!subject) { return; }
+		if (appeared && subject.isEffectRequested()) {
+			this.startEffect(subject.effectType());
+			subject.clearEffect();
+		}
+	};
+
+	Sprite_Battler.prototype.startEffect = function(effectType) {
+		this._effectType = effectType;
+		switch (this._effectType) {
+			case "appear":
+				this.startAppear();
+				break;
+			case "disappear":
+				this.startDisappear();
+				break;
+			case "whiten":
+				this.startWhiten();
+				break;
+			case "blink":
+				this.startBlink();
+				break;
+			case "blinkFast":
+				this.startBlinkFast();
+				break;
+			case "collapse":
+				this.startCollapse();
+				break;
+			case "bossCollapse":
+				this.startBossCollapse();
+				break;
+			case "instantCollapse":
+				this.startInstantCollapse();
+				break;
+		}
+		this.revertToNormal();
+	};
+
+	Sprite_Battler.prototype.startAppear = function() {
+		this._effectDuration = 16;
+		this._appeared = true;
+	};
+
+	Sprite_Battler.prototype.startDisappear = function() {
+		this._effectDuration = 32;
+		this._appeared = false;
+	};
+
+	Sprite_Battler.prototype.startWhiten = function() {
+		this._effectDuration = 17;
+	};
+
+	Sprite_Battler.prototype.startBlink = function() {
+		this._effectDuration = 21;
+	};
+	
+	Sprite_Battler.prototype.startBlinkFast = function() {
+		this._effectDuration = 21;
+	};
+
+	Sprite_Battler.prototype.startCollapse = function() {
+		this._effectDuration = this.collapseDuration();
+		this._appeared = false;
+	};
+
+	Sprite_Battler.prototype.startBossCollapse = function() {
+		this._effectDuration = this.bitmap.height;
+		this._appeared = false;
+	};
+
+	Sprite_Battler.prototype.startInstantCollapse = function() {
+		this._effectDuration = 16;
+		this._appeared = false;
+	};
+	
+	Sprite_Battler.prototype.collapseDuration = function() {
+		return 33;
+	};
+
+	Sprite_Battler.prototype.updateEffect = function() {
+		this.setupEffect();
+		if (this._effectDuration > 0) {
+			this._effectDuration--;
+			switch (this._effectType) {
+				case "whiten":
+					this.updateWhiten();
+					break;
+				case "blink":
+					this.updateBlink();
+					break;
+				case "blinkFast":
+					this.updateBlinkFast();
+					break;
+				case "appear":
+					this.updateAppear();
+					break;
+				case "disappear":
+					this.updateDisappear();
+					break;
+				case "collapse":
+					this.updateCollapse();
+					break;
+				case "bossCollapse":
+					this.updateBossCollapse();
+					break;
+				case "instantCollapse":
+					this.updateInstantCollapse();
+					break;
+			}
+			if (this._effectDuration === 0) {
+				this._effectType = null;
+				this.clearFilterParams();
+			}
+		}
+	};
+
+	Sprite_Battler.prototype.isEffecting = function() {
+		return this._effectType !== null;
+	};
+
+	Sprite_Battler.prototype.revertToNormal = function() {
+		this._shake = 0;
+		this.blendMode = 0;
+		this.opacity = 255;
+		this.setBlendColor([0, 0, 0, 0]);
+	};
+
+	Sprite_Battler.prototype.updateWhiten = function() {
+		if(Math.ceil(this._effectDuration / 4) % 2 === 0) {
+			this.setMonochromeTumbleFilter(0, 1, 0, true);
+		} else {
+			this.clearFilterParams();
+		}
+	};
+
+	Sprite_Battler.prototype.updateBlink = function() {
+		this.opacity = this._effectDuration % 10 < 5 ? 255 : 0;
+	};
+	
+	Sprite_Battler.prototype.updateBlinkFast = function() {
+		this.opacity = this._effectDuration % 4 < 2 ? 255 : 0;
+	};
+
+	Sprite_Battler.prototype.updateAppear = function() {
+		this.opacity = 256;
+	};
+
+	Sprite_Battler.prototype.updateDisappear = function() {
+		this.opacity = 0;
+	};
+
+	Sprite_Battler.prototype.updateCollapse = function() {
+		if(this._effectDuration > 0) {
+			this.setNoiseFadeFilter(1 - (this._effectDuration / this.collapseDuration()));
+		} else {
+			this.opacity = 0;
+		}
+	};
+
+	Sprite_Battler.prototype.updateBossCollapse = function() {
+		this.opacity = 0;
+	};
+
+	Sprite_Battler.prototype.updateInstantCollapse = function() {
+		this.opacity = 0;
+	};
+	
 	Sprite_Battler.prototype.startMove = function(x, y, duration) {
 		if (
 			this._targetOffsetX !== x || this._targetOffsetY !== y ||
@@ -2901,6 +3138,7 @@
 		swingTwirl: { poses: ["charge", "swing", "swing"], loop: false },
 		swingBow: { poses: ["charge", "swing", "swing"], loop: false },
 		throw: { poses: ["swing", "swing", "swing"], loop: false },
+		sling: { poses: ["wait", "swing", "swing"], loop: false },
 		bow: { poses: ["bow", "bow", "bow"], loop: false },
 		longGun: { poses: ["longGun", "longGun", "longGun"], loop: false },
 		handGun: { poses: ["handGun", "handGun", "handGun"], loop: false },
@@ -2983,6 +3221,16 @@
 		this.addChild(this._twirlSprite);
 	};
 	
+	Sprite_Actor.prototype.updateBitmap = function() {
+		Sprite_Battler.prototype.updateBitmap.call(this);
+		const name = this._actor.battlerName();
+		if (this._battlerName !== name) {
+			this._battlerName = name;
+			this._mainSprite.bitmap = ImageManager.loadSvActor(name);
+			this.initVisibility();
+		}
+	};
+	
 	Sprite_Actor.prototype.updateShadow = function() {
 		// do nothing
 	};
@@ -3033,13 +3281,13 @@
 				this._pattern++;
 				if(
 					this._pattern === 1 &&
-					(this.motionTypeIsMelee() || this._motionType === "bow")
+					(this.motionTypeIsMelee() || this._motionType === "bow" || this._motionType === "sling")
 				) {
 					SoundManager.playSwing(this._actor.weaponSeWeight());
 				}
 				if(
 					this._pattern === 1 &&
-					(this._motionType === "swing" || this._motionType === "swingBow")
+					(this._motionType === "swing" || this._motionType === "swingBow" || this._motionType === "swingTwirl")
 				) {
 					this._trailSprite.show();
 				} else {
@@ -3092,11 +3340,9 @@
 	};
 	
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
-		weaponTypes = this._actor.weaponTypes();
-		weaponType = weaponTypes.length > 0 ? weaponTypes[0] : 0;
 		return (
 			this._motionType === "swing" ||
-			(this._motionType === "swingTwirl" && weaponType >= 7 && weaponType <= 9 ) ||
+			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
@@ -3113,6 +3359,7 @@
 			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
+			this._motionType === "sling" ||
 			this._motionType === "unarmed"
 		);
 	}
@@ -3182,16 +3429,17 @@
 				case "Small":
 					twirlSize = 40;
 					this._twirlSprite.x = -12;
-					this._twirlSprite.y = -20;
+					this._twirlSprite.y = -22;
 					break;
 				case "Medium":
 					twirlSize = 48;
+					this._twirlSprite.x = -16;
+					this._twirlSprite.y = -24;
 					break;
 				case "Large":
 					twirlSize = 56;
-					break;
-				case "Huge":
-					twirlSize = 64;
+					this._twirlSprite.x = -20;
+					this._twirlSprite.y = -26;
 					break;
 			}
 			this._twirlSprite.setFrame(0, 0, twirlSize, twirlSize);
@@ -3241,7 +3489,8 @@
 				motionType === "thrust2H" ||
 				motionType === "pommel" ||
 				motionType === "unarmed" ||
-				motionType === "throw"
+				motionType === "throw" ||
+				motionType === "sling"
 			) {
 				this.startShieldIdleAnimation(motionType);
 			} else {
@@ -3267,7 +3516,7 @@
 			if(motionType === "throw") {
 				SoundManager.playSwing(this._actor.weaponSeWeight());
 			}
-			if(motionType === "swingTwirl") {
+			if(motionType === "swingTwirl" || motionType === "sling") {
 				SoundManager.playTwirl(this._actor.weaponSeWeight());
 				this._twirlSprite.show();
 			}
@@ -3356,6 +3605,39 @@
 	};
 	
 	// Sprite Enemy
+	Sprite_Enemy.prototype.initMembers = function() {
+		Sprite_Battler.prototype.initMembers.call(this);
+		this._enemy = null;
+		this._appeared = false;
+		this._battlerName = "";
+		this._battlerHue = 0;
+		this.createStateIconSprite();
+	};
+	
+	Sprite_Enemy.prototype.update = function() {
+		Sprite_Battler.prototype.update.call(this);
+		if (this._enemy) {
+			this.updateStateSprite();
+		}
+	};
+	
+	Sprite_Enemy.prototype.updateFrame = function() {
+		Sprite_Battler.prototype.updateFrame.call(this);
+	};
+	
+	Sprite_Enemy.prototype.updateBitmap = function() {
+		Sprite_Battler.prototype.updateBitmap.call(this);
+		const name = this._enemy.battlerName();
+		const hue = this._enemy.battlerHue();
+		if (this._battlerName !== name || this._battlerHue !== hue) {
+			this._battlerName = name;
+			this._battlerHue = hue;
+			this.loadBitmap(name);
+			this.setHue(hue);
+			this.initVisibility();
+		}
+	};
+	
 	Sprite_Enemy.prototype.setBattler = function(battler) {
 		Sprite_Battler.prototype.setBattler.call(this, battler);
 		this._enemy = battler;
@@ -3367,129 +3649,94 @@
 		this._stateIconSprite.setup(battler);
 	};
 	
-	Sprite_Enemy.prototype.startEffect = function(effectType) {
-		this._effectType = effectType;
-		switch (this._effectType) {
-			case "appear":
-				this.startAppear();
-				break;
-			case "disappear":
-				this.startDisappear();
-				break;
-			case "whiten":
-				this.startWhiten();
-				break;
-			case "blink":
-				this.startBlink();
-				break;
-			case "blinkFast":
-				this.startBlinkFast();
-				break;
-			case "collapse":
-				this.startCollapse();
-				break;
-			case "bossCollapse":
-				this.startBossCollapse();
-				break;
-			case "instantCollapse":
-				this.startInstantCollapse();
-				break;
+	Sprite_Enemy.prototype.initVisibility = function() {
+		Sprite_Battler.prototype.setupEffect.call(this);
+	};
+	
+	Sprite_Enemy.prototype.setupEffect = function() {
+		Sprite_Battler.prototype.setupEffect.call(this);
+		if (!this._appeared && this._enemy.isAlive()) {
+			this.startEffect("appear");
+		} else if (this._appeared && this._enemy.isHidden()) {
+			this.startEffect("disappear");
 		}
-		this.revertToNormal();
 	};
-	
-	Sprite_Enemy.prototype.startWhiten = function() {
-		this._effectDuration = 17;
+
+	Sprite_Enemy.prototype.startEffect = function(effectType) {
+		Sprite_Battler.prototype.startEffect.call(this, effectType);
 	};
-	
-	Sprite_Enemy.prototype.startBlink = function() {
-		this._effectDuration = 21;
+
+	Sprite_Enemy.prototype.startAppear = function() {
+		Sprite_Battler.prototype.startAppear.call(this);
+		this._appeared = true;
 	};
-	
-	Sprite_Enemy.prototype.startBlinkFast = function() {
-		this._effectDuration = 21;
-	};
-	
-	Sprite_Enemy.prototype.startCollapse = function() {
-		this._effectDuration = this.collapseDuration();
+
+	Sprite_Enemy.prototype.startDisappear = function() {
+		Sprite_Battler.prototype.startDisappear.call(this);
 		this._appeared = false;
 	};
-	
-	Sprite_Enemy.prototype.collapseDuration = function() {
-		return 33;
+
+	Sprite_Enemy.prototype.startWhiten = function() {
+		Sprite_Battler.prototype.startWhiten.call(this);
 	};
-	
+
+	Sprite_Enemy.prototype.startBlink = function() {
+		Sprite_Battler.prototype.startBlink.call(this);
+	};
+
+	Sprite_Enemy.prototype.startCollapse = function() {
+		Sprite_Battler.prototype.startCollapse.call(this);
+		this._appeared = false;
+	};
+
+	Sprite_Enemy.prototype.startBossCollapse = function() {
+		Sprite_Battler.prototype.startBossCollapse.call(this);
+		this._appeared = false;
+	};
+
+	Sprite_Enemy.prototype.startInstantCollapse = function() {
+		Sprite_Battler.prototype.startInstantCollapse.call(this);
+		this._appeared = false;
+	};
+
 	Sprite_Enemy.prototype.updateEffect = function() {
-		this.setupEffect();
-		if (this._effectDuration > 0) {
-			this._effectDuration--;
-			switch (this._effectType) {
-				case "whiten":
-					this.updateWhiten();
-					break;
-				case "blink":
-					this.updateBlink();
-					break;
-				case "blinkFast":
-					this.updateBlinkFast();
-					break;
-				case "appear":
-					this.updateAppear();
-					break;
-				case "disappear":
-					this.updateDisappear();
-					break;
-				case "collapse":
-					this.updateCollapse();
-					break;
-				case "bossCollapse":
-					this.updateBossCollapse();
-					break;
-				case "instantCollapse":
-					this.updateInstantCollapse();
-					break;
-			}
-			if (this._effectDuration === 0) {
-				this._effectType = null;
-				this.clearFilterParams();
-			}
-		}
+		Sprite_Battler.prototype.updateEffect.call(this);
 	};
-	
+
+	Sprite_Enemy.prototype.isEffecting = function() {
+		Sprite_Battler.prototype.isEffecting.call(this);
+	};
+
+	Sprite_Enemy.prototype.revertToNormal = function() {
+		Sprite_Battler.prototype.revertToNormal.call(this);
+	};
+
 	Sprite_Enemy.prototype.updateWhiten = function() {
-		if(Math.ceil(this._effectDuration / 4) % 2 === 0) {
-			this.setMonochromeTumbleFilter(0, 1, 0, true);
-		} else {
-			this.clearFilterParams();
-		}
+		Sprite_Battler.prototype.updateWhiten.call(this);
 	};
 
 	Sprite_Enemy.prototype.updateBlink = function() {
-		this.opacity = this._effectDuration % 10 < 5 ? 255 : 0;
-	};
-
-	Sprite_Enemy.prototype.updateBlinkFast = function() {
-		this.opacity = this._effectDuration % 6 < 3 ? 255 : 0;
+		Sprite_Battler.prototype.updateBlink.call(this);
 	};
 
 	Sprite_Enemy.prototype.updateAppear = function() {
-		this.opacity = 256;
+		Sprite_Battler.prototype.updateAppear.call(this);
 	};
 
 	Sprite_Enemy.prototype.updateDisappear = function() {
-		this.opacity = 0;
+		Sprite_Battler.prototype.updateDisappear.call(this);
 	};
 
 	Sprite_Enemy.prototype.updateCollapse = function() {
-		if(this._effectDuration > 0) {
-			this.setNoiseFadeFilter(1 - (this._effectDuration / this.collapseDuration()));
-		} else {
-			this.opacity = 0;
-		}
+		Sprite_Battler.prototype.updateCollapse.call(this);
 	};
 
 	Sprite_Enemy.prototype.updateBossCollapse = function() {
-		this.opacity = 0;
+		Sprite_Battler.prototype.updateBossCollapse.call(this);
+	};
+
+	Sprite_Enemy.prototype.updateInstantCollapse = function() {
+		Sprite_Battler.prototype.updateInstantCollapse.call(this);
 	};
 	
 	Sprite_Enemy.prototype.damageOffsetY = function() {
@@ -3885,6 +4132,7 @@
 			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
+			this._motionType === "sling" ||
 			this._motionType === "bow" ||
 			this._motionType === "unarmed"
 		);
@@ -3976,6 +4224,7 @@
 					if(displayPattern > 0) { displayPattern = 2; }
 					break;
 				case "swingTwirl":
+				case "sling":
 					displayPattern = displayPattern === 0 ? 1 : 2;
 					break;
 				case "waitLow":

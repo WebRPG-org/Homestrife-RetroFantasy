@@ -425,17 +425,40 @@
 	};
 	
 	// Sound Manager
-	SoundManager.playSwing = function(seWeight) {
+	SoundManager.playSwing = function(weight) {
 		const se = {};
-		se.name = seWeight === "heavy" ? "swingHeavy" : "swing";
+		se.name = weight === "heavy" ? "swingHeavy" : "swing";
 		se.volume = 90;
 		se.pitch = 100;
 		se.pan = 0;
 		AudioManager.playSe(se);
 	};
-	SoundManager.playTwirl = function(seWeight) {
+	
+	SoundManager.playTwirl = function(weight) {
 		const se = {};
-		se.name = seWeight === "heavy" ? "twirlHeavy" : "twirl";
+		se.name = weight === "heavy" ? "twirlHeavy" : "twirl";
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
+	};
+	
+	SoundManager.playShot = function(weight, rapid) {
+		const se = {};
+		se.name = weight === "heavy" ? (rapid ? "shotRapidHeavy" : "shotHeavy") : (rapid ? "shotRapid" : "shot");
+		se.volume = 100;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
+	};
+	
+	SoundManager.playSkill = function(skillSpark) {
+		if(
+			skillSpark != "WhiteMg" &&
+			skillSpark != "BlackMg"
+		) { return; }
+		const se = {};
+		se.name = skillSpark === "BlackMg" ? "blackMg" : "whiteMg";
 		se.volume = 90;
 		se.pitch = 100;
 		se.pan = 0;
@@ -1327,14 +1350,19 @@
 		return "default";
 	};
 	
+	Game_Battler.prototype.weaponIsFired = function() {
+		return false;
+	};
+	
 	Game_Battler.prototype.motionType = function() {
 		const stance = this.weaponStance();
+		const isFired = this.weaponIsFired();
 		switch(this._motionType) {
 		case "wait":
-			if(stance === "low") { return "waitLow"; }
+			if(stance === "low") { if(isFired) { return "waitLowFired"; } return "waitLow"; }
 			break;
 		case "thrust":
-			if(stance === "low") { return "thrust2H"; }
+			if(stance === "low") { if(isFired) { return "thrust2HFired"; } return "thrust2H"; }
 			break;
 		}
 		
@@ -1392,6 +1420,12 @@
 		this._justEquipped = null;
 		this._trailImage = null;
 		this._twirlImage = null;
+		this._flashImage = null;
+		this._flashOffset = {};
+		this._flashOffset.x = 0;
+		this._flashOffset.y = 0;
+		this._flashRapid = false;
+		this._skillSparkImage = null;
 	};
 	
 	const _Game_Actor_setup = Game_Actor.prototype.setup;
@@ -1464,7 +1498,12 @@
 	};
 	
 	Game_Actor.prototype.startTrail = function(trailImage) {
-		if(trailImage !== "Small" && trailImage !== "Medium" && trailImage !== "Large" && trailImage !== "Huge") { return; }
+		if(
+			trailImage !== "Small" &&
+			trailImage !== "Medium" &&
+			trailImage !== "Large" &&
+			trailImage !== "Huge"
+		) { return; }
 		this._trailImage = trailImage;
 	};
 	
@@ -1481,16 +1520,90 @@
 	};
 	
 	Game_Actor.prototype.startTwirl = function(twirlImage) {
-		if(twirlImage !== "Small" && twirlImage !== "Medium" && twirlImage !== "Large" && twirlImage !== "Huge") { return; }
+		if(
+			twirlImage !== "Small" &&
+			twirlImage !== "Medium" &&
+			twirlImage !== "Large"
+		) { return; }
 		this._twirlImage = twirlImage;
 	};
 	
-	Game_Actor.prototype.weaponSeWeight = function() {
-		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.seWeight ? this.weapons()[0].e9dInfo.seWeight : "light";
+	Game_Actor.prototype.clearFlash = function() {
+		this._flashImage = null;
+		this._flashOffset.x = 0;
+		this._flashOffset.y = 0;
+		this._flashRapid = false;
+	};
+	
+	Game_Actor.prototype.isFlashRequested = function() {
+		return this._flashImage !==  null;
+	};
+	
+	Game_Actor.prototype.flashImage = function() {
+		return this._flashImage;
+	};
+	
+	Game_Actor.prototype.flashOffset = function() {
+		return this._flashOffset;
+	};
+	
+	Game_Actor.prototype.flashRapid = function() {
+		return this._flashRapid;
+	};
+	
+	Game_Actor.prototype.startFlash = function(flashImage, flashOffset, flashRapid) {
+		if(
+			flashImage !== "Small" &&
+			flashImage !== "Medium" &&
+			flashImage !== "Large" &&
+			flashImage !== "Huge"
+		) { return; }
+		this._flashImage = flashImage;
+		if(flashOffset) {
+			this._flashOffset.x = flashOffset.x;
+			this._flashOffset.y = flashOffset.y;
+		}
+		this._flashRapid = flashRapid;
+	};
+	
+	Game_Actor.prototype.clearSkillSpark = function() {
+		this._skillSparkImage = null;
+	};
+	
+	Game_Actor.prototype.isSkillSparkRequested = function() {
+		return this._skillSparkImage !==  null;
+	};
+	
+	Game_Actor.prototype.skillSparkImage = function() {
+		return this._skillSparkImage;
+	};
+	
+	Game_Actor.prototype.startSkillSpark = function(skillSparkImage) {
+		if(
+			skillSparkImage !== "Spirit" &&
+			skillSparkImage !== "WhiteMg" &&
+			skillSparkImage !== "BlackMg"
+		) { return; }
+		this._skillSparkImage = skillSparkImage;
+	};
+	
+	Game_Actor.prototype.weaponMeleeWeight = function() {
+		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.meleeWeight ? this.weapons()[0].e9dInfo.meleeWeight : "light";
+	};
+	
+	Game_Actor.prototype.weaponShotWeight = function() {
+		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.shotWeight ? this.weapons()[0].e9dInfo.shotWeight : "light";
 	};
 	
 	Game_Actor.prototype.weaponStance = function() {
 		return this.weapons().length > 0 && this.weapons()[0].e9dInfo.stance ? this.weapons()[0].e9dInfo.stance : "default";
+	};
+	
+	Game_Actor.prototype.weaponIsFired = function() {
+		const weaponTypes = this.weaponTypes();
+		if(weaponTypes.length === 0) { return false; }
+		const weaponType = weaponTypes[0];
+		return weaponType >= 24 && weaponType <= 26
 	};
 	
 	Game_Actor.prototype.motionType = function() {
@@ -1622,7 +1735,15 @@
 	};
 	
 	Game_Actor.prototype.isTwoHanded = function(item) {
-		return item && item.wtypeId && item.wtypeId % 3 != 1;
+		return item && item.wtypeId &&
+			item.wtypeId != 1 &&
+			item.wtypeId != 4 &&
+			item.wtypeId != 7 &&
+			item.wtypeId != 10 &&
+			item.wtypeId != 13 &&
+			item.wtypeId != 16 &&
+			item.wtypeId != 19 &&
+			item.wtypeId != 24;
 	};
 	
 	Game_Actor.prototype.performAction = function(action) {
@@ -1654,13 +1775,18 @@
 			this.startWeaponAnimation(weapon.e9dInfo.image);
 			this.startTrail(weapon.e9dInfo.trail);
 			this.startTwirl(weapon.e9dInfo.twirl);
+			this.startFlash(weapon.e9dInfo.flash, weapon.e9dInfo.flashOffset, weapon.e9dInfo.flashRapid);
 		}
 		const motion = item.e9dInfo.motion;
 		if(motion) {
 			this.requestMotion(motion);
+			if(motion === "skill") {
+				this.startSkillSpark(item.e9dInfo.skillSpark);
+			}
 			return;
 		}
 		this.requestMotion("skill");
+		this.startSkillSpark(item.e9dInfo.skillSpark);
 	};
 	
 	Game_Actor.prototype.performMiss = function() {
@@ -3127,10 +3253,13 @@
 	
 	Sprite_Actor.MOTIONS = {
 		waitLow: { poses: ["waitLow", "waitLow", "waitLow"], loop: true },
+		waitLowFired: { poses: ["waitLow", "waitLow", "waitLow"], loop: true },
 		wait: { poses: ["wait", "wait", "wait"], loop: true },
 		walkLow: { poses: ["walkLow", "waitLow", "walkLow"], loop: true },
+		walkLowFired: { poses: ["walkLow", "waitLow", "walkLow"], loop: true },
 		walk: { poses: ["walk", "wait", "walk"], loop: true },
 		thrust2H: { poses: ["chargeLow", "thrust2H", "thrust2H"], loop: false },
+		thrust2HFired: { poses: ["chargeLow", "thrust2H", "thrust2H"], loop: false },
 		thrust: { poses: ["charge", "thrust", "thrust"], loop: false },
 		pommel: { poses: ["charge", "thrust", "thrust"], loop: false },
 		unarmed: { poses: ["charge", "thrust", "thrust"], loop: false },
@@ -3145,7 +3274,6 @@
 		skill: { poses: ["skill", "skill", "skill"], loop: false },
 		item: { poses: ["item", "item", "item"], loop: false },
 		victory: { poses: ["victory", "victory", "victory"], loop: true },
-		escapeLow: { poses: ["walkLow", "waitLow", "walkLow"], loop: false },
 		escape: { poses: ["walk", "wait", "walk"], loop: false },
 		evade: { poses: ["evade", "evade", "evade"], loop: false },
 		damage: { poses: ["damage", "damage", "damage"], loop: false },
@@ -3163,30 +3291,42 @@
 		this._pattern = 0;
 		this.createTrailSprite();
 		this.createTwirlSprite();
+		this.createFlashSprite();
 		this.createMainSprite();
 		this.createShieldSprite();
 		this.createBowSprite();
 		this.createWeaponSprite();
+		this.createSkillSparkSprite();
 		this.createStateSprite();
 	};
 	
 	Sprite_Actor.prototype.refreshSpriteOrder = function() {
 		this.removeChild(this._mainSprite);
-		this.removeChild(this._weaponSprite);
 		this.removeChild(this._shieldSprite);
 		this.removeChild(this._bowSprite);
+		this.removeChild(this._weaponSprite);
+		this.removeChild(this._skillSparkSprite);
 		this.removeChild(this._stateSprite);
-		if((this._pattern || this._motionType === "throw") > 0 && this.motionTypeShouldUnderlay()) {
+		if(
+			(
+				this._pattern ||
+				this._motionType === "throw" ||
+				this._motionType === "handGun" ||
+				this._motionType === "longGun"
+			) > 0 && this.motionTypeShouldUnderlay()
+		) {
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
 			this.addChild(this._mainSprite);
+			this.addChild(this._skillSparkSprite);
 			this.addChild(this._stateSprite);
 		} else {
 			this.addChild(this._mainSprite);
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
+			this.addChild(this._skillSparkSprite);
 			this.addChild(this._stateSprite);
 		}
 	};
@@ -3219,6 +3359,26 @@
 		this._twirlSprite.y = 0;
 		this._twirlSprite.hide();
 		this.addChild(this._twirlSprite);
+	};
+	
+	Sprite_Actor.prototype.createFlashSprite = function() {
+		this._flashSprite = new Sprite();
+		this._flashSprite.anchor.x = 0;
+		this._flashSprite.anchor.y = 0.5;
+		this._flashSprite.x = 0;
+		this._flashSprite.y = 0;
+		this._flashSprite.hide();
+		this.addChild(this._flashSprite);
+	};
+	
+	Sprite_Actor.prototype.createSkillSparkSprite = function() {
+		this._skillSparkSprite = new Sprite();
+		this._skillSparkSprite.anchor.x = 0.5;
+		this._skillSparkSprite.anchor.y = 0.5;
+		this._skillSparkSprite.x = 0;
+		this._skillSparkSprite.y = -16;
+		this._skillSparkSprite.hide();
+		this.addChild(this._skillSparkSprite);
 	};
 	
 	Sprite_Actor.prototype.updateBitmap = function() {
@@ -3273,33 +3433,55 @@
 	};
 	
 	Sprite_Actor.prototype.updateMotionCount = function() {
-		if (this._motion && ++this._motionCount >= this.motionSpeed()) {
-			if (this._motion.loop) {
-				this._pattern = (this._pattern + 1) % 4;
-				this._trailSprite.hide();
-			} else if (this._pattern < 2) {
-				this._pattern++;
-				if(
-					this._pattern === 1 &&
-					(this.motionTypeIsMelee() || this._motionType === "bow" || this._motionType === "sling")
-				) {
-					SoundManager.playSwing(this._actor.weaponSeWeight());
-				}
-				if(
-					this._pattern === 1 &&
-					(this._motionType === "swing" || this._motionType === "swingBow" || this._motionType === "swingTwirl")
-				) {
-					this._trailSprite.show();
+		if (this._motion) {
+			if(++this._motionCount >= this.motionSpeed()) {
+				if (this._motion.loop) {
+					this._pattern = (this._pattern + 1) % 4;
+					this._trailSprite.hide();
+				} else if (this._pattern < 2) {
+					this._pattern++;
+					if(
+						this._pattern === 1 &&
+						(this.motionTypeIsMelee() || this._motionType === "bow" || this._motionType === "sling")
+					) {
+						SoundManager.playSwing(this._actor.weaponMeleeWeight());
+					}
+					if(
+						this._pattern === 1 &&
+						(this._motionType === "handGun" || this._motionType === "longGun")
+					) {
+						SoundManager.playShot(this._actor.weaponShotWeight(), this._flashRapid);
+					}
+					if(
+						this._pattern === 1 &&
+						(this._motionType === "swing" || this._motionType === "swingBow" || this._motionType === "swingTwirl")
+					) {
+						this._trailSprite.show();
+					} else {
+						this._trailSprite.hide();
+					}
 				} else {
+					this.refreshMotion();
 					this._trailSprite.hide();
 				}
-			} else {
-				this.refreshMotion();
-				this._trailSprite.hide();
+				this._motionCount = 0;
+				this.refreshSpriteOrder();
+				this._twirlSprite.hide();
 			}
-			this._motionCount = 0;
-			this.refreshSpriteOrder();
-			this._twirlSprite.hide();
+			if(
+				this._pattern === 1 &&
+				(this._motionType === "handGun" || this._motionType === "longGun") &&
+				(!this._flashRapid || this._motionCount % 4 < 2)
+			) {
+				this._flashSprite.show();
+			} else {
+				this._flashSprite.hide();
+			}
+			if(this._pattern === 0 && this._motionType === "skill" && this._motionCount % 2 === 1) {
+				this._skillSparkSprite.show();
+			} else {
+				this._skillSparkSprite.hide();
+			}
 		}
 	};
 	
@@ -3346,6 +3528,7 @@
 			this._motionType === "swingBow" ||
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
+			this._motionType === "thrust2HFired" ||
 			this._motionType === "pommel" ||
 			this._motionType === "unarmed"
 		);
@@ -3360,6 +3543,7 @@
 			this._motionType === "pommel" ||
 			this._motionType === "throw" ||
 			this._motionType === "sling" ||
+			this._motionType === "handGun" ||
 			this._motionType === "unarmed"
 		);
 	}
@@ -3447,11 +3631,39 @@
 		};
 	};
 	
+	Sprite_Actor.prototype.setupFlash = function() {
+		if(this._actor.isFlashRequested()) {
+			const flashImage = this._actor.flashImage();
+			const flashOffset = this._actor.flashOffset();
+			this._flashSprite.bitmap = ImageManager.loadSystem("WeaponFlash" + flashImage);
+			let flashSize = 0;
+			switch(flashImage) {
+				case  "Small": flashSize = 8; break;
+				case "Medium": flashSize = 16; break;
+				case  "Large": flashSize = 24; break;
+				case  "Huge":  flashSize = 32; break;
+			}
+			this._flashSprite.setFrame(0, 0, flashSize, flashSize);
+			this._flashSprite.x = flashOffset.x;
+			this._flashSprite.y = flashOffset.y;
+			this._flashRapid = this._actor.flashRapid();
+			this._actor.clearFlash();
+		};
+	};
+	
+	Sprite_Actor.prototype.setupSkillSpark = function() {
+		if(this._actor.isSkillSparkRequested()) {
+			this._skillSparkImage = this._actor.skillSparkImage();
+			this._skillSparkSprite.bitmap = ImageManager.loadSystem("SkillSpark" + this._skillSparkImage);
+			this._skillSparkSprite.setFrame(0, 0, 48, 48);
+			this._actor.clearSkillSpark();
+		};
+	};
+	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		this.scale.x = motionType === "escape" ? -1 : 1;
-		motionType = motionType === "wait" && this._actor.weaponStance() === "low" ? "waitLow" : motionType;
-		motionType = motionType === "walk" && this._actor.weaponStance() === "low" ? "walkLow" : motionType;
-		motionType = motionType === "escape" && this._actor.weaponStance() === "low" ? "escapeLow" : motionType;
+		motionType = motionType === "wait" && this._actor.weaponStance() === "low" ? (this._actor.weaponIsFired() ? "waitLowFired" : "waitLow") : motionType;
+		motionType = motionType === "walk" && this._actor.weaponStance() === "low" ? (this._actor.weaponIsFired() ? "walkLowFired" : "walkLow") : motionType;
 		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
@@ -3464,8 +3676,10 @@
 			if(
 				motionType === "walk" ||
 				motionType === "walkLow" ||
+				motionType === "walkLowFired" ||
 				motionType === "wait" ||
 				motionType === "waitLow" ||
+				motionType === "waitLowFired" ||
 				motionType === "damage" ||
 				motionType === "evade" ||
 				motionType === "skill" ||
@@ -3486,11 +3700,11 @@
 				motionType === "swingTwirl" ||
 				motionType === "swingBow" ||
 				motionType === "thrust" ||
-				motionType === "thrust2H" ||
 				motionType === "pommel" ||
 				motionType === "unarmed" ||
 				motionType === "throw" ||
-				motionType === "sling"
+				motionType === "sling" ||
+				motionType === "handGun"
 			) {
 				this.startShieldIdleAnimation(motionType);
 			} else {
@@ -3514,12 +3728,15 @@
 				this.clearBowIdleAnimation();
 			}
 			if(motionType === "throw") {
-				SoundManager.playSwing(this._actor.weaponSeWeight());
+				SoundManager.playSwing(this._actor.weaponMeleeWeight());
 			}
 			if(motionType === "swingTwirl" || motionType === "sling") {
-				SoundManager.playTwirl(this._actor.weaponSeWeight());
+				SoundManager.playTwirl(this._actor.weaponMeleeWeight());
 				this._twirlSprite.show();
 			}
+			if(motionType === "skill") {
+				SoundManager.playSkill(this._skillSparkImage);
+			};
 			this.refreshSpriteOrder();
 		}
 	};
@@ -3591,10 +3808,12 @@
 	};
 	
 	Sprite_Actor.prototype.updateMotion = function() {
+		this.setupSkillSpark();
 		this.setupMotion();
 		this.setupWeaponAnimation();
 		this.setupTrail();
 		this.setupTwirl();
+		this.setupFlash();
 		this._actor.clearMotion();
 		this._actor.clearWeaponAnimation();
 		if (this._actor.isMotionRefreshRequested()) {
@@ -4127,6 +4346,7 @@
 		return (
 			this._motionType === "thrust" ||
 			this._motionType === "thrust2H" ||
+			this._motionType === "thrust2HFired" ||
 			this._motionType === "swing" ||
 			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
@@ -4134,6 +4354,8 @@
 			this._motionType === "throw" ||
 			this._motionType === "sling" ||
 			this._motionType === "bow" ||
+			this._motionType === "handGun" ||
+			this._motionType === "longGun" ||
 			this._motionType === "unarmed"
 		);
 	};
@@ -4190,6 +4412,11 @@
 					this.y = 12;
 					this.scale.x = 1;
 					this.rotation = 270 * Math.PI / 180;
+				} else if(this._motionType === "item") {
+					this.x = -7;
+					this.y = 7;
+					this.scale.x = 1;
+					this.rotation = 0;
 				} else if (this._motionType === "evade") {
 					this.x = -10;
 					this.y = 16;
@@ -4206,7 +4433,7 @@
 					this.scale.x = 1;
 					this.rotation = 0;
 				} else {
-					this.x = -8;
+					this.x = -7;
 					this.y = 16;
 					this.scale.x = 1;
 					this.rotation = 0;
@@ -4214,6 +4441,7 @@
 			} else {
 				switch(this._motionType) {
 				case "thrust2H":
+				case "thrust2HFired":
 					displayPattern = displayPattern === 0 ? 2 : 1;
 					break;
 				case "thrust":
@@ -4228,11 +4456,15 @@
 					displayPattern = displayPattern === 0 ? 1 : 2;
 					break;
 				case "waitLow":
+				case "waitLowFired":
 				case "walkLow":
+				case "walkLowFired":
 					displayPattern = 2;
 					break;
 				case "throw":
 				case "bow":
+				case "handGun":
+				case "longGun":
 					displayPattern = 1;
 					break;
 				default:
@@ -4266,6 +4498,14 @@
 					this.x = -18;
 					this.y = 17;
 					this.scale.x = 1;
+				} else if (
+					this._motionType === "waitLowFired" ||
+					this._motionType === "walkLowFired" ||
+					(this._motionType === "thrust2HFired" && this._pattern === 0)
+				) {
+					this.x = -23;
+					this.y = 16;
+					this.scale.x = 1;
 				} else if (this._motionType === "throw") {
 					this.x = 16;
 					this.y = 16;
@@ -4273,6 +4513,14 @@
 				} else if (this._motionType === "bow") {
 					this.x = -20;
 					this.y = 16;
+					this.scale.x = 1;
+				} else if (this._motionType === "handGun") {
+					this.x = -10;
+					this.y = 18;
+					this.scale.x = 1;
+				} else if (this._motionType === "longGun") {
+					this.x = -20;
+					this.y = 17;
 					this.scale.x = 1;
 				} else {
 					this.x = -8;
@@ -6561,7 +6809,7 @@
 	Window_BattleLog.prototype.showEnemyAttackAnimation = function(subject, action) {
 		const actionItem = action.effectiveItem();
 		if(!actionItem.e9dInfo.effect) {
-			SoundManager.playSwing(subject.enemy().e9dInfo.seWeight);
+			SoundManager.playSwing(subject.enemy().e9dInfo.meleeWeight);
 		}
 	};
 	

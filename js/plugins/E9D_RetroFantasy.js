@@ -382,6 +382,10 @@
 	};
 	
 	DataManager.parseNotes = function() {
+		for(const actorClass of $dataClasses) {
+			if(!actorClass) { continue; }
+			actorClass.e9dInfo = actorClass.note && actorClass.note.length > 0 ? JSON.parse(actorClass.note) : {};
+		}
 		for(const skill of $dataSkills) {
 			if(!skill) { continue; }
 			skill.e9dInfo = skill.note && skill.note.length > 0 ? JSON.parse(skill.note) : {};
@@ -3296,6 +3300,7 @@
 		this.createShieldSprite();
 		this.createBowSprite();
 		this.createWeaponSprite();
+		this.createHandSprite();
 		this.createSkillSparkSprite();
 		this.createStateSprite();
 	};
@@ -3305,6 +3310,8 @@
 		this.removeChild(this._shieldSprite);
 		this.removeChild(this._bowSprite);
 		this.removeChild(this._weaponSprite);
+		this.removeChild(this._handSprite);
+		this.removeChild(this._fistSprite);
 		this.removeChild(this._skillSparkSprite);
 		this.removeChild(this._stateSprite);
 		if(
@@ -3318,6 +3325,8 @@
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
+			this.addChild(this._handSprite);
+			this.addChild(this._fistSprite);
 			this.addChild(this._mainSprite);
 			this.addChild(this._skillSparkSprite);
 			this.addChild(this._stateSprite);
@@ -3326,6 +3335,8 @@
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
+			this.addChild(this._handSprite);
+			this.addChild(this._fistSprite);
 			this.addChild(this._skillSparkSprite);
 			this.addChild(this._stateSprite);
 		}
@@ -3371,6 +3382,24 @@
 		this.addChild(this._flashSprite);
 	};
 	
+	Sprite_Actor.prototype.createHandSprite = function() {
+		this._handSprite = new Sprite();
+		this._handSprite.anchor.x = 0;
+		this._handSprite.anchor.y = 0;
+		this._handSprite.x = 0;
+		this._handSprite.y = 0;
+		this._handSprite.hide();
+		this.addChild(this._handSprite);
+		this._fistSprite = new Sprite();
+		this._fistSprite.anchor.x = 0;
+		this._fistSprite.anchor.y = 0;
+		this._fistSprite.x = 0;
+		this._fistSprite.y = 0;
+		this._fistSprite.hide();
+		this.addChild(this._fistSprite);
+		this._handIsSetUp = false;
+	};
+	
 	Sprite_Actor.prototype.createSkillSparkSprite = function() {
 		this._skillSparkSprite = new Sprite();
 		this._skillSparkSprite.anchor.x = 0.5;
@@ -3393,6 +3422,73 @@
 	
 	Sprite_Actor.prototype.updateShadow = function() {
 		// do nothing
+	};
+	
+	Sprite_Actor.prototype.updateHand = function() {
+		const poseType = this._motion.poses[this._pattern];
+		if(
+			poseType === "thrust" ||
+			poseType === "swing" ||
+			poseType === "handGun" ||
+			poseType === "victory" ||
+			poseType === "abnormal" ||
+			poseType === "sleep" ||
+			poseType === "dead"
+		) {
+			this._handSprite.hide();
+			this._fistSprite.hide();
+			return;
+		}
+		
+		this._handSprite.x = -4;
+		this._handSprite.y = -16;
+		this._handSprite.rotation = 0;
+		this._handSprite.scale.y = 1;
+		this._handSprite.show();
+		this._fistSprite.x = -4;
+		this._fistSprite.y = -6;
+		this._fistSprite.rotation = 0;
+		this._fistSprite.scale.y = 1;
+		this._fistSprite.hide();
+		switch(this._motion.poses[this._pattern]) {
+		case "thrust2H":
+			this._fistSprite.x = 3;
+			this._fistSprite.y = -15;
+			this._handSprite.hide();
+			this._fistSprite.show();
+			break;
+		case "bow":
+			this._fistSprite.y = -13;
+			this._fistSprite.scale.y = -1;
+			this._handSprite.hide();
+			this._fistSprite.show();
+			break;
+		case "longGun":
+			this._fistSprite.x = 1;
+			this._fistSprite.y = -11;
+			this._fistSprite.scale.y = -1;
+			this._handSprite.hide();
+			this._fistSprite.show();
+			break;
+		case "waitLow":
+		case "walkLow":
+		case "chargeLow":
+			this._handSprite.x = -1;
+			this._handSprite.y = -9;
+			this._handSprite.rotation = 180 * Math.PI / 180;
+			break;
+		case "skill":
+			this._handSprite.x = 0;
+			this._handSprite.y = -24;
+			this._handSprite.scale.x = -1;
+			break;
+		case "evade":
+			this._handSprite.x = -6;
+			break;
+		case "damage":
+			this._handSprite.x = -5;
+			break;
+		}
 	};
 	
 	Sprite_Actor.prototype.moveToStartPosition = function() {
@@ -3463,6 +3559,9 @@
 				} else {
 					this.refreshMotion();
 					this._trailSprite.hide();
+				}
+				if (this._pattern >= 0 && this._pattern <= 2) {
+					this.updateHand();
 				}
 				this._motionCount = 0;
 				this.refreshSpriteOrder();
@@ -3651,6 +3750,17 @@
 		};
 	};
 	
+	Sprite_Actor.prototype.setupHand = function() {
+		if(this._handIsSetUp) { return; }
+		let handImage = this._actor.currentClass().e9dInfo.hand;
+		handImage = !handImage ? "Default" : handImage;
+		this._handSprite.bitmap = ImageManager.loadSystem("ActorHand" + handImage);
+		this._handSprite.setFrame(0, 0, 4, 3);
+		this._fistSprite.bitmap = ImageManager.loadSystem("ActorFist" + handImage);
+		this._fistSprite.setFrame(0, 0, 3, 3);
+		this._handIsSetUp = true;
+	};
+	
 	Sprite_Actor.prototype.setupSkillSpark = function() {
 		if(this._actor.isSkillSparkRequested()) {
 			this._skillSparkImage = this._actor.skillSparkImage();
@@ -3738,6 +3848,8 @@
 				SoundManager.playSkill(this._skillSparkImage);
 			};
 			this.refreshSpriteOrder();
+			this.setupHand();
+			this.updateHand();
 		}
 	};
 	

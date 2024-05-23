@@ -3698,17 +3698,17 @@
 				case "Small":
 					twirlSize = 40;
 					this._twirlSprite.x = -12;
-					this._twirlSprite.y = -22;
+					this._twirlSprite.y = -19;
 					break;
 				case "Medium":
 					twirlSize = 48;
 					this._twirlSprite.x = -16;
-					this._twirlSprite.y = -24;
+					this._twirlSprite.y = -21;
 					break;
 				case "Large":
 					twirlSize = 56;
 					this._twirlSprite.x = -20;
-					this._twirlSprite.y = -26;
+					this._twirlSprite.y = -23;
 					break;
 			}
 			this._twirlSprite.setFrame(0, 0, twirlSize, twirlSize);
@@ -4610,7 +4610,7 @@
 					this.scale.x = 1;
 				} else if (this._motionType === "bow") {
 					this.x = -20;
-					this.y = 16;
+					this.y = 14;
 					this.scale.x = 1;
 				} else if (this._motionType === "handGun") {
 					this.x = -10;

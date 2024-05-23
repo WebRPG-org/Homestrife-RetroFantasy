@@ -3314,14 +3314,7 @@
 		this.removeChild(this._fistSprite);
 		this.removeChild(this._skillSparkSprite);
 		this.removeChild(this._stateSprite);
-		if(
-			(
-				this._pattern ||
-				this._motionType === "throw" ||
-				this._motionType === "handGun" ||
-				this._motionType === "longGun"
-			) > 0 && this.motionTypeShouldUnderlay()
-		) {
+		if(this.poseTypeShouldUnderlay()) {
 			this.addChild(this._shieldSprite);
 			this.addChild(this._bowSprite);
 			this.addChild(this._weaponSprite);
@@ -3427,9 +3420,7 @@
 	Sprite_Actor.prototype.updateHand = function() {
 		const poseType = this._motion.poses[this._pattern];
 		if(
-			poseType === "thrust" ||
-			poseType === "swing" ||
-			poseType === "handGun" ||
+			this.poseTypeShouldUnderlay() ||
 			poseType === "victory" ||
 			poseType === "abnormal" ||
 			poseType === "sleep" ||
@@ -3633,17 +3624,12 @@
 		);
 	};
 	
-	Sprite_Actor.prototype.motionTypeShouldUnderlay = function() {
+	Sprite_Actor.prototype.poseTypeShouldUnderlay = function() {
+		const poseType = this._motion.poses[this._pattern];
 		return (
-			this._motionType === "thrust" ||
-			this._motionType === "swing" ||
-			this._motionType === "swingTwirl" ||
-			this._motionType === "swingBow" ||
-			this._motionType === "pommel" ||
-			this._motionType === "throw" ||
-			this._motionType === "sling" ||
-			this._motionType === "handGun" ||
-			this._motionType === "unarmed"
+			poseType === "thrust" ||
+			poseType === "swing" ||
+			poseType === "handGun"
 		);
 	}
 	

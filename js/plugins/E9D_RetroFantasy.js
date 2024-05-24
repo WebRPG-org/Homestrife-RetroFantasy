@@ -257,12 +257,12 @@
 	}
 	
 	// Bitmap
-	const _Bitmap_drawText = Bitmap.prototype.drawText;
+	const _Bitmap__drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
 		if(pluginParams.useTextImages && pluginParams.textImages.length > 0) {
 			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
 		} else {
-			_Bitmap_drawText.call(this, text, x, y, maxWidth, lineHeight, align);
+			_Bitmap__drawText.call(this, text, x, y, maxWidth, lineHeight, align);
 		}
 	};
 	
@@ -298,12 +298,12 @@
 		}
 	};
 	
-	const _Bitmap_measureTextWidth = Bitmap.prototype.measureTextWidth;
+	const _Bitmap__measureTextWidth = Bitmap.prototype.measureTextWidth;
 	Bitmap.prototype.measureTextWidth = function(text) {
 		if(pluginParams.useTextImages && pluginParams.textImages.length > 0) {
 			return this.measureTextWidthFromImage(text);
 		} else {
-			return _Bitmap_measureTextWidth.call(this, text);
+			return _Bitmap__measureTextWidth.call(this, text);
 		}
 	};
 	
@@ -327,11 +327,11 @@
 	};
 	
 	// Window
-	const _Window_initialize = Window.prototype.initialize;
+	const _Window__initialize = Window.prototype.initialize;
 	Window.prototype.initialize = function() {
 		this._padding = 4;
 		this._margin = 0;
-		_Window_initialize.call(this);
+		_Window__initialize.call(this);
 	};
 	
 	Window.prototype.move = function(x, y, width, height) {
@@ -374,9 +374,9 @@
 	};
 	
 	// Data Manager
-	const _DataManager_makeSavefileInfo = DataManager.makeSavefileInfo;
+	const _DataManager__makeSavefileInfo = DataManager.makeSavefileInfo;
 	DataManager.makeSavefileInfo = function() {
-		const info = _DataManager_makeSavefileInfo.call(this);
+		const info = _DataManager__makeSavefileInfo.call(this);
 		info.svActors = $gameParty.svActorsForSavefile();
 		return info;
 	};
@@ -469,10 +469,10 @@
 		AudioManager.playSe(se);
 	};
 	
-	SoundManager.playHit = function(result) {
+	SoundManager.playHit = function(hitType) {
 		const se = {};
-		console.log(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
-		se.name = result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor");
+		console.log(hitType);
+		se.name = hitType;
 		se.volume = 90;
 		se.pitch = 100;
 		se.pan = 0;
@@ -489,9 +489,9 @@
 	};
 	
 	// Battle Manager
-	const _BattleManager_initMembers = BattleManager.initMembers;
+	const _BattleManager__initMembers = BattleManager.initMembers;
 	BattleManager.initMembers = function() {
-		_BattleManager_initMembers.call(this);
+		_BattleManager__initMembers.call(this);
 		this._actionWindow = null;
 	};
 	
@@ -567,13 +567,14 @@
 	};
 	
 	BattleManager.endAction = function() {
-		this._subject.useItem(this._action.item());
+		const item = this._action.effectiveItem();
+		this._subject.useItem(item);
 		
 		// stress inflicted from using a flail
 		if(this._subject.equips) {
 			const weapon = this._subject.equips()[0];
 			if(weapon && weapon.wtypeId > 6 && weapon.wtypeId < 10) {
-				const skill = this._action.item();
+				const skill = item;
 				if(skill.id === 1 || skill.id === 4) {
 					this._subject._tp += Game_Action.prototype.stressThreshold()*2;
 					this._subject._tp = this._subject._tp.clamp(0, this._subject.maxTp());
@@ -665,16 +666,17 @@
 	};
 	
 	Game_Action.prototype.confusionTarget = function() {
+		const isReach = this.isReach();
 		switch (this.subject().confusionLevel()) {
 			case 1:
-				return this.opponentsUnit().randomTarget(false, this.isReach());
+				return this.opponentsUnit().randomTarget(false, isReach);
 			case 2:
 				if (Math.randomInt(2) === 0) {
-					return this.opponentsUnit().randomTarget(false, this.isReach());
+					return this.opponentsUnit().randomTarget(false, isReach);
 				}
-				return this.friendsUnit().randomTarget(false, this.isReach());
+				return this.friendsUnit().randomTarget(false, isReach);
 			default:
-				return this.friendsUnit().randomTarget(false, this.isReach());
+				return this.friendsUnit().randomTarget(false, isReach);
 		}
 	};
 	
@@ -721,63 +723,41 @@
 	};
 	
 	Game_Action.prototype.isReach = function() {
-		// Figure out if its melee, ranged, or special
-		if(this.isAttack()) {
-			// need to dynamically figure things out for basic attacks
-			if(this.subject().equips) {
-				// actor basic attack hit is based on weapon type
-				const weapon = this.subject().equips()[0];
-				if(
-					weapon && (
-						weapon.wtypeId >= 16 || // strictly ranged
-						(weapon.wtypeId > 9 && weapon.wtypeId < 13) // reach weapon
-					)
-				) {
-					return true;
-				}
-			} else {
-				// how does an enemy figure this out? they probably just always choose specific skills
-			}
-		} else if(!this.isGuard()) {
-			// for other skills, just base it on the skill itself
-			if(this.isMagical()) {
-				return true;
-			}
+		const item = this.effectiveItem();
+		if(
+			item.id === 7 ||
+			item.id === 8 ||
+			item.id === 50 ||
+			item.id === 51 ||
+			item.stypeId >= 2
+		) { return true; } // its a ranged attack, so its also reach technically
+		if(
+			item.id === 4 ||
+			item.id === 5 ||
+			item.id === 6
+		) {
+			// get the reach from the weapon type
+			const weaponTypes = this.subject().weaponTypes ? this.subject().weaponTypes() : [];
+			const weaponType = weaponTypes.length > 0 ? weaponTypes[0] : null;
+			if(weaponType && weaponType >= 9) { return true; }
 		}
-		return false;
+		return false; // its not reach
 	};
 	
 	Game_Action.prototype.rangeType = function() {
-		// Figure out if its melee, ranged, or special
-		if(this.isAttack()) {
-			// need to dynamically figure things out for basic attacks
-			if(this.subject().equips) {
-				// actor basic attack hit is based on weapon type
-				const weapon = this.subject().equips()[0];
-				if(weapon && weapon.wtypeId >= 16) {
-					// its a strictly ranged weapon
-					return "ranged";
-				}
-			} else {
-				// how does an enemy figure this out?
-			}
-		} else if(!this.isGuard()) {
-			// for other skills, just base it on the skill itself
-			if(this.isMagical()) {
-				if(this.item().stypeId === 1) {
-					// weapon tech, so ranged
-					return "ranged";
-				} else {
-					// special (ranged, but ignoring the weapon)
-					return "special";
-				}
-			}
-		}
+		const item = this.effectiveItem();
+		if(
+			item.id === 7 ||
+			item.id === 8 ||
+			item.id === 50 ||
+			item.id === 51
+		) { return "ranged"; }
+		if( item.stypeId >= 2 ) { return "special"; }
 		return "melee";
 	};
 	
 	Game_Action.prototype.stressThreshold = function() {
-		return 10;
+		return 20;
 	};
 	
 	Game_Action.prototype.effectiveItem = function() {
@@ -813,15 +793,17 @@
 	};
 	
 	Game_Action.prototype.itemHit = function(target, rangeType, isReach) {
-		//const successRate = this.item().successRate;
 		let adjustType = "none";
 		const weapon = this.subject().equips ? this.subject().equips()[0] : null;
-		if(!this.isAttack() && weapon) {
-			if(this.item().id === 52 || (this.item().id > 53 && this.item().id < 103)) {
+		const item = this.effectiveItem();
+		const itemId = item.id;
+		if(weapon) {
+			const wtypeId = weapon.wtypeId;
+			if(itemId === 52 || (itemId >= 53 && itemId <= 102)) {
 				// pommel strike or non-weapon tech shouldn't include the weapon bonus
 				adjustType = "ignoreWeapon";
-			} else if(this.item().id > 3 && this.item().id < 52 && (weapon.wtypeId === 4 || weapon.wtypeId === 5 || weapon.wtypeId === 6)) {
-				// sword techs get a small penalty
+			} else if(itemId >= 4 && itemId <= 51 && itemId != 5 && (wtypeId === 4 || wtypeId === 5 || wtypeId === 6)) {
+				// non-swing sword techs get a small penalty
 				adjustType = "swordTech";
 			}
 		}
@@ -843,14 +825,39 @@
 			}
 			break;
 		case "special":
-			subjectHit = this.subject().xparam(4);
-			if(adjustType === "ignoreWeapon") {
-				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 4 ? Math.round(cur.value * 100) : 0), 0);
+			const stypeId = item.stypeId;
+			if(stypeId === 10 || stypeId === 11) {
+				// mediums have weird skills! accuracy isn't reliant on ranged accuracy, it's random from 0 to 5, with a skew based on the relevant ability skill
+				subjectHit = this.whiteMgDivineHit() + weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 4 ? Math.round(cur.value * 100) : 0), 0);
+			} else {
+				subjectHit = this.subject().xparam(4); // magic is just really accurate, lightning especially
+				if(adjustType === "ignoreWeapon") {
+					subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 4 ? Math.round(cur.value * 100) : 0), 0);
+				}
 			}
+			// magic is just really accurate, especially lightning
+			const isElectro = item.damage.elementId === 6 || this.subject().attackElements().indexOf(6) >= 0;
+			subjectHit += (isElectro ? 8 : 4);
 			break;
 		}
-		subjectHit -= adjustType === "swordTech" ? 2 : 0;
+		subjectHit -= adjustType === "swordTech" ? 1 : 0;
 		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
+	};
+	
+	Game_Action.prototype.whiteMgDivineHit = function() {
+		const stypeId = this.effectiveItem().stypeId;
+		const subject = this.subject();
+		const skillLevel = stypeId === 10 ? subject.skillLevel("WhiteMg") : (stypeId === 11 ? subject.skillLevel("Divine") : 0);
+		const hits = [];
+		let curLevel = 0;
+		while(curLevel < 6) {
+			let numToAdd = 6 - Math.abs(curLevel - skillLevel);
+			while(--numToAdd >= 0) {
+				hits.push(curLevel);
+			}
+			curLevel++;
+		}
+		return hits[Math.randomInt(hits.length)];
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
@@ -858,18 +865,15 @@
 	};
 	
 	Game_Action.prototype.itemCri = function(target) {
-		if(this.item().damage.critical) {
-			let elementId = 0;
-			if (this.isAttack()) {
-				const elements = this.subject().attackElements();
-				for(const element of elements) {
-					if(element === 2) { // high crit
-						elementId = 2;
-						break;
-					}
+		const item = this.effectiveItem();
+		if(item.damage.critical) {
+			let elementId = item.damage.elementId;
+			const elements = this.subject().attackElements();
+			for(const element of elements) {
+				if(element === 2) { // high crit
+					elementId = 2;
+					break;
 				}
-			} else {
-				elementId = this.item().damage.elementId;
 			}
 			
 			let critEva = target.cev;
@@ -893,7 +897,6 @@
 		result.clear();
 		result.used = this.testApply(target);
 		// is "used" necessary?
-		//result.missed = result.used && Math.random() >= this.itemHit(target);
 		result.missed = false;
 		result.parry = false;
 		
@@ -906,13 +909,13 @@
 		result.evaded = successRate < 0.5;
 		// new hit/miss math over
 		
-		//result.physical = this.isPhysical();
-		//result.drain = this.isDrain();
 		result.physical = true;
 		result.drain = false;
 		
+		target.clearHitType();
 		if (result.isHit()) {
-			if (this.item().damage.type > 0) {
+			const item = this.effectiveItem();
+			if (item.damage.type > 0) {
 				// here's the new critical math
 				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
 				// new critical math over
@@ -920,7 +923,8 @@
 				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
 				this.executeDamage(target, value);
 			}
-			for (const effect of this.item().effects) {
+			target.setHitType(result.damage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
+			for (const effect of item.effects) {
 				this.applyItemEffect(target, effect);
 			}
 			this.applyItemUserEffect(target);
@@ -956,16 +960,16 @@
 	};
 	
 	Game_Action.prototype.elementalPowerRatio = function() {
-		// if a weapon attack also has elemental damage types (fire, ice, etc), this much of the power is actuall elemental damage
+		// if a weapon attack also has elemental damage types (fire, ice, etc), this much of the power is actually elemental damage
 		return 0.1;
 	};
 	
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
-		const item = this.item();
+		const item = this.effectiveItem();
 		
 		// get the power from either the weapon or the skill itself. bonus damage from hit success amount
 		let power = this.subject().atk;
-		if(!this.isAttack() && (item.stypeId != 1 || (item.id > 52 && item.id < 103))) {
+		if(item.stypeId != 1 || (item.id >= 53 && item.id <= 102)) {
 			// get power from the skill itself if its not an attack, and not one of the first 50 techs
 			power = this.evalDamageFormula(target);
 		}
@@ -976,27 +980,9 @@
 		const armor = critical || this.isMpEffect() ? 0 : target.def * 5;
 		
 		// gather the elements and do element specific stuff
-		let isWeaponAttack = false;
-		let isPiercing = false;
-		const fluidElements = [];
-		if (this.isAttack() || (item.stypeId == 1 && item.id > 3 && item.id < 53)) {
-			isWeaponAttack = true;
-			const elements = this.subject().attackElements();
-			if(!this.isAttack()) {
-				// get rid of the weapon's piercing and high crit and use the skill's element instead
-				elements.filter(element => element > 2);
-				elements.push(this.item().damage.elementId);
-			}
-			for(const element of elements) {
-				if(element === 1) {
-					isPiercing = true;
-				} else if(element > 2) {
-					fluidElements.push(element);
-				}
-			}
-		} else {
-			isPiercing = this.item().damage.elementId === 1;
-		}
+		let isWeaponAttack = item.stypeId == 1 && item.id >= 4 && item.id <= 52;
+		let isPiercing = item.damage.elementId === 1;
+		const fluidElements = this.subject().attackElements().filter(element => element > 2); // get damage types that aren't piercing or high crit
 		
 		let elementalPower = 0;
 		if(isWeaponAttack) {
@@ -1027,23 +1013,6 @@
 		
 		// get the final value
 		return Math.round(Math.max(0, power + bonusBlunt + elementalPower - armor));
-	};
-
-	Game_Action.prototype.calcElementRate = function(target) {
-		if (this.item().damage.elementId < 0) {
-			return this.elementsMaxRate(target, this.subject().attackElements());
-		} else {
-			return target.elementRate(this.item().damage.elementId);
-		}
-	};
-
-	Game_Action.prototype.elementsMaxRate = function(target, elements) {
-		if (elements.length > 0) {
-			const rates = elements.map(elementId => target.elementRate(elementId));
-			return Math.max(...rates);
-		} else {
-			return 1;
-		}
 	};
 	
 	Game_Action.prototype.executeMpDamage = function(target, value) {
@@ -1082,7 +1051,7 @@
 			const stressRate = Math.round((effectiveValue / target.mhp) * 100);
 			if($gameParty.inBattle()) {
 				target.gainSilentTp(stressRate);
-			} else if(this.item().occasion !== 2) {
+			} else if(this.effectiveItem().occasion !== 2) {
 				target.gainSilentMp(-stressRate/this.enduranceStressRatio());
 			}
 			target.gainHp(value);
@@ -1099,21 +1068,21 @@
 	};
 	
 	Game_Action.prototype.applyItemUserEffect = function(/*target*/) {
-		const value = Math.floor(this.item().tpGain * this.subject().tcr);
+		const value = Math.floor(this.effectiveItem().tpGain * this.subject().tcr);
 		this.subject().gainTp(value * (this.subject().isGuard() ? 2 : 1));
 	};
 	
 	// Game Action Result
-	_Game_ActionResult = Game_ActionResult.prototype.clear;
+	const _Game_ActionResult__clear = Game_ActionResult.prototype.clear;
 	Game_ActionResult.prototype.clear = function() {
-		_Game_ActionResult.call(this);
+		_Game_ActionResult__clear.call(this);
 		this.parry = false;
 	};
 	
 	// Game Battler Base
-	const _Game_BattlerBase_initMembers = Game_BattlerBase.prototype.initMembers;
+	const _Game_BattlerBase__initMembers = Game_BattlerBase.prototype.initMembers;
 	Game_BattlerBase.prototype.initMembers = function() {
-		_Game_BattlerBase_initMembers.call(this);
+		_Game_BattlerBase__initMembers.call(this);
 		this._prevMhp = 500;
 		this._backRow = false;
 		this._skillLevels = {};
@@ -1247,9 +1216,9 @@
 		this._prevMhp = this.mhp;
 	};
 	
-	const _Game_BattlerBase_param = Game_BattlerBase.prototype.param;
+	const _Game_BattlerBase__param = Game_BattlerBase.prototype.param;
 	Game_BattlerBase.prototype.param = function(paramId) {
-		let paramTotal = _Game_BattlerBase_param.call(this, paramId);
+		let paramTotal = _Game_BattlerBase__param.call(this, paramId);
 		switch(paramId) {
 			case 6: //agility, using Agility
 				paramTotal += this.skillLevel("Agility");
@@ -1258,9 +1227,9 @@
 		return paramTotal;
 	};
 	
-	const _Game_BattlerBase_xparam = Game_BattlerBase.prototype.xparam;
+	const _Game_BattlerBase__xparam = Game_BattlerBase.prototype.xparam;
 	Game_BattlerBase.prototype.xparam = function(xparamId) {
-		let xparamTotal = _Game_BattlerBase_xparam.call(this, xparamId);
+		let xparamTotal = _Game_BattlerBase__xparam.call(this, xparamId);
 		switch(xparamId) {
 			case 0: //melee accuracy, using Hit Rate
 				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAc");
@@ -1279,9 +1248,9 @@
 		return xparamTotal;
 	};
 	
-	const _Game_BattlerBase_sparam = Game_BattlerBase.prototype.sparam;
+	const _Game_BattlerBase__sparam = Game_BattlerBase.prototype.sparam;
 	Game_BattlerBase.prototype.sparam = function(sparamId) {
-		let sparamTotal = _Game_BattlerBase_sparam.call(this, sparamId);
+		let sparamTotal = _Game_BattlerBase__sparam.call(this, sparamId);
 		switch(sparamId) {
 			case 6: //toughness, using Physical Damage
 				sparamTotal = Math.round(sparamTotal*100) + this.skillLevel("Tough");
@@ -1309,6 +1278,12 @@
 	};
 	
 	// Game Battler
+	const _Game_Battler__initMembers = Game_Battler.prototype.initMembers;
+	Game_Battler.prototype.initMembers = function() {
+		_Game_Battler__initMembers.call(this);
+		this._hitType = null;
+	};
+	
 	Game_Battler.prototype.initTp = function() {
 		this.clearTp();
 	};
@@ -1391,9 +1366,9 @@
 	Game_Battler.prototype.performDamage = function(action) {
 		let hitBuffer = null;
 		if(!action.effectiveItem().e9dInfo.effect) {
-			const result = this.result();
-			hitBuffer = SoundManager.playHit(result);
-			this.requestEffect(result.critical ? "blink" : "blinkFast");
+			const hitType = this.hitType();
+			hitBuffer = SoundManager.playHit(hitType);
+			this.requestEffect(hitType === "hit" ? "blink" : "blinkFast");
 		}
 		this.clearResult();
 		return hitBuffer;
@@ -1417,10 +1392,22 @@
 		this.clearResult();
 	};
 	
+	Game_Battler.prototype.hitType = function() {
+		return this._hitType;
+	};
+	
+	Game_Battler.prototype.setHitType = function(hitType) {
+		this._hitType = hitType;
+	};
+	
+	Game_Battler.prototype.clearHitType = function() {
+		this._hitType = null;
+	};
+	
 	// Game Actor
-	const _Game_Actor_initMembers = Game_Actor.prototype.initMembers;
+	const _Game_Actor__initMembers = Game_Actor.prototype.initMembers;
 	Game_Actor.prototype.initMembers = function() {
-		_Game_Actor_initMembers.call(this);
+		_Game_Actor__initMembers.call(this);
 		this._justEquipped = null;
 		this._trailImage = null;
 		this._twirlImage = null;
@@ -1432,9 +1419,9 @@
 		this._skillSparkImage = null;
 	};
 	
-	const _Game_Actor_setup = Game_Actor.prototype.setup;
+	const _Game_Actor__setup = Game_Actor.prototype.setup;
 	Game_Actor.prototype.setup = function(actorId) {
-		_Game_Actor_setup.call(this, actorId);
+		_Game_Actor__setup.call(this, actorId);
 		this.updateAbilities();
 	};
 	
@@ -1840,7 +1827,7 @@
 	};
 	
 	// Game Enemy
-	_Game_Enemy__initMembers = Game_Enemy.prototype.initMembers;
+	const _Game_Enemy__initMembers = Game_Enemy.prototype.initMembers;
 	Game_Enemy.prototype.initMembers = function() {
 		_Game_Enemy__initMembers.call(this);
 		this._hitBuffer = null;
@@ -1936,13 +1923,19 @@
 			const actor = $gameActors.actor(battler.actorId);
 			if (actor) {
 				actor.changeLevel(1, false);
-				actor.setSkillLevel("MeleeWp", 1);
-				actor.setSkillLevel("Throw", 1);
-				actor.setSkillLevel("Archery", 1);
-				actor.setSkillLevel("Firearm", 1);
-				actor.setSkillLevel("GrayMgc", 1);
-				actor.setSkillLevel("WhiteMg", 1);
-				actor.setSkillLevel("BlackMg", 1);
+				actor.setSkillLevel("MeleeAc", 1);
+				actor.setSkillLevel("RangeAc", 1);
+				actor.setSkillLevel("Defense", 1);
+				actor.setSkillLevel("Balance", 1);
+				actor.setSkillLevel("Agility", 1);
+				actor.setSkillLevel("Focus", 1);
+				actor.setSkillLevel("MeleeWp", 2);
+				actor.setSkillLevel("Throw", 2);
+				actor.setSkillLevel("Archery", 2);
+				actor.setSkillLevel("Firearm", 2);
+				actor.setSkillLevel("GrayMgc", 2);
+				actor.setSkillLevel("WhiteMg", 2);
+				actor.setSkillLevel("BlackMg", 2);
 				actor.initEquips(battler.equips);
 				actor.recoverAll();
 				if(i > 1) {
@@ -2728,9 +2721,9 @@
 		Scene_Message.prototype.createAllWindows.call(this);
 	};
 	
-	const _Scene_Battle_createDisplayObjects = Scene_Battle.prototype.createDisplayObjects;
+	const _Scene_Battle__createDisplayObjects = Scene_Battle.prototype.createDisplayObjects;
 	Scene_Battle.prototype.createDisplayObjects = function() {
-		_Scene_Battle_createDisplayObjects.call(this);
+		_Scene_Battle__createDisplayObjects.call(this);
 		BattleManager.setActionWindow(this._actionWindow);
 	};
 	
@@ -2980,6 +2973,10 @@
 		this._shake = 0;
 	};
 	
+	Sprite_Battler.prototype.battler = function() {
+		return this._battler;
+	};
+	
 	Sprite_Battler.prototype.update = function() {
 		Sprite_Clickable.prototype.update.call(this);
 		if (this._battler) {
@@ -3183,28 +3180,9 @@
 		this.opacity = 0;
 	};
 	
-	Sprite_Battler.prototype.startMove = function(x, y, duration) {
-		if (
-			this._targetOffsetX !== x || this._targetOffsetY !== y ||
-			(duration === 0 && (this._offsetX !== x || this._offsetY !== y))
-		) {
-			this._targetOffsetX = x;
-			this._targetOffsetY = y;
-			this._movementDuration = duration;
-			if (duration === 0) {
-				this._offsetX = x;
-				this._offsetY = y;
-			}
-		}
-	};
-	
 	Sprite_Battler.prototype.updateSelectionEffect = function() {
 		// do nothing
 	};
-	
-	Sprite_Battler.prototype.isSelected = function() {
-		return this._battler && this._battler.isSelected();
-	}
 	
 	Sprite_Battler.prototype.setupDamagePopup = function() {
 		if (this._battler.isDamagePopupRequested()) {
@@ -3212,7 +3190,7 @@
 				this.createDamageSprite();
 			}
 			this._battler.clearDamagePopup();
-			//this._battler.clearResult();
+			this._battler.clearResult();
 		}
 	};
 	
@@ -3229,6 +3207,29 @@
 		sprite.setup(this._battler);
 		this._damages.push(sprite);
 		this.parent.addChild(sprite);
+	};
+	
+	Sprite_Battler.prototype.startMove = function(x, y, duration) {
+		if (
+			this._targetOffsetX !== x || this._targetOffsetY !== y ||
+			(duration === 0 && (this._offsetX !== x || this._offsetY !== y))
+		) {
+			this._targetOffsetX = x;
+			this._targetOffsetY = y;
+			this._movementDuration = duration;
+			if (duration === 0) {
+				this._offsetX = x;
+				this._offsetY = y;
+			}
+		}
+	};
+	
+	Sprite_Battler.prototype.isSelected = function() {
+		return this._battler && this._battler.isSelected();
+	};
+	
+	Sprite_Battler.prototype.hitType = function() {
+		return this._battler ? this._battler.hitType : null;
 	};
 	
 	// Sprite Actor
@@ -3831,7 +3832,7 @@
 				this._twirlSprite.show();
 			}
 			if(motionType === "skill") {
-				SoundManager.playSkill(this._skillSparkImage);
+				//SoundManager.playSkill(this._skillSparkImage);
 			};
 			this.refreshSpriteOrder();
 			this.setupHand();
@@ -4202,7 +4203,7 @@
 	Sprite_AnimationMV.prototype.updateFilter = function(filters, frameIndex) {
 		for (const filter of filters) {
 			for (const target of this._targets) {
-				if(frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
+				if(target.hitType() && frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
 					const shiftAmount = frameIndex - filter.startFrame;
 					switch(filter.name) {
 						case "hueRotate":
@@ -4411,9 +4412,9 @@
 		this.initMembers(type);
 	};
 	
-	const _Sprite_Weapon_initMembers = Sprite_Weapon.prototype.initMembers;
+	const _Sprite_Weapon__initMembers = Sprite_Weapon.prototype.initMembers;
 	Sprite_Weapon.prototype.initMembers = function(type) {
-		_Sprite_Weapon_initMembers.call(this);
+		_Sprite_Weapon__initMembers.call(this);
 		this._motionType = null;
 		this.anchor.x = 0.375;
 		this.x = 0;
@@ -4421,10 +4422,10 @@
 		this._type = type;
 	};
 
-	const _Sprite_Weapon_setup = Sprite_Weapon.prototype.setup;
+	const _Sprite_Weapon__setup = Sprite_Weapon.prototype.setup;
 	Sprite_Weapon.prototype.setup = function(weaponImageId, motionType) {
 		this._motionType = motionType;
-		_Sprite_Weapon_setup.call(this, weaponImageId);
+		_Sprite_Weapon__setup.call(this, weaponImageId);
 	};
 	
 	Sprite_Weapon.prototype.isIdle = function() {
@@ -4679,15 +4680,15 @@
 	};
 	
 	// Spriteset Battle
-	const _Spriteset_Battle_createLowerLayer = Spriteset_Battle.prototype.createLowerLayer;
+	const _Spriteset_Battle__createLowerLayer = Spriteset_Battle.prototype.createLowerLayer;
 	Spriteset_Battle.prototype.createLowerLayer = function() {
-		_Spriteset_Battle_createLowerLayer.call(this);
+		_Spriteset_Battle__createLowerLayer.call(this);
 		this.createCursor();
 	};
 	
-	const _Spriteset_Battle_update = Spriteset_Battle.prototype.update;
+	const _Spriteset_Battle__update = Spriteset_Battle.prototype.update;
 	Spriteset_Battle.prototype.update = function() {
-		_Spriteset_Battle_update.call(this);
+		_Spriteset_Battle__update.call(this);
 		this.updateCursor();
 	};
 	
@@ -4850,9 +4851,9 @@
 		return Window_Scrollable.prototype.itemHeight.call(this);
 	};
 	
-	const _Window_Selectable_itemRect = Window_Selectable.prototype.itemRect;
+	const _Window_Selectable__itemRect = Window_Selectable.prototype.itemRect;
 	Window_Selectable.prototype.itemRect = function(index) {
-		const rect = _Window_Selectable_itemRect.call(this, index);
+		const rect = _Window_Selectable__itemRect.call(this, index);
 		rect.x -= this.colSpacing() / 2;
 		const spriteW = $gameMap.tileWidth()/2;
 		rect.x = Math.floor(rect.x / spriteW) * spriteW;
@@ -6921,7 +6922,7 @@
 	};
 	
 	Window_BattleLog.prototype.startAction = function(subject, action, targets) {
-		const item = action.item();
+		const item = action.effectiveItem();
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
 		this.push("performAction", subject, action);
@@ -7133,9 +7134,9 @@
 		Window_Base.prototype.updatePadding.call(this);
 	};
 	
-	const _Window_BattleStatus_update = Window_BattleStatus.prototype.update;
+	const _Window_BattleStatus__update = Window_BattleStatus.prototype.update;
 	Window_BattleStatus.prototype.update = function() {
-		_Window_BattleStatus_update.call(this);
+		_Window_BattleStatus__update.call(this);
 		this.updateActorCursors();
 	};
 	

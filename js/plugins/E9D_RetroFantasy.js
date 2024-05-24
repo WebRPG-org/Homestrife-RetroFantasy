@@ -682,7 +682,7 @@
 	
 	Game_Action.prototype.targetsForOpponents = function() {
 		const unit = this.opponentsUnit();
-		if (this.isForRandom()) {
+		if (this.effectiveItem().e9dInfo.randomStrike) {
 			return this.randomTargets(unit);
 		} else {
 			return this.targetsForAlive(unit);
@@ -703,9 +703,22 @@
 	};
 	
 	Game_Action.prototype.randomTargets = function(unit) {
+		let goWideRate = 1;
+		const goWideScaleRate = 0.9;
+		for(const member of unit.aliveMembers()) {
+			if(member.enemy) {
+				const size = member.enemy().e9dInfo.size;
+				goWideRate *= Math.pow(goWideScaleRate, size ? size : 2);
+			} else {
+				goWideRate *= Math.pow(goWideScaleRate, 2);
+			}
+		}
+		console.log(goWideRate);
 		const targets = [];
-		for (let i = 0; i < this.numTargets(); i++) {
-			targets.push(unit.randomTarget(false, this.isReach()));
+		let randomStrike = this.effectiveItem().e9dInfo.randomStrike;
+		while(--randomStrike >= 0) {
+			if(Math.random() < goWideRate) { continue; }
+			targets.push(unit.randomTarget(true));
 		}
 		return targets;
 	};

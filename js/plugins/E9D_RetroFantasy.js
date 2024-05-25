@@ -471,7 +471,6 @@
 	
 	SoundManager.playHit = function(hitType) {
 		const se = {};
-		console.log(hitType);
 		se.name = hitType;
 		se.volume = 90;
 		se.pitch = 100;
@@ -493,6 +492,8 @@
 	BattleManager.initMembers = function() {
 		_BattleManager__initMembers.call(this);
 		this._actionWindow = null;
+		this._rolls = [];
+		this.queueRolls();
 	};
 	
 	BattleManager.setActionWindow = function(actionWindow) {
@@ -605,6 +606,7 @@
 			$gameSystem.onBattleEscape();
 		}
 		this.regenerateAllTp();
+		this.clearRolls();
 	};
 	
 	BattleManager.regenerateAllTp = function() {
@@ -612,6 +614,35 @@
 			actor.gainSilentMp(-actor.tp/Game_Action.prototype.enduranceStressRatio());
 			actor.gainSilentTp(-actor.tp);
 		}
+	};
+	
+	BattleManager.queueRolls = function() {
+		while(this._rolls.length < 100) {
+			this._rolls.push(Math.random());
+		}
+	};
+	
+	BattleManager.getRoll = function(dontRemove) {
+		return this.getRolls(1, dontRemove);
+	};
+	
+	BattleManager.getRolls = function(count, dontRemove) {
+		if(this._rolls.length === 0) { console.log("NO QUEUED ROLLS"); }
+		const returnRolls = [];
+		for(let i = 0; i < count; i++) {
+			if(this._rolls.length === 0) { returnRolls.push(Math.random()); continue; }
+			if(dontRemove) {
+				returnRolls.push(this._rolls[i]);
+			} else {
+				returnRolls.push(this._rolls.shift());
+			}
+		}
+		if(!dontRemove) { this.queueRolls(); }
+		return returnRolls;
+	};
+	
+	BattleManager.clearRolls = function() {
+		this._rolls = [];
 	};
 	
 	// Color Manager
@@ -713,7 +744,6 @@
 				goWideRate *= Math.pow(goWideScaleRate, 2);
 			}
 		}
-		console.log(goWideRate);
 		const targets = [];
 		let randomStrike = this.effectiveItem().e9dInfo.randomStrike;
 		while(--randomStrike >= 0) {
@@ -870,7 +900,7 @@
 			}
 			curLevel++;
 		}
-		return hits[Math.randomInt(hits.length)];
+		return hits[Math.floor(BattleManager.getRoll() * hits.length)];
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
@@ -936,7 +966,7 @@
 				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
 				this.executeDamage(target, value);
 			}
-			target.setHitType(result.damage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
+			target.setHitType(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
 			for (const effect of item.effects) {
 				this.applyItemEffect(target, effect);
 			}
@@ -961,13 +991,13 @@
 	Game_Action.prototype.doRoll = function(hit, eva) {
 		const rollDiff = hit-eva;
 		let rollCount = Math.abs(rollDiff);
-		let roll = Math.random();
-		while(rollCount > 0) {
-			const nextRoll = Math.random();
+		const rolls = BattleManager.getRolls(rollCount+1);
+		let roll = rolls.shift();
+		while(--rollCount >= 0) {
+			const nextRoll = rolls.shift();
 			if((rollDiff < 0 && nextRoll < roll) || (rollDiff > 0 && nextRoll > roll)) {
 				roll = nextRoll;
 			}
-			rollCount--;
 		}
 		return roll;
 	};
@@ -1766,7 +1796,9 @@
 	Game_Actor.prototype.performDamage = function(action) {
 		Game_Battler.prototype.performDamage.call(this, action);
 		if (this.isSpriteVisible()) {
-			this.requestMotion("damage");
+			if(this.hitType() != "hitNoDamage") {
+				this.requestMotion("damage");
+			}
 		} else {
 			$gameScreen.startShake(5, 5, 10);
 		}
@@ -6984,7 +7016,7 @@
 	
 	Window_BattleLog.prototype.displayHpDamage = function(action, target) {
 		if (target.result().hpAffected) {
-			if (target.result().hpDamage > 0 && !target.result().drain) {
+			if (target.result().hpDamage >= 0 && !target.result().drain) {
 				this.push("performDamage", action, target);
 			}
 			if (target.result().hpDamage < 0) {

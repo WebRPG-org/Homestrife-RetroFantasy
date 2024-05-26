@@ -7064,6 +7064,20 @@
 		}
 	};
 	
+	Window_BattleLog.prototype.drawBackground = function() {
+		this.contentsBack.clear();
+	};
+	
+	Window_BattleLog.prototype.drawLineText = function(index) {
+		const rect = this.lineRect(index);
+		this.contents.clearRect(rect.x, rect.y, rect.width, rect.height);
+		this.drawTextEx(this._lines[index], rect.x, rect.y, rect.width);
+	};
+	
+	Window_BattleLog.prototype.startTurn = function() {
+		
+	};
+	
 	Window_BattleLog.prototype.startAction = function(subject, action) {
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
@@ -7071,8 +7085,30 @@
 		this.displayAction(subject, action.effectiveItem());
 	};
 	
-	Window_BattleLog.prototype.drawBackground = function() {
-		this.contentsBack.clear();
+	Window_BattleLog.prototype.endAction = function(subject) {
+		this.push("clear");
+		this.push("performActionEnd", subject);
+	};
+	
+	Window_BattleLog.prototype.displayCurrentState = function(subject) {
+		const stateText = subject.mostImportantStateText();
+		if (stateText) {
+			this.push("addText", stateText.format(subject.name()));
+			this.push("clear");
+		}
+	};
+	
+	Window_BattleLog.prototype.displayAction = function(subject, item) {
+		const numMethods = this._methods.length;
+		if (DataManager.isSkill(item)) {
+			this.displayItemMessage(item.message1, subject, item);
+			this.displayItemMessage(item.message2, subject, item);
+		} else {
+			this.displayItemMessage(TextManager.useItem, subject, item);
+		}
+		if (this._methods.length === numMethods) {
+			this.push("wait");
+		}
 	};
 	
 	Window_BattleLog.prototype.drawLineText = function(index) {
@@ -7087,20 +7123,17 @@
 			this.push("wait", effect.popupFrame * Sprite_AnimationMV.prototype.rate());
 		}
 		if (target.result().used) {
-			const wentWideForDamageDisplay = target.wentWideForDamageDisplay();
-			this.push("pushBaseLine");
+			const displayDamage = !target.wentWideForDamageDisplay();
 			this.displayCritical(target);
-			if(!wentWideForDamageDisplay) {
+			if(displayDamage) {
 				this.push("popupDamage", target);
 			}
 			this.push("popupDamage", subject);
-			if(!wentWideForDamageDisplay) {
+			if(displayDamage) {
 				this.displayDamage(action, target);
 			}
 			this.displayAffectedStatus(target);
 			this.displayFailure(target);
-			//this.push("waitForNewLine");
-			this.push("popBaseLine");
 		}
 	};
 	
@@ -7141,6 +7174,13 @@
 		}
 	};
 	
+	Window_BattleLog.prototype.displayAffectedStatus = function(target) {
+		if (target.result().isStatusAffected()) {
+			this.displayChangedStates(target);
+			this.displayChangedBuffs(target);
+		}
+	};
+	
 	Window_BattleLog.prototype.displayAddedStates = function(target) {
 		const result = target.result();
 		const states = result.addedStateObjects();
@@ -7150,7 +7190,8 @@
 				this.push("performCollapse", target);
 			}
 			if (stateText) {
-				// do nothing
+				this.push("addText", stateText.format(target.name()));
+				this.push("waitForEffect");
 			}
 		}
 	};
@@ -7160,8 +7201,15 @@
 		const states = result.removedStateObjects();
 		for (const state of states) {
 			if (state.message4) {
-				// do nothing
+				this.push("addText", state.message4.format(target.name()));
 			}
+		}
+	};
+	
+	Window_BattleLog.prototype.displayBuffs = function(target, buffs, fmt) {
+		for (const paramId of buffs) {
+			const text = fmt.format(target.name(), TextManager.param(paramId));
+			this.push("addText", text);
 		}
 	};
 	

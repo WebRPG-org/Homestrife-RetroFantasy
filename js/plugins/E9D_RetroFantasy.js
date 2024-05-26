@@ -539,7 +539,7 @@
 			if(weapon && weapon.wtypeId > 6 && weapon.wtypeId < 10) {
 				const skill = item;
 				if(skill.id === 1 || skill.id === 4) {
-					this._subject._tp += Game_Action.prototype.stressThreshold()*2;
+					this._subject._tp += Game_Action.prototype.stressThreshold();
 					this._subject._tp = this._subject._tp.clamp(0, this._subject.maxTp());
 					$gameTemp.requestBattleRefresh();
 				}
@@ -953,10 +953,10 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				subject.gainTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
+				subject.gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainTp(Math.round(this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)));
+				target.gainTp(Math.round(this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -1038,7 +1038,7 @@
 			this.makeSuccess(target);
 		}
 		// reduction from balance
-		const reducedValue = Math.max(0, this.stressThreshold()*2 + value - target.sparam(8)*4);
+		const reducedValue = Math.max(0, this.stressThreshold() + value - target.sparam(8)*4);
 		// gain stress instead
 		target.gainTp(reducedValue);
 		this.gainDrainedMp(-reducedValue);
@@ -1312,11 +1312,11 @@
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
 		const stressFromDamage = Math.round((damageRate / this.mhp) * 100);
-		this.gainSilentTp(Game_Action.prototype.stressThreshold()*2+stressFromDamage);
+		this.gainSilentTp(Game_Action.prototype.stressThreshold()+stressFromDamage);
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()*2/5;
+		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()/5;
 		const tpRate = Math.min(Math.floor(this.mp*Game_Action.prototype.enduranceStressRatio()), regenRate);
 		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
 		const mpRate = Math.min(this.tp, tpRate);

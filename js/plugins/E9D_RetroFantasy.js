@@ -493,11 +493,18 @@
 		_BattleManager__initMembers.call(this);
 		this._actionWindow = null;
 		this._rolls = [];
-		this.queueRolls();
 	};
 	
 	BattleManager.setActionWindow = function(actionWindow) {
 		this._actionWindow = actionWindow;
+	};
+	
+	const _BattleManager__startBattle = BattleManager.startBattle;
+	BattleManager.startBattle = function() {
+		_BattleManager__startBattle.call(this);
+		this.queueRolls();
+		$gameParty.queueRolls();
+		$gameTroop.queueRolls();
 	};
 	
 	BattleManager.updateTpb = function() {
@@ -606,6 +613,7 @@
 			$gameSystem.onBattleEscape();
 		}
 		this.regenerateAllTp();
+		$gameParty.clearRolls();
 		this.clearRolls();
 	};
 	
@@ -627,7 +635,6 @@
 	};
 	
 	BattleManager.getRolls = function(count, dontRemove) {
-		if(this._rolls.length === 0) { console.log("NO QUEUED ROLLS"); }
 		const returnRolls = [];
 		for(let i = 0; i < count; i++) {
 			if(this._rolls.length === 0) { returnRolls.push(Math.random()); continue; }
@@ -637,7 +644,7 @@
 				returnRolls.push(this._rolls.shift());
 			}
 		}
-		if(!dontRemove) { this.queueRolls(); }
+		if(!dontRemove && this._rolls.length > 0) { this.queueRolls(); }
 		return returnRolls;
 	};
 	
@@ -887,7 +894,7 @@
 		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 	
-	Game_Action.prototype.whiteMgDivineHit = function() {
+	Game_Action.prototype.whiteMgDivineHit = function(preview) {
 		const stypeId = this.effectiveItem().stypeId;
 		const subject = this.subject();
 		const skillLevel = stypeId === 10 ? subject.skillLevel("WhiteMg") : (stypeId === 11 ? subject.skillLevel("Divine") : 0);
@@ -900,7 +907,7 @@
 			}
 			curLevel++;
 		}
-		return hits[Math.floor(BattleManager.getRoll() * hits.length)];
+		return hits[Math.floor(subject.getRoll(preview) * hits.length)];
 	};
 
 	Game_Action.prototype.itemEva = function(target) {
@@ -1325,6 +1332,7 @@
 	Game_Battler.prototype.initMembers = function() {
 		_Game_Battler__initMembers.call(this);
 		this._hitType = null;
+		this._rolls = [];
 	};
 	
 	Game_Battler.prototype.initTp = function() {
@@ -1445,6 +1453,35 @@
 	
 	Game_Battler.prototype.clearHitType = function() {
 		this._hitType = null;
+	};
+	
+	Game_Battler.prototype.queueRolls = function() {
+		const rollCount = this._rolls.length;
+		const maxRolls = 50;
+		if(rollCount >= maxRolls) { return; }
+		this._rolls.concat(BattleManager.getRolls(maxRolls - rollCount));
+	};
+	
+	Game_Battler.prototype.getRoll = function(dontRemove) {
+		return this.getRolls(1, dontRemove);
+	};
+	
+	Game_Battler.prototype.getRolls = function(count, dontRemove) {
+		const returnRolls = [];
+		for(let i = 0; i < count; i++) {
+			if(this._rolls.length === 0) { returnRolls.push(Math.random()); continue; }
+			if(dontRemove) {
+				returnRolls.push(this._rolls[i]);
+			} else {
+				returnRolls.push(this._rolls.shift());
+			}
+		}
+		if(!dontRemove && this._rolls.length > 0) { this.queueRolls(); }
+		return returnRolls;
+	};
+	
+	Game_Battler.prototype.clearRolls = function() {
+		this._rolls = [];
 	};
 	
 	// Game Actor
@@ -1904,6 +1941,21 @@
 		}
 	};
 	
+	Game_Enemy.prototype.selectAction = function(actionList, ratingZero, preview) {
+		const sum = actionList.reduce((r, a) => r + a.rating - ratingZero, 0);
+		if (sum > 0) {
+			let value = Math.floor(this.getRoll(preview) * sum);
+			for (const action of actionList) {
+				value -= action.rating - ratingZero;
+				if (value < 0) {
+					return action;
+				}
+			}
+		} else {
+			return null;
+		}
+	};
+	
 	// Game Unit
 	Game_Unit.prototype.randomTarget = function(ignoreRow, reach) {
 		if(ignoreRow) { return this.randomTargetEqualChance(this.aliveMembers()); }
@@ -1944,6 +1996,18 @@
 			}
 		}
 		return target;
+	};
+	
+	Game_Unit.prototype.queueRolls = function() {
+		for (const member of this.members()) {
+			member.queueRolls();
+		}
+	};
+	
+	Game_Unit.prototype.clearRolls = function() {
+		for (const member of this.members()) {
+			member.clearRolls();
+		}
 	};
 	
 	// Game Party

@@ -507,46 +507,6 @@
 		$gameTroop.queueRolls();
 	};
 	
-	BattleManager.updateTpb = function() {
-		while(!this.updateAllTpbBattlers()) {
-			$gameParty.updateTpb();
-			$gameTroop.updateTpb();
-		}
-		this.checkTpbTurnEnd();
-	};
-
-	BattleManager.updateAllTpbBattlers = function() {
-		let result = false;
-		for (const battler of this.allBattleMembers()) {
-			result = this.updateTpbBattler(battler) ? true : result;
-		}
-		return result;
-	};
-
-	BattleManager.updateTpbBattler = function(battler) {
-		if (battler.isTpbTurnEnd()) {
-			battler.onTurnEnd();
-			battler.startTpbTurn();
-			this.displayBattlerStatus(battler, false);
-			return true;
-		} else if (battler.isTpbReady()) {
-			battler.startTpbAction();
-			this._actionBattlers.push(battler);
-			return true;
-		} else if (battler.isTpbTimeout()) {
-			battler.onTpbTimeout();
-			this.displayBattlerStatus(battler, true);
-			return true;
-		}
-		return false;
-	};
-
-	BattleManager.checkTpbTurnEnd = function() {
-		if ($gameTroop.isTpbTurnEnd()) {
-			this.endTurn();
-		}
-	};
-	
 	BattleManager.invokeAction = function(subject, target) {
 		this._logWindow.push("pushBaseLine");
 		this.invokeNormalAction(subject, target);
@@ -1996,6 +1956,10 @@
 			}
 		}
 		return target;
+	};
+	
+	Game_Unit.prototype.tpbReferenceTime = function() {
+		return BattleManager.isActiveTpb() ? 240 : 30;
 	};
 	
 	Game_Unit.prototype.queueRolls = function() {

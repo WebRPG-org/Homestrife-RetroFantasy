@@ -103,6 +103,14 @@
  * @min 1
  * @decimals 0
  *
+ * @param popupFrame
+ * @text Popup Frame
+ * @desc At which frame the damage should pop up.
+ * @type number
+ * @default 0
+ * @min 0
+ * @decimals 0
+ *
  * @param mirror
  * @text Mirror
  * @desc Whether or not to mirror the animation graphics.
@@ -192,7 +200,7 @@
 
 (() => {
 	// plugin parameters
-	const pluginParams = PluginManager.parameters('E9D_RetroFantasy');
+	const $pluginParams = PluginManager.parameters('E9D_RetroFantasy');
 	parsePluginParameters();
 	
 	// plugin variables
@@ -200,17 +208,17 @@
 	
 	// helper functions
 	function parsePluginParameters() {
-		pluginParams.useTextImages = true;
-		pluginParams.textImages = parseStringToJson(pluginParams.textImages, []);
-		for(const textImageInfoStringIndex in pluginParams.textImages) {
-			const textImageInfo = JSON.parse(pluginParams.textImages[textImageInfoStringIndex]);
+		$pluginParams.useTextImages = true;
+		$pluginParams.textImages = parseStringToJson($pluginParams.textImages, []);
+		for(const textImageInfoStringIndex in $pluginParams.textImages) {
+			const textImageInfo = JSON.parse($pluginParams.textImages[textImageInfoStringIndex]);
 			textImageInfo.characterW = parseJSONInt(textImageInfo.characterW, 8, 1);
 			textImageInfo.characterH = parseJSONInt(textImageInfo.characterH, 8, 1);
-			pluginParams.textImages[textImageInfoStringIndex] = textImageInfo;
+			$pluginParams.textImages[textImageInfoStringIndex] = textImageInfo;
 		}
-		pluginParams.effects = parseStringToJson(pluginParams.effects, []);
-		for(const effectInfoStringIndex in pluginParams.effects) {
-			const effectInfo = JSON.parse(pluginParams.effects[effectInfoStringIndex]);
+		$pluginParams.effects = parseStringToJson($pluginParams.effects, []);
+		for(const effectInfoStringIndex in $pluginParams.effects) {
+			const effectInfo = JSON.parse($pluginParams.effects[effectInfoStringIndex]);
 			effectInfo.frameW = parseJSONInt(effectInfo.frameW, 64, 1);
 			effectInfo.frameH = parseJSONInt(effectInfo.frameH, 64, 1);
 			effectInfo.frameCount = parseJSONInt(effectInfo.frameCount, 1, 1);
@@ -230,7 +238,7 @@
 			effectInfo.se.pitch = parseJSONInt(effectInfo.se.pitch, 100, 50, 150);
 			effectInfo.se.pan = parseJSONInt(effectInfo.se.pan, 0, -100, 100);
 			
-			pluginParams.effects[effectInfoStringIndex] = effectInfo;
+			$pluginParams.effects[effectInfoStringIndex] = effectInfo;
 		}
 	}
 	
@@ -259,7 +267,7 @@
 	// Bitmap
 	const _Bitmap__drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
-		if(pluginParams.useTextImages && pluginParams.textImages.length > 0) {
+		if($pluginParams.useTextImages && $pluginParams.textImages.length > 0) {
 			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
 		} else {
 			_Bitmap__drawText.call(this, text, x, y, maxWidth, lineHeight, align);
@@ -269,7 +277,7 @@
 	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align) {
 		const context = this.context;
 		maxWidth = maxWidth || 0xffffffff;
-		const textImage = pluginParams.textImages[curTextImage] === undefined ? pluginParams.textImages[0] : pluginParams.textImages[curTextImage];
+		const textImage = $pluginParams.textImages[curTextImage] === undefined ? $pluginParams.textImages[0] : $pluginParams.textImages[curTextImage];
 		let tx = x;
 		let ty = y;
 		if (align === "center") {
@@ -300,7 +308,7 @@
 	
 	const _Bitmap__measureTextWidth = Bitmap.prototype.measureTextWidth;
 	Bitmap.prototype.measureTextWidth = function(text) {
-		if(pluginParams.useTextImages && pluginParams.textImages.length > 0) {
+		if($pluginParams.useTextImages && $pluginParams.textImages.length > 0) {
 			return this.measureTextWidthFromImage(text);
 		} else {
 			return _Bitmap__measureTextWidth.call(this, text);
@@ -308,7 +316,7 @@
 	};
 	
 	Bitmap.prototype.measureTextWidthFromImage = function(text) {
-		const textImage = pluginParams.textImages[curTextImage] === undefined ? pluginParams.textImages[0] : pluginParams.textImages[curTextImage];
+		const textImage = $pluginParams.textImages[curTextImage] === undefined ? $pluginParams.textImages[0] : $pluginParams.textImages[curTextImage];
 		return text.length * textImage.characterW;
 	};
 	
@@ -507,19 +515,6 @@
 		$gameTroop.queueRolls();
 	};
 	
-	BattleManager.invokeAction = function(subject, target) {
-		this._logWindow.push("pushBaseLine");
-		this.invokeNormalAction(subject, target);
-		subject.setLastTarget(target);
-		this._logWindow.push("popBaseLine");
-	};
-	
-	BattleManager.invokeNormalAction = function(subject, target) {
-		const realTarget = this.applySubstitute(target);
-		this._action.apply(realTarget);
-		this._logWindow.displayActionResults(subject, this._action, realTarget);
-	};
-	
 	BattleManager.startAction = function() {
 		const subject = this._subject;
 		const action = subject.currentAction();
@@ -529,7 +524,7 @@
 		this._targets = targets;
 		subject.cancelMotionRefresh();
 		this._action.applyGlobal();
-		this._logWindow.startAction(subject, action, targets);
+		this._logWindow.startAction(subject, action);
 		this._actionWindow.setItem(action.effectiveItem());
 		this._actionWindow.show();
 	};
@@ -557,7 +552,21 @@
 		if (this._subject.numActions() === 0) {
 			this.endBattlerActions(this._subject);
 			this._subject = null;
+			$gameTroop.clearWentWide();
 		}
+	};
+	
+	BattleManager.invokeAction = function(subject, target) {
+		this._logWindow.push("pushBaseLine");
+		this.invokeNormalAction(subject, target);
+		subject.setLastTarget(target);
+		this._logWindow.push("popBaseLine");
+	};
+	
+	BattleManager.invokeNormalAction = function(subject, target) {
+		const realTarget = this.applySubstitute(target);
+		this._action.apply(realTarget);
+		this._logWindow.displayActionResults(subject, this._action, realTarget);
 	};
 	
 	BattleManager.endBattle = function(result) {
@@ -622,21 +631,16 @@
 	// Game Temp
 	// prettier-ignore
 	Game_Temp.prototype.requestAnimation = function(
-		targets, effectName
+		targets, effect
 	) {
-		for(const effect of pluginParams.effects) {
-			if(effect.name && effect.name === effectName) {
-				const request = {
-					targets: targets,
-					effect: effect
-				};
-				this._animationQueue.push(request);
-				for (const target of targets) {
-					if (target.startAnimation) {
-						target.startAnimation();
-					}
-				}
-				break;
+		const request = {
+			targets: targets,
+			effect: effect
+		};
+		this._animationQueue.push(request);
+		for (const target of targets) {
+			if (target.startAnimation) {
+				target.startAnimation();
 			}
 		}
 	};
@@ -703,19 +707,22 @@
 	Game_Action.prototype.randomTargets = function(unit) {
 		let goWideRate = 1;
 		const goWideScaleRate = 0.9;
+		const defaultSize = 2;
 		for(const member of unit.aliveMembers()) {
 			if(member.enemy) {
 				const size = member.enemy().e9dInfo.size;
-				goWideRate *= Math.pow(goWideScaleRate, size ? size : 2);
+				goWideRate *= Math.pow(goWideScaleRate, size ? size : defaultSize);
 			} else {
-				goWideRate *= Math.pow(goWideScaleRate, 2);
+				goWideRate *= Math.pow(goWideScaleRate, defaultSize);
 			}
 		}
 		const targets = [];
 		let randomStrike = this.effectiveItem().e9dInfo.randomStrike;
+		unit.clearWentWide();
 		while(--randomStrike >= 0) {
-			if(Math.random() < goWideRate) { continue; }
-			targets.push(unit.randomTarget(true));
+			const target = unit.randomTarget(true);
+			target.goWide(BattleManager.getRoll() < goWideRate);
+			targets.push(unit.randomTarget());
 		}
 		return targets;
 	};
@@ -903,7 +910,8 @@
 	
 	Game_Action.prototype.apply = function(target) {
 		const result = target.result();
-		this.subject().clearResult();
+		const subject = this.subject();
+		subject.clearResult();
 		result.clear();
 		result.used = this.testApply(target);
 		// is "used" necessary?
@@ -915,7 +923,7 @@
 		const isReach = this.isReach();
 		const subjectHit = this.itemHit(target, rangeType, isReach); // accuracy
 		const targetEva = this.itemEva(target); // evasion, guarding adds a bonus
-		const successRate = this.isCertainHit() ? 0.5 : this.doRoll(subjectHit, targetEva);
+		const successRate = this.isCertainHit() ? 0.5 : (target.wentWide() ? 0 : this.doRoll(subjectHit, targetEva));
 		result.evaded = successRate < 0.5;
 		// new hit/miss math over
 		
@@ -945,7 +953,7 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				this.subject().gainTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
+				subject.gainTp(Math.max(0, Math.round(this.stressThreshold()*2 - (this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
 				target.gainTp(Math.round(this.stressThreshold()*2 * (Math.min(successRate, 0.5) / 0.5)));
@@ -1293,6 +1301,9 @@
 		_Game_Battler__initMembers.call(this);
 		this._hitType = null;
 		this._rolls = [];
+		this._wentWide = [];
+		this._wentWideForDamageDisplay = [];
+		this._wentWideOffsets = [];
 	};
 	
 	Game_Battler.prototype.initTp = function() {
@@ -1442,6 +1453,41 @@
 	
 	Game_Battler.prototype.clearRolls = function() {
 		this._rolls = [];
+	};
+	
+	Game_Battler.prototype.goWide = function(wentWide) {
+		const offset = {};
+		offset.wentWide = wentWide;
+		offset.x = 0;
+		offset.y = 0;
+		if(wentWide) {
+			const minOffset = 16;
+			const offsetRange = 16;
+			offset.x = (Math.randomInt(offsetRange + 1) + minOffset) * (Math.random() < 0.5 ? -1 : 1);
+			offset.y = (Math.randomInt(offsetRange/2 + 1) + minOffset/2) * (Math.random() < 0.5 ? -1 : 1);
+		}
+		this._wentWide.push(wentWide);
+		this._wentWideForDamageDisplay.push(wentWide);
+		this._wentWideOffsets.push(offset);
+	};
+	
+	Game_Battler.prototype.wentWide = function() {
+		return this._wentWide.shift();
+	};
+	
+	Game_Battler.prototype.wentWideForDamageDisplay = function() {
+		return this._wentWideForDamageDisplay.shift();
+	};
+	
+	Game_Battler.prototype.wentWideOffset = function() {
+		const wentWideOffset = this._wentWideOffsets.shift();
+		return wentWideOffset && wentWideOffset.wentWide ? wentWideOffset : null;
+	};
+	
+	Game_Battler.prototype.clearWentWide = function() {
+		this._wentWide = [];
+		this._wentWideForDamageDisplay = [];
+		this._wentWideOffsets = [];
 	};
 	
 	// Game Actor
@@ -1971,6 +2017,12 @@
 	Game_Unit.prototype.clearRolls = function() {
 		for (const member of this.members()) {
 			member.clearRolls();
+		}
+	};
+	
+	Game_Unit.prototype.clearWentWide = function() {
+		for (const member of this.members()) {
+			member.clearWentWide();
 		}
 	};
 	
@@ -3302,7 +3354,11 @@
 	};
 	
 	Sprite_Battler.prototype.hitType = function() {
-		return this._battler ? this._battler.hitType : null;
+		return this._battler ? this._battler.hitType() : null;
+	};
+	
+	Sprite_Battler.prototype.wentWideOffset = function() {
+		return this._battler ? this._battler.wentWideOffset() : null;
 	};
 	
 	// Sprite Actor
@@ -3905,7 +3961,7 @@
 				this._twirlSprite.show();
 			}
 			if(motionType === "skill") {
-				//SoundManager.playSkill(this._skillSparkImage);
+				SoundManager.playSkill(this._skillSparkImage);
 			};
 			this.refreshSpriteOrder();
 			this.setupHand();
@@ -4149,6 +4205,7 @@
 		this._bitmap = null;
 		this._cellSprite = null;
 		this.z = 8;
+		this._wentWideOffset = null;
 	};
 	
 	// prettier-ignore
@@ -4159,6 +4216,7 @@
 		this._effect = effect;
 		this._shouldMirror = !!shouldMirror;
 		this._delay = delay;
+		this._wentWideOffset = this._targets.length > 0 ? this._targets[0].wentWideOffset() : null;
 		if (this._effect) {
 			this.setupRate();
 			this.setupDuration();
@@ -4168,7 +4226,11 @@
 	};
 	
 	Sprite_AnimationMV.prototype.setupRate = function() {
-		this._rate = 4;
+		this._rate = this.rate();
+	};
+	
+	Sprite_AnimationMV.prototype.rate = function() {
+		return 4;
 	};
 	
 	Sprite_AnimationMV.prototype.setupDuration = function() {
@@ -4227,6 +4289,10 @@
 			this.y += parent.y;
 		}
 		this.y -= this._effect.frameH / 2;
+		if(this._wentWideOffset) {
+			this.x += this._wentWideOffset.x;
+			this.y += this._wentWideOffset.y;
+		}
 };
 
 	Sprite_AnimationMV.prototype.updateFrame = function() {
@@ -6954,6 +7020,10 @@
 		return false;
 	};
 	
+	Window_BattleLog.prototype.wait = function(count) {
+		this._waitCount = count ? count : this.messageSpeed();
+	};
+	
 	Window_BattleLog.prototype.performDamage = function(action, target) {
 		target.performDamage(action);
 	};
@@ -6994,13 +7064,11 @@
 		}
 	};
 	
-	Window_BattleLog.prototype.startAction = function(subject, action, targets) {
-		const item = action.effectiveItem();
+	Window_BattleLog.prototype.startAction = function(subject, action) {
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
 		this.push("performAction", subject, action);
-		this.push("showAnimation", subject, action, targets.clone(), item.e9dInfo.effect);
-		this.displayAction(subject, item);
+		this.displayAction(subject, action.effectiveItem());
 	};
 	
 	Window_BattleLog.prototype.drawBackground = function() {
@@ -7013,17 +7081,36 @@
 	};
 	
 	Window_BattleLog.prototype.displayActionResults = function(subject, action, target) {
+		const effect = this.getEffectByName(action.effectiveItem().e9dInfo.effect);
+		this.push("showAnimation", subject, action, [target], effect);
+		if(effect) {
+			this.push("wait", effect.popupFrame * Sprite_AnimationMV.prototype.rate());
+		}
 		if (target.result().used) {
+			const wentWideForDamageDisplay = target.wentWideForDamageDisplay();
 			this.push("pushBaseLine");
 			this.displayCritical(target);
-			this.push("popupDamage", target);
+			if(!wentWideForDamageDisplay) {
+				this.push("popupDamage", target);
+			}
 			this.push("popupDamage", subject);
-			this.displayDamage(action, target);
+			if(!wentWideForDamageDisplay) {
+				this.displayDamage(action, target);
+			}
 			this.displayAffectedStatus(target);
 			this.displayFailure(target);
-			this.push("waitForNewLine");
+			//this.push("waitForNewLine");
 			this.push("popBaseLine");
 		}
+	};
+	
+	Window_BattleLog.prototype.getEffectByName = function(effectName) {
+		for(const effect of $pluginParams.effects) {
+			if(effect.name && effect.name === effectName) {
+				return effect;
+			}
+		}
+		return null;
 	};
 	
 	Window_BattleLog.prototype.displayCritical = function(target) {

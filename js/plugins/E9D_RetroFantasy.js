@@ -414,6 +414,89 @@
 			if(!enemy) { continue; }
 			enemy.e9dInfo = enemy.note && enemy.note.length > 0 ? JSON.parse(enemy.note) : {};
 		}
+		for(const troop of $dataTroops) {
+			if(!troop) { continue; }
+			troop.e9dInfo = {};
+			const trackingData = {};
+			trackingData.jsonStrings = [];
+			trackingData.jsonString = "";
+			trackingData.openCurlyBraces = 0;
+			for(const page of troop.pages) {
+				// an event page on the troop
+				trackingData.jsonString = "";
+				trackingData.openCurlyBraces = 0;
+				for(const entry of page.list) {
+					// a single line on the event page
+					if(entry.code === 108) {
+						// a line that marks the beginning of a comment
+						trackingData.openCurlyBraces = 0;
+						const text = entry.parameters[0].trim();
+						if(text.length === 0 || text[0] !== "{") { continue; }
+						DataManager.handleTroopCommentText(text, trackingData);
+					} else if(entry.code === 408 && trackingData.openCurlyBraces > 0) {
+						// a line that is a continuation of a comment
+						const text = entry.parameters[0].trim();
+						if(text.length === 0) { continue; }
+						DataManager.handleTroopCommentText(text, trackingData);
+					} else {
+						// a line that isn't a comment
+						trackingData.jsonString = "";
+						trackingData.openCurlyBraces = 0;
+					}
+				}
+			}
+			const includedMembers = [];
+			for(const jsonString of trackingData.jsonStrings) {
+				const jsonObject = JSON.parse(jsonString);
+				if(jsonObject.groups) {
+					if(jsonObject.groups.length > 0) {
+						// scrub redundant member ids and drop empty groups
+						const groupInfos = [];
+						for(const group of jsonObject.groups) {
+							const memberInfos = [];
+							for(const member of group.members) {
+								if(includedMembers.indexOf(member.index) < 0) {
+									memberInfos.push(member);
+									includedMembers.push(member.index);
+								}
+							}
+							if(memberInfos.length > 0) {
+								group.members = memberInfos;
+								groupInfos.push(group);
+							}
+						}
+						// sort the groups by the ids of each group's first member
+						if(groupInfos.length > 0) {
+							groupInfos.sort((a, b) => a.index - b.index);
+							jsonObject.groups = groupInfos;
+						} else {
+							jsonObject.groups = undefined;
+						}
+					}
+				}
+				for (const key of Object.keys(jsonObject)) {
+					// figure out if the property of the new object already exists in the e9dInfo
+					const e9dInfoProp = troop.e9dInfo[key];
+					if(e9dInfoProp && Array.isArray(e9dInfoProp)) {
+						// if it exists, and is an array, concatenate the property with the new object property
+						troop.e9dInfo[key] = e9dInfoProp.concat(jsonObject[key]);
+					} else {
+						// if not, add/overwrite the property
+						troop.e9dInfo[key] = jsonObject[key];
+					}
+				}
+			}
+		}
+	};
+	
+	DataManager.handleTroopCommentText = function(text, trackingData) {
+		trackingData.jsonString += text;
+		trackingData.openCurlyBraces += (text.match(/{/g) || []).length - (text.match(/}/g) || []).length;
+		if(trackingData.openCurlyBraces <= 0 && text[text.length-1] === "}") {
+			trackingData.jsonStrings.push(trackingData.jsonString.slice(0));
+			trackingData.jsonString = "";
+			trackingData.openCurlyBraces = 0;
+		}
 	};
 	
 	// Audio Manager
@@ -1963,13 +2046,46 @@
 	};
 	
 	// Game Unit
-	Game_Unit.prototype.randomTarget = function(ignoreRow, reach) {
-		if(ignoreRow) { return this.randomTargetEqualChance(this.aliveMembers()); }
+	Game_Unit.prototype.members = function(groupIndex) {
+		return [];
+	};
+
+	Game_Unit.prototype.aliveMembers = function(groupIndex) {
+		return this.members(groupIndex).filter(member => member.isAlive());
+	};
+
+	Game_Unit.prototype.deadMembers = function(groupIndex) {
+		return this.members(groupIndex).filter(member => member.isDead());
+	};
+
+	Game_Unit.prototype.movableMembers = function(groupIndex) {
+		return this.members(groupIndex).filter(member => member.canMove());
+	};
+
+	Game_Unit.prototype.clearActions = function(groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			member.clearActions();
+		}
+	};
+
+	Game_Unit.prototype.agility = function(groupIndex) {
+		const members = this.members(groupIndex);
+		const sum = members.reduce((r, member) => r + member.agi, 0);
+		return Math.max(1, sum / Math.max(1, members.length));
+	};
+
+	Game_Unit.prototype.tgrSum = function(groupIndex) {
+		return this.aliveMembers(groupIndex).reduce((r, member) => r + member.tgr, 0);
+	};
+	
+	Game_Unit.prototype.randomTarget = function(ignoreRow, reach, groupIndex) {
+		const aliveMembers = this.aliveMembers(groupIndex);
+		if(ignoreRow) { return this.randomTargetEqualChance(aliveMembers); }
 		
 		// check if there's both front and back row members
 		const frontRow = [];
 		const backRow = [];
-		for (const member of this.aliveMembers()) {
+		for (const member of aliveMembers) {
 			if(member.backRow()) {
 				backRow.push(member);
 			} else {
@@ -1978,7 +2094,7 @@
 		}
 		
 		// everyone's in the same row, treat them equally
-		if(frontRow.length == 0 || backRow.length == 0) { return this.randomTargetEqualChance(this.aliveMembers()); }
+		if(frontRow.length == 0 || backRow.length == 0) { return this.randomTargetEqualChance(aliveMembers); }
 		
 		// figure out which row is targeted
 		const rowDifference = frontRow.length - backRow.length;
@@ -2002,6 +2118,75 @@
 			}
 		}
 		return target;
+	};
+	
+	Game_Unit.prototype.randomDeadTarget = function(groupIndex) {
+		const members = this.deadMembers(groupIndex);
+		return members.length ? members[Math.randomInt(members.length)] : null;
+	};
+
+	Game_Unit.prototype.smoothTarget = function(index, groupIndex) {
+		const member = this.members(groupIndex)[Math.max(0, index)];
+		return member && member.isAlive() ? member : this.aliveMembers(groupIndex)[0];
+	};
+
+	Game_Unit.prototype.smoothDeadTarget = function(index, groupIndex) {
+		const member = this.members(groupIndex)[Math.max(0, index)];
+		return member && member.isDead() ? member : this.deadMembers(groupIndex)[0];
+	};
+
+	Game_Unit.prototype.clearResults = function(groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			member.clearResult();
+		}
+	};
+
+	Game_Unit.prototype.onBattleStart = function(advantageous, groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			member.onBattleStart(advantageous);
+		}
+		this._inBattle = true;
+	};
+
+	Game_Unit.prototype.onBattleEnd = function(groupIndex) {
+		this._inBattle = false;
+		for (const member of this.members(groupIndex)) {
+			member.onBattleEnd();
+		}
+	};
+
+	Game_Unit.prototype.makeActions = function(groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			member.makeActions();
+		}
+	};
+
+	Game_Unit.prototype.select = function(activeMember, groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			if (member === activeMember) {
+				member.select();
+			} else {
+				member.deselect();
+			}
+		}
+	};
+
+	Game_Unit.prototype.isAllDead = function(groupIndex) {
+		return this.aliveMembers(groupIndex).length === 0;
+	};
+
+	Game_Unit.prototype.substituteBattler = function(groupIndex) {
+		for (const member of this.members(groupIndex)) {
+			if (member.isSubstitute()) {
+				return member;
+			}
+		}
+		return null;
+	};
+
+	Game_Unit.prototype.tpbBaseSpeed = function() {
+		const members = this.members();
+		return Math.max(...members.map(member => member.tpbBaseSpeed()));
 	};
 	
 	Game_Unit.prototype.tpbReferenceTime = function() {
@@ -2068,6 +2253,57 @@
 				}
 				this.addActor(battler.actorId);
 			}
+		}
+	};
+	
+	// Game Troop
+	const _Game_Troop__clear = Game_Troop.prototype.clear;
+	Game_Troop.prototype.clear = function() {
+		_Game_Troop__clear.call(this);
+		this._groups = [];
+	};
+	
+	const _Game_Troop__members = Game_Troop.prototype.members;
+	Game_Troop.prototype.members = function(groupIndex) {
+		if(groupIndex !== undefined && groupIndex !== null && groupIndex >= 0 && groupIndex < this._groups.length) {
+			return this._groups[groupIndex].members;
+		} else {
+			return _Game_Troop__members.call(this);
+		}
+	};
+	
+	Game_Troop.prototype.setup = function(troopId) {
+		this.clear();
+		this._troopId = troopId;
+		this._enemies = [];
+		this._groups = [];
+		const troop = this.troop();
+		for (const member of troop.members) {
+			if ($dataEnemies[member.enemyId]) {
+				const enemyId = member.enemyId;
+				const x = member.x;
+				const y = member.y;
+				const enemy = new Game_Enemy(enemyId, x, y);
+				if (member.hidden) {
+					enemy.hide();
+				}
+				this._enemies.push(enemy);
+			}
+		}
+		this.makeUniqueNames();
+		if(!troop.groups) { return; }
+		for (const groupInfo of troop.groups) {
+			const group = {};
+			group.backRow = groupInfo.backRow;
+			group.members = [];
+			for (const memberInfo of groupInfo.members) {
+				if(!this._enemies[memberInfo.index]) { continue; }
+				const enemy = this._enemies[memberInfo.index];
+				if(memberInfo.backRow) { enemy.toggleRow(); }
+				group.members.push(member);
+			}
+			if(group.members.length === 0) { continue; }
+			this._groups.push(group);
 		}
 	};
 	
@@ -5285,6 +5521,8 @@
 	};
 	
 	Window_StatusBase.prototype.drawIconNameAndValue = function(x, y, icon, name, curValue, newValue, isPercent, usePlusMinus) {
+		console.log(curValue);
+		console.log(newValue);
 		const spriteW = $gameMap.tileWidth()/2;
 		const textWidth = spriteW*8;
 		const plusMinusWidth = spriteW*4;
@@ -5309,7 +5547,6 @@
 				}
 				this.drawIcon(arrowIcon, x+plusMinusWidth-spriteW, y);
 			}
-			this.drawText(newValue+"", x, y, textWidth, "right");
 		}
 	};
 	
@@ -5636,6 +5873,7 @@
 		this.drawIconNameAndValue(x3, y, this.armorIcon(), this.armorSymbol(), this._actor.param(3), tempActor.param(3));
 		this.drawIconNameAndValue(x3, y2, this.evadeIcon(), this.evadeSymbol(), this._actor.xparam(1), tempActor.xparam(1));
 		this.drawIconNameAndValue(x3, y3, this.parryIcon(), this.parrySymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100));
+		console.log("==========COVERAGE============");
 		this.drawIconNameAndValue(x3, y4, this.coverageIcon(), this.coverageSymbol(), Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100), true);
 		this.drawText(this.resistSymbol(), x3, y5, spriteW*4);
 	};
@@ -6402,10 +6640,12 @@
 			if(item1 && this._item.id === item1.id && this._item.eTypeId === item1.eTypeId) {
 				this.drawText("Equipped", x, y2, warningWidth);
 			} else {
-				this.drawActorParamChange(x, y, actor, item1);
+				if(!this.drawActorParamChange(x, y, actor, item1)) {
+					this.drawText("Same val", x, y2, warningWidth);
+				}
 			}
 		} else {
-			this.drawText("Can't use", x, y2, warningWidth);
+			this.drawText("Unable", x, y2, warningWidth);
 		}
 	};
 	
@@ -6418,24 +6658,26 @@
 		const paramId = this.paramId();
 		const y2 = y + lineHeight;
 		const y3 = y2 + lineHeight;
+		let anyChange = false;
 		if(paramId === 2) {
-			this.drawIconNameAndValueChange(x, y, this.powerIcon(), this.powerSymbol(), this._item.params[2], (item1 ? item1.params[2] : 0));
+			anyChange = this.drawIconNameAndValueChange(x, y, this.powerIcon(), this.powerSymbol(), this._item.params[2], (item1 ? item1.params[2] : 0)) ? true : anyChange;
 			if(this._item.wtypeId >= 16) {
-				this.drawIconNameAndValueChange(x, y2, this.rangeAccuracyIcon(), this.rangeAccuracySymbol(), this.getItemXParam(this._item, 2), this.getItemXParam(item1, 2));
+				anyChange = this.drawIconNameAndValueChange(x, y2, this.rangeAccuracyIcon(), this.rangeAccuracySymbol(), this.getItemXParam(this._item, 2), this.getItemXParam(item1, 2)) ? true : anyChange;
 			} else {
-				this.drawIconNameAndValueChange(x, y2, this.meleeAccuracyIcon(), this.meleeAccuracySymbol(), this.getItemXParam(this._item, 0), this.getItemXParam(item1, 0));
+				anyChange = this.drawIconNameAndValueChange(x, y2, this.meleeAccuracyIcon(), this.meleeAccuracySymbol(), this.getItemXParam(this._item, 0), this.getItemXParam(item1, 0)) ? true : anyChange;
 			}
-			this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1));
+			anyChange = this.drawIconListChange(x, y3, this.typeSymbol(), this.getItemTypeIcons(this._item), this.getItemTypeIcons(item1)) ? true : anyChange;
 		} else {
-			this.drawIconNameAndValueChange(x, y, this.armorIcon(), this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0));
+			anyChange = this.drawIconNameAndValueChange(x, y, this.armorIcon(), this.armorSymbol(), this._item.params[3], (item1 ? item1.params[3] : 0)) ? true : anyChange;
 			const evasion = this.getItemXParam(this._item, 1);
 			if(evasion > 0) {
-				this.drawIconNameAndValueChange(x, y2, this.evadeIcon(), this.evadeSymbol(), evasion, this.getItemXParam(item1, 1));
+				anyChange = this.drawIconNameAndValueChange(x, y2, this.evadeIcon(), this.evadeSymbol(), evasion, this.getItemXParam(item1, 1)) ? true : anyChange;
 			} else {
-				this.drawIconNameAndValueChange(x, y2, this.coverageIcon(), this.coverageSymbol(), this.getItemXParam(this._item, 3), this.getItemXParam(item1, 3), true);
+				anyChange = this.drawIconNameAndValueChange(x, y2, this.coverageIcon(), this.coverageSymbol(), this.getItemXParam(this._item, 3), this.getItemXParam(item1, 3), true) ? true : anyChange;
 			}
-			//this.drawText(this.resistSymbol(), x, y3, textWidth);
+			//anyChange = this.drawText(this.resistSymbol(), x, y3, textWidth) ? true : anyChange;
 		}
+		return anyChange;
 	};
 	
 	Window_ShopStatus.prototype.getItemXParam = function(item, dataId) {
@@ -6463,7 +6705,7 @@
 	
 	Window_ShopStatus.prototype.drawIconNameAndValueChange = function(x, y, icon, name, itemValue, actorValue, isPercent) {
 		let change = itemValue - (actorValue ? actorValue : 0);
-		if(change === 0) { return; }
+		if(change === 0) { return false; }
 		const spriteW = $gameMap.tileWidth()/2;
 		const textWidth = spriteW*8;
 		const plusMinusWidth = spriteW*4;
@@ -6472,6 +6714,7 @@
 		this.drawIconAndText(icon, name, x, y, spriteW*5);
 		this.drawText(changeSymbol, x, y, plusMinusWidth, "right");
 		this.drawText(change+(isPercent ? "%" : ""), x, y, textWidth, "right");
+		return true;
 	};
 	
 	Window_ShopStatus.prototype.drawIconListChange = function(x, y, name, itemIcons, actorIcons) {
@@ -6485,7 +6728,7 @@
 			if(actorIcons[i] === 0 || itemIcons.indexOf(actorIcons[i]) >= 0) { continue; }
 			removedIcons.push(actorIcons[i]);
 		}
-		if(addedIcons.length === 0 && removedIcons.length === 0) { return; }
+		if(addedIcons.length === 0 && removedIcons.length === 0) { return false; }
 		const spriteW = $gameMap.tileWidth()/2;
 		const lineHeight = this.lineHeight()/2;
 		const width = spriteW*8;
@@ -6500,6 +6743,7 @@
 			this.drawText("-", x2, addedIcons.length > 0 ? y2 : y, spriteW);
 			this.drawSingleIconList(x, addedIcons.length > 0 ? y2 : y, removedIcons);
 		}
+		return true;
 	};
 	
 	Window_ShopStatus.prototype.drawSingleIconList = function(x, y, icons) {

@@ -5081,6 +5081,7 @@
 		}
 		if(selectedSprite) {
 			this._cursorBlinkTimer++;
+			this._cursorBlinkTimer = this._cursorBlinkTimer >= 2 ? 0 : this._cursorBlinkTimer;
 			if(this._cursorBlinkTimer % 2) {
 				const cursorSpacing = 4;
 				const startX = selectedSprite.x - Math.round(selectedSprite.anchor.x * selectedSprite.width) - cursorSpacing;
@@ -5199,7 +5200,7 @@
 		textState.x += ImageManager.iconWidth;
 	};
 	
-	// Window Selectable
+	// Window Scrollable
 	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
 		return this.innerHeight;
 	};
@@ -5318,6 +5319,13 @@
 	};
 	
 	// Window Status Base
+	const _Window_StatusBase__initialize = Window_StatusBase.prototype.initialize;
+	Window_StatusBase.prototype.initialize = function(rect) {
+		_Window_StatusBase__initialize.call(this, rect);
+		this._plusMinusBlinking = false;
+		this._plusMinusBlinkTimer = 0;
+	};
+	
 	Window_StatusBase.prototype.drawActorHpMp = function(actor, x, y, width) {
 		const charWidth = $gameMap.tileWidth()/2;
 		width = width || charWidth*8;
@@ -5521,15 +5529,22 @@
 	};
 	
 	Window_StatusBase.prototype.drawIconNameAndValue = function(x, y, icon, name, curValue, newValue, isPercent, usePlusMinus) {
-		console.log(curValue);
-		console.log(newValue);
 		const spriteW = $gameMap.tileWidth()/2;
 		const textWidth = spriteW*8;
 		const plusMinusWidth = spriteW*4;
 		this.drawIconAndText(icon, name, x, y, spriteW*5);
 		const newValueExists = newValue != null && newValue != undefined ;
 		this.drawText((newValueExists ? newValue : curValue)+(isPercent ? "%" : ""), x, y, textWidth, "right");
-		if (newValueExists && newValue != curValue) {
+		this.drawPlusMinus(x, y, curValue, newValue, usePlusMinus);
+	};
+	
+	Window_StatusBase.prototype.drawPlusMinus = function(x, y, curValue, newValue, usePlusMinus) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const spriteH = $gameMap.tileHeight()/2;
+		const plusMinusWidth = spriteW*4;
+		const blinkOn = this._plusMinusBlinkTimer % 2
+		const newValueExists = newValue != null && newValue != undefined ;
+		if ((!this._plusMinusBlinking || blinkOn) && newValueExists && newValue != curValue) {
 			if(usePlusMinus) {
 				let symbol = "";
 				if(newValue > curValue) {
@@ -5547,6 +5562,8 @@
 				}
 				this.drawIcon(arrowIcon, x+plusMinusWidth-spriteW, y);
 			}
+		} else if(this._plusMinusBlinking && !blinkOn) {
+			this.contents.clearRect(x+plusMinusWidth-spriteW, y, spriteW, spriteH);
 		}
 	};
 	
@@ -5821,6 +5838,21 @@
 		return 4;
 	};
 	
+	Window_EquipStatus.prototype.update = function() {
+		Window_StatusBase.prototype.update.call(this);
+		if (this._itemWindow) {
+			this._itemWindow.setSlotId(this.index());
+		}
+		if(this._actor && this._plusMinusBlinking) {
+			this._plusMinusBlinkTimer++;
+			this._plusMinusBlinkTimer = this._plusMinusBlinkTimer >= 2 ? 0 : this._plusMinusBlinkTimer;
+			this.drawAllPlusMinuses(
+				$gameSystem.windowPadding()+$gameMap.tileWidth()/2*6,
+				$gameSystem.windowPadding()
+			);
+		}
+	};
+	
 	Window_EquipStatus.prototype.refresh = function() {
 		this.contents.clear();
 		if (this._actor) {
@@ -5829,6 +5861,8 @@
 			const y = $gameSystem.windowPadding();
 			const textWidth = $gameMap.tileWidth()/2*8;
 			const lineHeight = this.lineHeight()/2;
+			this._plusMinusBlinking = !!this._tempActor;
+			this._plusMinusBlinkTimer = 0;
 			this.drawActorName(this._actor, x, y, textWidth);
 			this.drawActorClass(this._actor, x, y+lineHeight, textWidth);
 			this.drawSvActor(this._actor, x+$gameMap.tileWidth()/2*2, y + lineHeight*3, true);
@@ -5873,9 +5907,39 @@
 		this.drawIconNameAndValue(x3, y, this.armorIcon(), this.armorSymbol(), this._actor.param(3), tempActor.param(3));
 		this.drawIconNameAndValue(x3, y2, this.evadeIcon(), this.evadeSymbol(), this._actor.xparam(1), tempActor.xparam(1));
 		this.drawIconNameAndValue(x3, y3, this.parryIcon(), this.parrySymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100));
-		console.log("==========COVERAGE============");
 		this.drawIconNameAndValue(x3, y4, this.coverageIcon(), this.coverageSymbol(), Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100), true);
 		this.drawText(this.resistSymbol(), x3, y5, spriteW*4);
+	};
+	
+	Window_EquipStatus.prototype.drawAllPlusMinuses = function(x, y) {
+		const spriteW = $gameMap.tileWidth()/2;
+		const textWidth = spriteW*8;
+		const x2 = x + spriteW*9;
+		const x3 = x2 + spriteW*9;
+		const x4 = x3 + spriteW*9;
+		const lineHeight = this.lineHeight()/2;
+		const y2 = y + lineHeight;
+		const y3 = y2 + lineHeight;
+		const y4 = y3 + lineHeight;
+		const y5 = y4 + lineHeight;
+		const y6 = y5 + lineHeight;
+		
+		const tempActor = this._tempActor ? this._tempActor : this._actor;
+		
+		this.drawPlusMinus(x, y3, this._actor.sparam(6), tempActor.sparam(6));
+		this.drawPlusMinus(x, y4, this._actor.sparam(8), tempActor.sparam(8));
+		this.drawPlusMinus(x, y5, this._actor.param(6), tempActor.param(6));
+		this.drawPlusMinus(x, y6, this._actor.xparam(9), tempActor.xparam(9));
+		
+		this.drawPlusMinus(x2, y, this._actor.param(2), tempActor.param(2));
+		this.drawPlusMinus(x2, y2, this._actor.xparam(0), tempActor.xparam(0));
+		this.drawPlusMinus(x2, y3, this._actor.xparam(2), tempActor.xparam(2));
+		this.drawPlusMinus(x2, y4, this._actor.xparam(4), tempActor.xparam(4));
+		
+		this.drawPlusMinus(x3, y, this._actor.param(3), tempActor.param(3));
+		this.drawPlusMinus(x3, y2, this._actor.xparam(1), tempActor.xparam(1));
+		this.drawPlusMinus(x3, y3, Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100));
+		this.drawPlusMinus(x3, y4, Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100));
 	};
 	
 	// Window Equip Command

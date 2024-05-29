@@ -877,8 +877,8 @@
 						}
 						if(firstSkill === -1) { firstSkill = trait.dataId; } // hang onto the very first skill
 						if(
-							(unarmored && (trait.dataId === 5 || trait.dataId === 7)) || // use the first skill that is anti-armor
-							(!unarmored && (trait.dataId === 4 || trait.dataId === 6)) // use the first skill that is regular damage
+							(unarmored && (trait.dataId === 4 || trait.dataId === 7)) || // use the first skill that is regular damage
+							(!unarmored && (trait.dataId === 5 || trait.dataId === 6 || trait.dataId === 8)) // use the first skill that is anti-armor
 						) {
 							return $dataSkills[trait.dataId];
 						}
@@ -902,7 +902,7 @@
 			if(itemId === 52 || (itemId >= 53 && itemId <= 102)) {
 				// pommel strike or non-weapon tech shouldn't include the weapon bonus
 				adjustType = "ignoreWeapon";
-			} else if(itemId >= 4 && itemId <= 51 && itemId != 5 && (wtypeId === 4 || wtypeId === 5 || wtypeId === 6)) {
+			} else if(itemId >= 5 && itemId <= 51 && (wtypeId === 4 || wtypeId === 5 || wtypeId === 6)) {
 				// non-swing sword techs get a small penalty
 				adjustType = "swordTech";
 			}
@@ -914,7 +914,7 @@
 			if(adjustType === "ignoreWeapon") {
 				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 0 ? Math.round(cur.value * 100) : 0), 0);
 			}
-			const rangePenalty = 5;
+			const rangePenalty = 2;
 			const totalPenalty = Math.max(0, (this.subject().backRow() ? rangePenalty : 0) + (target.backRow() ? rangePenalty : 0) - (isReach ? rangePenalty : 0));
 			subjectHit -= totalPenalty;
 			break;
@@ -2600,7 +2600,7 @@
 	// Scene Skill
 	Scene_Skill.prototype.skillTypeWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*5;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*6;
 		const wx = Graphics.boxWidth - ww - ($gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*22);
 		const wy = this._helpWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);

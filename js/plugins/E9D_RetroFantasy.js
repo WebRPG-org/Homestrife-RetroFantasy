@@ -636,10 +636,11 @@
 		this._logWindow.endAction(this._subject);
 		this._actionWindow.hide();
 		this._phase = "turn";
+		$gameTroop.clearWentWide();
+		$gameTroop.clearHitTypes();
 		if (this._subject.numActions() === 0) {
 			this.endBattlerActions(this._subject);
 			this._subject = null;
-			$gameTroop.clearWentWide();
 		}
 	};
 	
@@ -1066,8 +1067,16 @@
 		}
 	};
 	
-	Game_Action.prototype.determineHit = function(target) {
-		const result = target.result();
+	Game_Action.prototype.determineHit = function(target, forApply) {
+		let result = null;
+		const item = this.effectiveItem();
+		if(!forApply && item.e9dInfo.randomStrike) {
+			result = new Game_ActionResult();
+			target.addRandomStrikeResult(result);
+		} else {
+			result = target.result();
+		}
+		
 		const subject = this.subject();
 		subject.clearResult();
 		result.clear();
@@ -1087,16 +1096,20 @@
 		result.physical = true;
 		result.drain = false;
 		
-		target.setHitType(result.isHit() ? "hit" : null);
+		if(!forApply && item.e9dInfo.effect) {
+			target.addHitType(result.isHit() ? "hit" : null);
+		}
 		
 		result.hitDetermined = true;
 	};
 	
 	Game_Action.prototype.apply = function(target) {
+		if(this.effectiveItem().e9dInfo.randomStrike) {
+			target.prepareRandomStrikeResult();
+		}
 		const result = target.result();
-		if(!result.hitDetermined) { this.determineHit(target); }
+		if(!result.hitDetermined) { this.determineHit(target, true); }
 		result.hitDetermined = false;
-		target.clearHitType();
 		if (result.isHit()) {
 			const item = this.effectiveItem();
 			if (item.damage.type > 0) {
@@ -1107,7 +1120,7 @@
 				const value = this.makeDamageValue(target, result.critical, result.successRate - 0.5);
 				this.executeDamage(target, value);
 			}
-			target.setHitType(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
+			target.addHitType(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
 			for (const effect of item.effects) {
 				this.applyItemEffect(target, effect);
 			}
@@ -1119,7 +1132,7 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				subject.gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)))));
+				this.subject().gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
 				target.gainTp(Math.round(this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)));
@@ -1470,11 +1483,12 @@
 	const _Game_Battler__initMembers = Game_Battler.prototype.initMembers;
 	Game_Battler.prototype.initMembers = function() {
 		_Game_Battler__initMembers.call(this);
-		this._hitType = null;
+		this._hitTypes = [];
 		this._rolls = [];
 		this._wentWide = [];
 		this._wentWideForDamageDisplay = [];
 		this._wentWideOffsets = [];
+		this._randomStrikeResults = [];
 	};
 	
 	Game_Battler.prototype.initTp = function() {
@@ -1559,7 +1573,7 @@
 	Game_Battler.prototype.performDamage = function(action) {
 		let hitBuffer = null;
 		if(!action.effectiveItem().e9dInfo.effect) {
-			const hitType = this.hitType();
+			const hitType = this._hitTypes[0];
 			hitBuffer = SoundManager.playHit(hitType);
 			this.requestEffect(hitType === "hit" ? "blink" : "blinkFast");
 		}
@@ -1586,15 +1600,15 @@
 	};
 	
 	Game_Battler.prototype.hitType = function() {
-		return this._hitType;
+		return this._hitTypes.shift();
 	};
 	
-	Game_Battler.prototype.setHitType = function(hitType) {
-		this._hitType = hitType;
+	Game_Battler.prototype.addHitType = function(hitType) {
+		this._hitTypes.push(hitType);
 	};
 	
-	Game_Battler.prototype.clearHitType = function() {
-		this._hitType = null;
+	Game_Battler.prototype.clearHitTypes = function() {
+		this._hitTypes = [];
 	};
 	
 	Game_Battler.prototype.queueRolls = function() {
@@ -1659,6 +1673,18 @@
 		this._wentWide = [];
 		this._wentWideForDamageDisplay = [];
 		this._wentWideOffsets = [];
+	};
+	
+	Game_Battler.prototype.clearRandomStrikeResults = function() {
+		this._randomStrikeResults = [];
+	};
+	
+	Game_Battler.prototype.addRandomStrikeResult = function(result) {
+		this._randomStrikeResults.push(result);
+	};
+	
+	Game_Battler.prototype.prepareRandomStrikeResult = function() {
+		this._result = this._randomStrikeResults.shift();
 	};
 	
 	// Game Actor
@@ -2010,7 +2036,7 @@
 	Game_Actor.prototype.performDamage = function(action) {
 		Game_Battler.prototype.performDamage.call(this, action);
 		if (this.isSpriteVisible()) {
-			if(this.hitType() != "hitNoDamage") {
+			if(this._hitTypes[0] != "hitNoDamage") {
 				this.requestMotion("damage");
 			}
 		} else {
@@ -2360,6 +2386,12 @@
 	Game_Unit.prototype.clearWentWide = function() {
 		for (const member of this.members()) {
 			member.clearWentWide();
+		}
+	};
+	
+	Game_Unit.prototype.clearHitTypes = function() {
+		for (const member of this.members()) {
+			member.clearHitTypes();
 		}
 	};
 	
@@ -4648,6 +4680,7 @@
 	// Sprite Animation MV
 	Sprite_AnimationMV.prototype.initMembers = function() {
 		this._targets = [];
+		this._targetHit = false;
 		this._effect = null;
 		this._shouldMirror = false;
 		this._delay = 0;
@@ -4668,6 +4701,7 @@
 		this._shouldMirror = !!shouldMirror;
 		this._delay = delay;
 		this._wentWideOffset = this._targets.length > 0 ? this._targets[0].wentWideOffset() : null;
+		this._targetHit = this._targets.length > 0 ? this._targets[0].hitType() : false;
 		if (this._effect) {
 			this.setupRate();
 			this.setupDuration();
@@ -4793,7 +4827,7 @@
 	Sprite_AnimationMV.prototype.updateFilter = function(filters, frameIndex) {
 		for (const filter of filters) {
 			for (const target of this._targets) {
-				if(target.hitType() && frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
+				if(this._targetHit && frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
 					const shiftAmount = frameIndex - filter.startFrame;
 					switch(filter.name) {
 						case "hueRotate":

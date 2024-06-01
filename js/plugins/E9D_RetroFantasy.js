@@ -103,14 +103,6 @@
  * @min 1
  * @decimals 0
  *
- * @param popupFrame
- * @text Popup Frame
- * @desc At which frame the damage should pop up.
- * @type number
- * @default 0
- * @min 0
- * @decimals 0
- *
  * @param mirror
  * @text Mirror
  * @desc Whether or not to mirror the animation graphics.
@@ -607,7 +599,10 @@
 		this._targets = targets;
 		subject.cancelMotionRefresh();
 		this._action.applyGlobal();
-		this._logWindow.startAction(subject, action);
+		for(const target of targets) {
+			action.determineHit(this.applySubstitute(target));
+		}
+		this._logWindow.startAction(subject, action, targets);
 		this._actionWindow.setItem(action.effectiveItem());
 		this._actionWindow.show();
 	};
@@ -1062,7 +1057,7 @@
 		}
 	};
 	
-	Game_Action.prototype.apply = function(target) {
+	Game_Action.prototype.determineHit = function(target) {
 		const result = target.result();
 		const subject = this.subject();
 		subject.clearResult();
@@ -1073,26 +1068,34 @@
 		result.parry = false;
 		
 		// here's the new hit/miss math
-		const rangeType = this.rangeType();
-		const isReach = this.isReach();
-		const subjectHit = this.itemHit(target, rangeType); // accuracy
-		const targetEva = this.itemEva(target, rangeType, isReach); // evasion, guarding adds a bonus
-		const successRate = this.isCertainHit() ? 0.5 : (target.wentWide() ? 0 : this.doRoll(subjectHit, targetEva));
-		result.evaded = successRate < 0.5;
+		result.rangeType = this.rangeType();
+		result.subjectHit = this.itemHit(target, result.rangeType); // accuracy
+		result.targetEva = this.itemEva(target, result.rangeType, this.isReach()); // evasion, guarding adds a bonus
+		result.successRate = this.isCertainHit() ? 0.5 : (target.wentWide() ? 0 : this.doRoll(result.subjectHit, result.targetEva));
+		result.evaded = result.successRate < 0.5;
 		// new hit/miss math over
 		
 		result.physical = true;
 		result.drain = false;
 		
+		target.setHitType(result.isHit() ? "hit" : null);
+		
+		result.hitDetermined = true;
+	};
+	
+	Game_Action.prototype.apply = function(target) {
+		const result = target.result();
+		if(!result.hitDetermined) { this.determineHit(target); }
+		result.hitDetermined = false;
 		target.clearHitType();
 		if (result.isHit()) {
 			const item = this.effectiveItem();
 			if (item.damage.type > 0) {
 				// here's the new critical math
-				result.critical = this.doRoll(subjectHit, targetEva) >= this.itemCri(target);
+				result.critical = this.doRoll(result.subjectHit, result.targetEva) >= this.itemCri(target);
 				// new critical math over
 				
-				const value = this.makeDamageValue(target, result.critical, successRate - 0.5);
+				const value = this.makeDamageValue(target, result.critical, result.successRate - 0.5);
 				this.executeDamage(target, value);
 			}
 			target.setHitType(result.hpDamage === 0 ? "hitNoDamage" : (result.critical ? "hit" : "hitArmor"));
@@ -1101,16 +1104,16 @@
 			}
 			this.applyItemUserEffect(target);
 		} else if(!this.isCertainHit()) {
-			if(rangeType === "melee") {
+			if(result.rangeType === "melee") {
 				// check for a parry
-				result.parry = this.doRoll(subjectHit, targetEva) < target.xparam(5);
+				result.parry = this.doRoll(result.subjectHit, result.targetEva) < target.xparam(5);
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				subject.gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)))));
+				subject.gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainTp(Math.round(this.stressThreshold() * (Math.min(successRate, 0.5) / 0.5)));
+				target.gainTp(Math.round(this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -1249,6 +1252,11 @@
 	Game_ActionResult.prototype.clear = function() {
 		_Game_ActionResult__clear.call(this);
 		this.parry = false;
+		this.rangeType = null;
+		this.subjectHit = null;
+		this.targetEva = null;
+		this.successRate = null;
+		this.hitDetermined = false;
 	};
 	
 	// Game Battler Base
@@ -7536,7 +7544,7 @@
 	};
 	
 	Window_BattleLog.prototype.wait = function(count) {
-		this._waitCount = count ? count : this.messageSpeed();
+		this._waitCount = !isNaN(count) ? count : this.messageSpeed();
 	};
 	
 	Window_BattleLog.prototype.performDamage = function(action, target) {
@@ -7593,11 +7601,13 @@
 		
 	};
 	
-	Window_BattleLog.prototype.startAction = function(subject, action) {
+	Window_BattleLog.prototype.startAction = function(subject, action, targets) {
+		const item = action.effectiveItem();
 		this.push("performActionStart", subject, action);
 		this.push("waitForMovement");
 		this.push("performAction", subject, action);
-		this.displayAction(subject, action.effectiveItem());
+		this.push("showAnimation", subject, action, targets.clone(), this.getEffectByName(item.e9dInfo.effect));
+		this.displayAction(subject, item);
 	};
 	
 	Window_BattleLog.prototype.endAction = function(subject) {
@@ -7632,11 +7642,6 @@
 	};
 	
 	Window_BattleLog.prototype.displayActionResults = function(subject, action, target) {
-		const effect = this.getEffectByName(action.effectiveItem().e9dInfo.effect);
-		this.push("showAnimation", subject, action, [target], effect);
-		if(effect) {
-			this.push("wait", effect.popupFrame * Sprite_AnimationMV.prototype.rate());
-		}
 		if (target.result().used) {
 			const displayDamage = !target.wentWideForDamageDisplay();
 			this.displayCritical(target);

@@ -5928,9 +5928,9 @@ Game_Troop.prototype.letterTable = function() {
         : Game_Troop.LETTER_TABLE_HALF;
 };
 
-Game_Troop.prototype.enemyNames = function(group) {
+Game_Troop.prototype.enemyNames = function() {
     const names = [];
-    for (const enemy of this.members(group)) {
+    for (const enemy of this.members()) {
         const name = enemy.originalName();
         if (enemy.isAlive() && !names.includes(name)) {
             names.push(name);

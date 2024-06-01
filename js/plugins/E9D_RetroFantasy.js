@@ -750,18 +750,43 @@
 		}
 	};
 	
+	Game_Action.prototype.makeTargets = function() {
+		const targets = [];
+		if (!this._forcing && this.subject().isConfused()) {
+			targets.push(...this.confusionTarget());
+		} else if (this.isForEveryone()) {
+			targets.push(...this.targetsForEveryone());
+		} else if (this.isForOpponent()) {
+			targets.push(...this.targetsForOpponents());
+		} else if (this.isForFriend()) {
+			targets.push(...this.targetsForFriends());
+		}
+		return this.repeatTargets(targets);
+	};
+	
 	Game_Action.prototype.confusionTarget = function() {
-		const isReach = this.isReach();
+		let unit = null;
 		switch (this.subject().confusionLevel()) {
 			case 1:
-				return this.opponentsUnit().randomTarget(false, isReach);
+				unit = this.opponentsUnit();
+				break;
 			case 2:
-				if (Math.randomInt(2) === 0) {
-					return this.opponentsUnit().randomTarget(false, isReach);
+				if(Math.randomInt(2) === 0) {
+					unit = this.opponentsUnit();
+				} else {
+					unit = this.friendsUnit();
 				}
-				return this.friendsUnit().randomTarget(false, isReach);
+				break;
 			default:
-				return this.friendsUnit().randomTarget(false, isReach);
+				unit = this.friendsUnit();
+				break;
+		}
+		const target = unit.randomTarget(false, this.isReach());
+		const item = this.effectiveItem();
+		if(item.e9dInfo.groupTarget) {
+			return unit.memberGroupMembers(target);
+		} else {
+			return [target];
 		}
 	};
 	
@@ -788,10 +813,14 @@
 	};
 	
 	Game_Action.prototype.randomTargets = function(unit) {
+		let groupIndex = -1;
+		if (this.isForOne() && this.effectiveItem().e9dInfo.groupTarget) {
+			groupIndex = unit.memberGroupIndex(this._targetIndex);
+		}
 		let goWideRate = 1;
-		const goWideScaleRate = 0.9;
+		const goWideScaleRate = 0.707;
 		const defaultSize = 2;
-		for(const member of unit.aliveMembers()) {
+		for(const member of unit.aliveMembers(groupIndex)) {
 			if(member.enemy) {
 				const size = member.enemy().e9dInfo.size;
 				goWideRate *= Math.pow(goWideScaleRate, size ? size : defaultSize);
@@ -803,22 +832,49 @@
 		let randomStrike = this.effectiveItem().e9dInfo.randomStrike;
 		unit.clearWentWide();
 		while(--randomStrike >= 0) {
-			const target = unit.randomTarget(true);
+			const target = unit.randomTarget(true, false, groupIndex);
 			target.goWide(BattleManager.getRoll() < goWideRate);
-			targets.push(unit.randomTarget());
+			targets.push(target);
 		}
 		return targets;
 	};
 	
+	Game_Action.prototype.targetsForDead = function(unit) {
+		if (this.isForOne()) {
+			return unit.smoothDeadTarget(this._targetIndex, this.effectiveItem().e9dInfo.groupTarget);
+		} else {
+			return unit.deadMembers();
+		}
+	};
+	
 	Game_Action.prototype.targetsForAlive = function(unit, forFriends) {
 		if (this.isForOne()) {
+			const groupTarget = this.effectiveItem().e9dInfo.groupTarget;
 			if (this._targetIndex < 0) {
-				return [unit.randomTarget(forFriends, this.isReach())];
+				const target = unit.randomTarget(forFriends, this.isReach());
+				if(groupTarget) {
+					return unit.memberGroupMembers(target);
+				} else {
+					return [target];
+				}
 			} else {
-				return [unit.smoothTarget(this._targetIndex)];
+				return unit.smoothTarget(this._targetIndex, groupTarget);
 			}
 		} else {
 			return unit.aliveMembers();
+		}
+	};
+	
+	Game_Action.prototype.targetsForDeadAndAlive = function(unit) {
+		if (this.isForOne()) {
+			const member = unit.members()[this._targetIndex];
+			if(this.effectiveItem().e9dInfo.groupTarget) {
+				return unit.memberGroupMembers(member);
+			} else {
+				return [member];
+			}
+		} else {
+			return unit.members();
 		}
 	};
 	
@@ -865,7 +921,7 @@
 			const weapon = this.subject().equips ? this.subject().equips()[0] : null;
 			if(weapon) {
 				const target = this.opponentsUnit().members()[this._targetIndex];
-				const unarmored = target.def <= 0 || target.cev <= 0;
+				const unarmored = target ? target.def <= 0 || target.cev <= 0 : true;
 				let firstSkill = -1;
 				for(const trait of weapon.traits) {
 					if(trait.code === 43) {
@@ -892,7 +948,7 @@
 		return this.item();
 	};
 	
-	Game_Action.prototype.itemHit = function(target, rangeType, isReach) {
+	Game_Action.prototype.itemHit = function(target, rangeType) {
 		let adjustType = "none";
 		const weapon = this.subject().equips ? this.subject().equips()[0] : null;
 		const item = this.effectiveItem();
@@ -914,9 +970,6 @@
 			if(adjustType === "ignoreWeapon") {
 				subjectHit -= weapon.traits.reduce((prev, cur) => prev + (cur.code === Game_BattlerBase.TRAIT_XPARAM && cur.dataId === 0 ? Math.round(cur.value * 100) : 0), 0);
 			}
-			const rangePenalty = 2;
-			const totalPenalty = Math.max(0, (this.subject().backRow() ? rangePenalty : 0) + (target.backRow() ? rangePenalty : 0) - (isReach ? rangePenalty : 0));
-			subjectHit -= totalPenalty;
 			break;
 		case "ranged":
 			subjectHit = this.subject().xparam(2);
@@ -960,8 +1013,26 @@
 		return hits[Math.floor(subject.getRoll(preview) * hits.length)];
 	};
 
-	Game_Action.prototype.itemEva = function(target) {
-		return Math.max(0, target.eva + (target.isGuard() ? 5 : 0) - Math.floor(target.tp / this.stressThreshold()));
+	Game_Action.prototype.itemEva = function(target, rangeType, isReach) {
+		let distance = 0;
+		const subject = this.subject();
+		const friendsUnit = this.friendsUnit();
+		const friendsGroupIsBackRow = friendsUnit.memberGroupIsBackRow(subject);
+		const friendsUnitFrontlineGroupsDown = friendsUnit.frontlineGroupsDown();
+		const opponentsUnit = this.opponentsUnit();
+		const opponentsGroupIsBackRow = opponentsUnit.memberGroupIsBackRow(target);
+		const opponentsUnitFrontlineGroupsDown = opponentsUnit.frontlineGroupsDown();
+		if(rangeType === "melee") {
+			distance += subject.backRow() && !friendsUnit.groupFrontlineDown(subject) ? 1 : 0;
+			distance += target.backRow() && !opponentsUnit.groupFrontlineDown(target) ? 1 : 0;
+			distance -= distance > 0 && isReach ? 1 : 0;
+			distance += friendsGroupIsBackRow && !friendsUnitFrontlineGroupsDown ? 2 : 0;
+			distance += opponentsGroupIsBackRow && !opponentsUnitFrontlineGroupsDown ? 2 : 0;
+		} else {
+			distance += friendsGroupIsBackRow && !friendsUnitFrontlineGroupsDown ? 1 : 0;
+			distance += opponentsGroupIsBackRow && !opponentsUnitFrontlineGroupsDown ? 1 : 0;
+		}
+		return Math.max(0, target.eva + (target.isGuard() ? 5 : 0) - (distance*2) - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
 	Game_Action.prototype.itemCri = function(target) {
@@ -1004,8 +1075,8 @@
 		// here's the new hit/miss math
 		const rangeType = this.rangeType();
 		const isReach = this.isReach();
-		const subjectHit = this.itemHit(target, rangeType, isReach); // accuracy
-		const targetEva = this.itemEva(target); // evasion, guarding adds a bonus
+		const subjectHit = this.itemHit(target, rangeType); // accuracy
+		const targetEva = this.itemEva(target, rangeType, isReach); // evasion, guarding adds a bonus
 		const successRate = this.isCertainHit() ? 0.5 : (target.wentWide() ? 0 : this.doRoll(subjectHit, targetEva));
 		result.evaded = successRate < 0.5;
 		// new hit/miss math over
@@ -2049,6 +2120,10 @@
 	Game_Unit.prototype.members = function(groupIndex) {
 		return [];
 	};
+	
+	Game_Unit.prototype.groups = function() {
+		return [];
+	};
 
 	Game_Unit.prototype.aliveMembers = function(groupIndex) {
 		return this.members(groupIndex).filter(member => member.isAlive());
@@ -2060,6 +2135,34 @@
 
 	Game_Unit.prototype.movableMembers = function(groupIndex) {
 		return this.members(groupIndex).filter(member => member.canMove());
+	};
+	
+	Game_Unit.prototype.memberGroupMembers = function(checkMember) {
+		return this.members();
+	};
+	
+	Game_Unit.prototype.memberGroupIndex = function(checkMember) {
+		return 0;
+	};
+	
+	Game_Unit.prototype.memberGroupIsBackRow = function(checkMember) {
+		return false;
+	};
+	
+	Game_Unit.prototype.groupFrontlineDown = function(checkMember) {
+		for(const member of this.aliveMembers(this.memberGroupIndex(checkMember))) {
+			if(!member.backRow()) { return false; }
+		}
+		return true;
+	};
+	
+	Game_Unit.prototype.frontlineGroupsDown = function() {
+		const groups = this.groups();
+		for(let i = 0; i < groups.length; i++) {
+			
+			if(!groups[i].backRow && this.aliveMembers(i).length > 0) { return false; }
+		}
+		return true;
 	};
 
 	Game_Unit.prototype.clearActions = function(groupIndex) {
@@ -2119,20 +2222,43 @@
 		}
 		return target;
 	};
-	
-	Game_Unit.prototype.randomDeadTarget = function(groupIndex) {
-		const members = this.deadMembers(groupIndex);
-		return members.length ? members[Math.randomInt(members.length)] : null;
+
+	Game_Unit.prototype.smoothTarget = function(index, groupTarget) {
+		let members = [];
+		if(groupTarget) {
+			const groupMembers = this.memberGroupMembers(index);
+			for(const member of groupMembers) {
+				if(member && member.isAlive()) {
+					members.push(member);
+				}
+			}
+			if(members.length === 0) {
+				members.push(this.aliveMembers()[0]);
+			}
+		} else {
+			const member = this.members()[Math.max(0, index)];
+			members.push(member && member.isAlive() ? member : this.aliveMembers()[0]);
+		}
+		return members;
 	};
 
-	Game_Unit.prototype.smoothTarget = function(index, groupIndex) {
-		const member = this.members(groupIndex)[Math.max(0, index)];
-		return member && member.isAlive() ? member : this.aliveMembers(groupIndex)[0];
-	};
-
-	Game_Unit.prototype.smoothDeadTarget = function(index, groupIndex) {
-		const member = this.members(groupIndex)[Math.max(0, index)];
-		return member && member.isDead() ? member : this.deadMembers(groupIndex)[0];
+	Game_Unit.prototype.smoothDeadTarget = function(index, groupTarget) {
+		let members = [];
+		if(groupTarget) {
+			const groupMembers = this.memberGroupMembers(index);
+			for(const member of groupMembers) {
+				if(member && member.isDead()) {
+					members.push(member);
+				}
+			}
+			if(members.length === 0) {
+				members.push(this.deadMembers()[0]);
+			}
+		} else {
+			const member = this.members()[Math.max(0, index)];
+			members.push(member && member.isDead() ? member : this.deadMembers()[0]);
+		}
+		return members;
 	};
 
 	Game_Unit.prototype.clearResults = function(groupIndex) {
@@ -2161,13 +2287,22 @@
 		}
 	};
 
-	Game_Unit.prototype.select = function(activeMember, groupIndex) {
-		for (const member of this.members(groupIndex)) {
+	Game_Unit.prototype.select = function(activeMember, groupSelect) {
+		let memberFound = false;
+		for (const member of this.members()) {
+			member.deselect();
 			if (member === activeMember) {
-				member.select();
-			} else {
-				member.deselect();
+				memberFound = true;
 			}
+		}
+		if(!memberFound) { return; }
+		if(groupSelect) {
+			const groupMembers = this.memberGroupMembers(activeMember);
+			for(const groupMember of groupMembers) {
+				groupMember.select();
+			}
+		} else {
+			activeMember.select();
 		}
 	};
 
@@ -2212,6 +2347,13 @@
 	};
 	
 	// Game Party
+	Game_Unit.prototype.groups = function() {
+		const group = {};
+		group.members = this.battleMembers();
+		group.backRow = false;
+		return [group];
+	};
+	
 	Game_Party.prototype.swapOrder = function(index1, index2) {
 		if(index1 === index2) {
 			$gameActors.actor(this._actors[index1]).toggleRow();
@@ -2272,6 +2414,49 @@
 		}
 	};
 	
+	Game_Troop.prototype.groups = function() {
+		return this._groups;
+	};
+	
+	Game_Troop.prototype.memberGroupMembers = function(checkMember) {
+		if(!isNaN(checkMember)) {
+			checkMember = this.members()[checkMember];
+		}
+		for(const group of this._groups) {
+			for(const member of group.members) {
+				if(checkMember === member) {
+					return group.members;
+				}
+			}
+		}
+		return [];
+	};
+	
+	Game_Troop.prototype.memberGroupIndex = function(checkMember) {
+		if(!isNaN(checkMember)) {
+			checkMember = this.members()[checkMember];
+		}
+		for(let i = 0; i < this._groups.length; i++) {
+			for(const member of this._groups[i].members) {
+				if(checkMember === member) {
+					return i;
+				}
+			}
+		}
+		return -1;
+	};
+	
+	Game_Troop.prototype.memberGroupIsBackRow = function(checkMember) {
+		for(const group of this._groups) {
+			for(const member of group.members) {
+				if(checkMember === member) {
+					return group.backRow;
+				}
+			}
+		}
+		return false;
+	};
+	
 	Game_Troop.prototype.setup = function(troopId) {
 		this.clear();
 		this._troopId = troopId;
@@ -2291,16 +2476,18 @@
 			}
 		}
 		this.makeUniqueNames();
-		if(!troop.groups) { return; }
-		for (const groupInfo of troop.groups) {
+		const groups = troop.e9dInfo.groups;
+		if(!groups) { return; }
+		for (const groupInfo of groups) {
 			const group = {};
-			group.backRow = groupInfo.backRow;
+			group.backRow = groupInfo.backRow ? true : false;
 			group.members = [];
 			for (const memberInfo of groupInfo.members) {
-				if(!this._enemies[memberInfo.index]) { continue; }
-				const enemy = this._enemies[memberInfo.index];
+				const enemyIndex = memberInfo.index-1;
+				const enemy = this._enemies[enemyIndex];
+				if(enemyIndex < 0 || !enemy) { continue; }
 				if(memberInfo.backRow) { enemy.toggleRow(); }
-				group.members.push(member);
+				group.members.push(enemy);
 			}
 			if(group.members.length === 0) { continue; }
 			this._groups.push(group);
@@ -3189,6 +3376,7 @@
 		action.setAttack();
 		this.onSelectAction();
 		this._actorCommandWindow.hide();
+		this._enemyWindow.setGroupSelect(action.effectiveItem().e9dInfo.groupTarget);
 	};
 	
 	Scene_Battle.prototype.commandSkill = function() {
@@ -3227,7 +3415,17 @@
 		this.turnInputsDone();
 	};
 	
+	Scene_Battle.prototype.startActorSelection = function() {
+		const action = BattleManager.inputtingAction();
+		this._actorWindow.setGroupSelect(action.effectiveItem().e9dInfo.groupTarget);
+		this._actorWindow.refresh();
+		this._actorWindow.show();
+		this._actorWindow.activate();
+	};
+	
 	Scene_Battle.prototype.startEnemySelection = function() {
+		const action = BattleManager.inputtingAction();
+		this._enemyWindow.setGroupSelect(action.effectiveItem().e9dInfo.groupTarget);
 		this._enemyWindow.refresh();
 		this._enemyWindow.show();
 		this._enemyWindow.select(0);
@@ -5068,35 +5266,44 @@
 	};
 	
 	Spriteset_Battle.prototype.updateCursor = function() {
-		let selectedSprite = null;
+		const selectedSprites = [];
 		for(const actorSprite of this._actorSprites) {
 			if(actorSprite.isSelected()) {
-				selectedSprite = actorSprite;
+				selectedSprites.push(actorSprite);
 			}
 		}
 		for(const enemySprite of this._enemySprites) {
 			if(enemySprite.isSelected()) {
-				selectedSprite = enemySprite;
+				selectedSprites.push(enemySprite);
 			}
 		}
-		if(selectedSprite) {
+		if(selectedSprites.length > 0) {
 			this._cursorBlinkTimer++;
 			this._cursorBlinkTimer = this._cursorBlinkTimer >= 2 ? 0 : this._cursorBlinkTimer;
-			if(this._cursorBlinkTimer % 2) {
+			if(this._cursorBlinkTimer % 2 && this._cursorSprites.length >= 4) {
 				const cursorSpacing = 4;
-				const startX = selectedSprite.x - Math.round(selectedSprite.anchor.x * selectedSprite.width) - cursorSpacing;
-				const startY = selectedSprite.y - Math.round(selectedSprite.anchor.y * selectedSprite.height) - cursorSpacing;
-				let curX = startX;
-				let curY = startY;
-				for(const cursorSprite of this._cursorSprites) {
-					cursorSprite.show();
-					cursorSprite.move(curX, curY);
-					curX += selectedSprite.width;
-					if(curX > startX + selectedSprite.width) {
-						curX = startX;
-						curY += selectedSprite.height;
-					}
+				let groupLeft = null;
+				let groupRight = null;
+				let groupTop = null;
+				let groupBottom = null;
+				for(const selectedSprite of selectedSprites) {
+					const spriteLeft = selectedSprite.x - Math.round(selectedSprite.anchor.x * selectedSprite.width) - cursorSpacing;
+					const spriteRight = selectedSprite.x + Math.round((1 - selectedSprite.anchor.x) * selectedSprite.width) - cursorSpacing;
+					const spriteTop = selectedSprite.y - Math.round(selectedSprite.anchor.y * selectedSprite.height) - cursorSpacing;
+					const spriteBottom = selectedSprite.y + Math.round((1 - selectedSprite.anchor.y) * selectedSprite.height) - cursorSpacing;
+					if(groupLeft === null || spriteLeft < groupLeft) { groupLeft = spriteLeft; }
+					if(groupRight === null || spriteRight > groupRight) { groupRight = spriteRight; }
+					if(groupTop === null || spriteTop < groupTop) { groupTop = spriteTop; }
+					if(groupBottom === null || spriteBottom > groupBottom) { groupBottom = spriteBottom; }
 				}
+				this._cursorSprites[0].move(groupLeft, groupTop);
+				this._cursorSprites[1].move(groupRight, groupTop);
+				this._cursorSprites[2].move(groupLeft, groupBottom);
+				this._cursorSprites[3].move(groupRight, groupBottom);
+				this._cursorSprites[0].show();
+				this._cursorSprites[1].show();
+				this._cursorSprites[2].show();
+				this._cursorSprites[3].show();
 			} else {
 				for(const cursorSprite of this._cursorSprites) {
 					cursorSprite.hide();
@@ -7752,7 +7959,33 @@
 		this._actorCursors[members.indexOf(actor)] = sprite;
 	};
 	
+	// Window Battle Actor
+	const _Window_BattleActor__initialize = Window_BattleActor.prototype.initialize;
+	Window_BattleActor.prototype.initialize = function(rect) {
+		_Window_BattleActor__initialize.call(this, rect);
+		this._groupSelect = false;
+	};
+	
+	Window_BattleActor.prototype.setGroupSelect = function(groupSelect) {
+		this._groupSelect = groupSelect;
+	};
+	
+	Window_BattleActor.prototype.select = function(index) {
+		Window_BattleStatus.prototype.select.call(this, index);
+		$gameParty.select(this.actor(index), this._groupSelect);
+	};
+	
 	// Window Battle Enemy
+	const _Window_BattleEnemy__initialize = Window_BattleEnemy.prototype.initialize;
+	Window_BattleEnemy.prototype.initialize = function(rect) {
+		_Window_BattleEnemy__initialize.call(this, rect);
+		this._groupSelect = false;
+	};
+	
+	Window_BattleEnemy.prototype.setGroupSelect = function(groupSelect) {
+		this._groupSelect = groupSelect;
+	};
+	
 	Window_BattleEnemy.prototype.colSpacing = function() {
 		return 4;
 	};
@@ -7763,6 +7996,11 @@
 		const rect = this.itemLineRect(index);
 		rect.y += this.itemPadding();
 		this.drawText(name, rect.x, rect.y, rect.width);
+	};
+	
+	Window_BattleEnemy.prototype.select = function(index) {
+		Window_Selectable.prototype.select.call(this, index);
+		$gameTroop.select(this.enemy(), this._groupSelect);
 	};
 	
 	// Window Title Command

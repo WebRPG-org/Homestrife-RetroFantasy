@@ -7690,6 +7690,7 @@
 			if (target.result().hpDamage < 0) {
 				this.push("performRecovery", target);
 			}
+			this.push("addText", this.makeHpDamageText(target));
 		}
 	};
 	

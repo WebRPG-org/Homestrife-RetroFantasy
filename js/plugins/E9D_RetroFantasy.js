@@ -607,6 +607,15 @@
 		this._actionWindow.show();
 	};
 	
+	BattleManager.updateAction = function() {
+		const target = this._targets.shift();
+		if (target) {
+			this.invokeAction(this._subject, target, this._targets.length === 0);
+		} else {
+			this.endAction();
+		}
+	};
+	
 	BattleManager.endAction = function() {
 		const item = this._action.effectiveItem();
 		this._subject.useItem(item);
@@ -634,17 +643,17 @@
 		}
 	};
 	
-	BattleManager.invokeAction = function(subject, target) {
+	BattleManager.invokeAction = function(subject, target, finalTarget) {
 		this._logWindow.push("pushBaseLine");
-		this.invokeNormalAction(subject, target);
+		this.invokeNormalAction(subject, target, finalTarget);
 		subject.setLastTarget(target);
 		this._logWindow.push("popBaseLine");
 	};
 	
-	BattleManager.invokeNormalAction = function(subject, target) {
+	BattleManager.invokeNormalAction = function(subject, target, finalTarget) {
 		const realTarget = this.applySubstitute(target);
 		this._action.apply(realTarget);
-		this._logWindow.displayActionResults(subject, this._action, realTarget);
+		this._logWindow.displayActionResults(subject, this._action, realTarget, finalTarget);
 	};
 	
 	BattleManager.endBattle = function(result) {
@@ -7641,7 +7650,7 @@
 		this.contents.clearRect(rect.x, rect.y, rect.width, rect.height);
 	};
 	
-	Window_BattleLog.prototype.displayActionResults = function(subject, action, target) {
+	Window_BattleLog.prototype.displayActionResults = function(subject, action, target, finalTarget) {
 		if (target.result().used) {
 			const displayDamage = !target.wentWideForDamageDisplay();
 			this.displayCritical(target);
@@ -7650,7 +7659,7 @@
 			}
 			this.push("popupDamage", subject);
 			if(displayDamage) {
-				this.displayDamage(action, target);
+				this.displayDamage(action, target, finalTarget);
 			}
 			this.displayAffectedStatus(target);
 			this.displayFailure(target);
@@ -7670,19 +7679,19 @@
 		// do nothing
 	};
 	
-	Window_BattleLog.prototype.displayDamage = function(action, target) {
+	Window_BattleLog.prototype.displayDamage = function(action, target, finalTarget) {
 		if (target.result().missed) {
 			this.displayMiss(target);
 		} else if (target.result().evaded) {
 			this.displayEvasion(target);
 		} else {
-			this.displayHpDamage(action, target);
+			this.displayHpDamage(action, target, finalTarget);
 			this.displayMpDamage(target);
 			this.displayTpDamage(target);
 		}
 	};
 	
-	Window_BattleLog.prototype.displayHpDamage = function(action, target) {
+	Window_BattleLog.prototype.displayHpDamage = function(action, target, finalTarget) {
 		if (target.result().hpAffected) {
 			if (target.result().hpDamage >= 0 && !target.result().drain) {
 				this.push("performDamage", action, target);
@@ -7690,7 +7699,9 @@
 			if (target.result().hpDamage < 0) {
 				this.push("performRecovery", target);
 			}
-			this.push("addText", this.makeHpDamageText(target));
+			if(finalTarget) {
+				this.push("addText", this.makeHpDamageText(target));
+			}
 		}
 	};
 	

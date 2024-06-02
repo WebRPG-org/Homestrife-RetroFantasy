@@ -1164,14 +1164,11 @@
 	Game_Action.prototype.makeDamageValue = function(target, critical, successRate) {
 		const item = this.effectiveItem();
 		
-		// get the power from either the weapon or the skill itself. bonus damage from hit success amount
-		let power = this.subject().atk;
-		if(item.stypeId != 1 || (item.id >= 53 && item.id <= 102)) {
-			// get power from the skill itself if its not an attack, and not one of the first 50 techs
-			power = this.evalDamageFormula(target);
-		}
+		// get power from total attack, or class/enemy base attack if its a non-weapon tech.
+		// or, get power from the skill itself if its not a tech.
+		let power = item.id >= 53 && item.id <= 102 ? this.subject().paramBase(2) : (item.stypeId === 1 ? this.subject().atk : this.evalDamageFormula(target));
 		const powerMult = item.id === 52 ? 7.5 : 10; // pommel attack uses partial damage
-		power = power * powerMult * (1 + successRate);
+		power = power * powerMult * (1 + successRate); // bonus damage from hit success amount, up to 50% extra
 		
 		// armor, unless its a critical or stress
 		const armor = critical || this.isMpEffect() ? 0 : target.def * 5;

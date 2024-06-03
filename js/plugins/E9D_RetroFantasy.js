@@ -546,6 +546,18 @@
 		}
 	};
 	
+	SoundManager.playCancel = function(isBig) {
+		if ($dataSystem) {
+			const dataSe = $dataSystem.sounds[2];
+			const se = {};
+			se.name = dataSe.name + (isBig ? "Big" : "");
+			se.volume = dataSe.volume;
+			se.pitch = dataSe.pitch;
+			se.pan = dataSe.pan;
+			AudioManager.playStaticSe(se);
+		}
+	};
+	
 	SoundManager.playSwing = function(weight) {
 		const se = {};
 		se.name = weight === "heavy" ? "swingHeavy" : "swing";
@@ -2735,6 +2747,15 @@
 		this.addWindow(this._menuButton);
 	};
 	
+	Scene_Map.prototype.callMenu = function() {
+		SoundManager.playEquip();
+		SceneManager.push(Scene_Menu);
+		Window_MenuCommand.initCommandPosition();
+		$gameTemp.clearDestination();
+		this._mapNameWindow.hide();
+		this._waitCount = 2;
+	};
+	
 	// Scene Menu Base
 	Scene_MenuBase.prototype.createBackground = function() {
 		this._backgroundSprite = new Sprite();
@@ -3222,7 +3243,7 @@
 	
 	Scene_Shop.prototype.commandWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*4;
 		const wx = this._buyWindow.x - ww;
 		const wy = this._goldWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -5532,6 +5553,14 @@
 	};
 	
 	// Window Scrollable
+	Window_Scrollable.prototype.smoothScrollTo = function(x, y) {
+		this.scrollTo(x, y);
+	};
+
+	Window_Scrollable.prototype.smoothScrollBy = function(x, y) {
+		this.scrollBy(x, y);
+	};
+	
 	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
 		return this.innerHeight;
 	};
@@ -6097,6 +6126,13 @@
 		if (this.needsCommand("status")) {
 			this.addCommand(TextManager.status, "status", enabled);
 		}
+	};
+	
+	Window_MenuCommand.prototype.processCancel = function() {
+		SoundManager.playCancel(true);
+		this.updateInputData();
+		this.deactivate();
+		this.callCancelHandler();
 	};
 	
 	// Window Menu Status
@@ -6861,6 +6897,18 @@
 		return 1;
 	};
 	
+	Window_ShopCommand.prototype.makeCommandList = function() {
+		this.addCommand(TextManager.buy, "buy");
+		this.addCommand(TextManager.sell, "sell", !this._purchaseOnly);
+	};
+	
+	Window_ShopCommand.prototype.processCancel = function() {
+		SoundManager.playCancel(true);
+		this.updateInputData();
+		this.deactivate();
+		this.callCancelHandler();
+	};
+	
 	// Window Shop Buy
 	Window_ShopBuy.prototype.itemHeight = function() {
 		return Window_Selectable.prototype.itemHeight.call(this)/2 * 3;
@@ -7282,6 +7330,13 @@
 		this.setCursorRect(rect.x, rect.y, rect.width, rect.height);
 	};
 	
+	Window_NameEdit.prototype.processCancel = function() {
+		SoundManager.playCancel(true);
+		this.updateInputData();
+		this.deactivate();
+		this.callCancelHandler();
+	};
+	
 	// Window Name Input
 	Window_NameInput.prototype.itemWidth = function() {
 		return Window_Selectable.prototype.itemWidth.call(this);
@@ -7339,6 +7394,60 @@
 	
 	Window_NameInput.prototype.drawOk = function(x, y) {
 		this.drawIcon(95, x, y);
+	};
+	
+	Window_NameInput.prototype.processCursorMove = function() {
+		const lastPage = this._page;
+		Window_Selectable.prototype.processCursorMove.call(this);
+		this.updateCursor();
+		if (this._page !== lastPage) {
+			SoundManager.playEquip();
+		}
+	};
+	
+	Window_NameInput.prototype.processJump = function() {
+		if (this._index !== 89) {
+			this._index = 89;
+			this.playCursorSound("pageDown");
+		}
+	};
+
+	Window_NameInput.prototype.processBack = function() {
+		if (this._editWindow.back()) {
+			SoundManager.playCancel(true);
+		}
+	};
+
+	Window_NameInput.prototype.processOk = function() {
+		if (this.character()) {
+			this.onNameAdd();
+		} else if (this.isPageChange()) {
+			SoundManager.playEquip();
+			this.cursorPagedown();
+		} else if (this.isOk()) {
+			this.onNameOk();
+		}
+	};
+
+	Window_NameInput.prototype.onNameAdd = function() {
+		if (this._editWindow.add(this.character())) {
+			SoundManager.playEquip();
+		} else {
+			this.playBuzzerSound();
+		}
+	};
+
+	Window_NameInput.prototype.onNameOk = function() {
+		if (this._editWindow.name() === "") {
+			if (this._editWindow.restoreDefault()) {
+				SoundManager.playEquip();
+			} else {
+				this.playBuzzerSound();
+			}
+		} else {
+			SoundManager.playEquip();
+			this.callOkHandler();
+		}
 	};
 	
 	// Window Name Box
@@ -8184,6 +8293,10 @@
 		$gameParty.select(this.actor(index), this._groupSelect);
 	};
 	
+	Window_BattleActor.prototype.playOkSound = function() {
+		SoundManager.playEquip();
+	};
+	
 	// Window Battle Enemy
 	const _Window_BattleEnemy__initialize = Window_BattleEnemy.prototype.initialize;
 	Window_BattleEnemy.prototype.initialize = function(rect) {
@@ -8210,6 +8323,10 @@
 	Window_BattleEnemy.prototype.select = function(index) {
 		Window_Selectable.prototype.select.call(this, index);
 		$gameTroop.select(this.enemy(), this._groupSelect);
+	};
+	
+	Window_BattleEnemy.prototype.playOkSound = function() {
+		SoundManager.playEquip();
 	};
 	
 	// Window Title Command

@@ -534,6 +534,12 @@
 				case "right":
 					se.name += "Right";
 					break;
+				case "pageup":
+					se.name += "PageUp";
+					break;
+				case "pagedown":
+					se.name += "PageDown";
+					break;
 				}
 			}
 			AudioManager.playStaticSe(se);
@@ -3016,7 +3022,7 @@
 
 	Scene_SkillLevels.prototype.skillsConfirmWindowRect = function() {
 		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()/2*8;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*2;
 		const wx = Graphics.boxWidth - ww - this._skillsWindow.width;
 		const wy = this._skillsStatusWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
@@ -5616,11 +5622,11 @@
 			}
 			if (!this.isHandled("pagedown") && Input.isTriggered("pagedown")) {
 				this.cursorPagedown();
-				direction = "down";
+				direction = "pageDown";
 			}
 			if (!this.isHandled("pageup") && Input.isTriggered("pageup")) {
 				this.cursorPageup();
-				direction = "up";
+				direction = "pageUp";
 			}
 			if (this.index() !== lastIndex) {
 				this.playCursorSound(direction);
@@ -6680,7 +6686,6 @@
 	};
 	
 	Window_SkillLevelsConfirm.prototype.makeCommandList = function() {
-		this.addCommand("Cancel", "cancel", true);
 		this.addCommand("Upgrade", "upgrade", this._upgradeEnabled);
 		this.addCommand("Refund", "refund", this._refundEnabled);
 	};
@@ -6697,6 +6702,10 @@
 			this._refundEnabled = enabled;
 			this.refresh();
 		}
+	};
+	
+	Window_SkillLevelsConfirm.prototype.playOkSound = function() {
+		SoundManager.playEquip();
 	};
 	
 	// Window Status

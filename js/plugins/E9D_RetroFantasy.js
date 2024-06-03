@@ -512,6 +512,34 @@
 	};
 	
 	// Sound Manager
+	SoundManager.playCursor = function(direction) {
+		if ($dataSystem) {
+			const dataSe = $dataSystem.sounds[0];
+			const se = {};
+			se.name = dataSe.name;
+			se.volume = dataSe.volume;
+			se.pitch = dataSe.pitch;
+			se.pan = dataSe.pan;
+			if(direction) {
+				switch(direction.toLowerCase()) {
+				case "up":
+					se.name += "Up";
+					break;
+				case "down":
+					se.name += "Down";
+					break;
+				case "left":
+					se.name += "Left";
+					break;
+				case "right":
+					se.name += "Right";
+					break;
+				}
+			}
+			AudioManager.playStaticSe(se);
+		}
+	};
+	
 	SoundManager.playSwing = function(weight) {
 		const se = {};
 		se.name = weight === "heavy" ? "swingHeavy" : "swing";
@@ -2738,6 +2766,22 @@
 		this._pagedownButton.setClickHandler(this.nextActor.bind(this));
 	};
 	
+	Scene_MenuBase.prototype.nextActor = function() {
+		$gameParty.makeMenuActorNext();
+		this.updateActor();
+		this.onActorChange("right");
+	};
+
+	Scene_MenuBase.prototype.previousActor = function() {
+		$gameParty.makeMenuActorPrevious();
+		this.updateActor();
+		this.onActorChange("left");
+	};
+
+	Scene_MenuBase.prototype.onActorChange = function(direction) {
+		SoundManager.playCursor(direction);
+	};
+	
 	// Scene Menu
 	Scene_Menu.prototype.create = function() {
 		Scene_MenuBase.prototype.create.call(this);
@@ -2855,6 +2899,13 @@
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
+	Scene_Skill.prototype.onActorChange = function(direction) {
+		Scene_MenuBase.prototype.onActorChange.call(this, direction);
+		this.refreshActor();
+		this._itemWindow.deselect();
+		this._skillTypeWindow.activate();
+	};
+	
 	// Scene Equip
 	Scene_Equip.prototype.statusWindowRect = function() {
 		const ww = Graphics.boxWidth;
@@ -2886,6 +2937,15 @@
 		const wx = Graphics.boxWidth - ww;
 		const wy = this._statusWindow.y - wh;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Equip.prototype.onActorChange = function(direction) {
+		Scene_MenuBase.prototype.onActorChange.call(this, direction);
+		this.refreshActor();
+		this.hideItemWindow();
+		this._slotWindow.deselect();
+		this._slotWindow.deactivate();
+		this._commandWindow.activate();
 	};
 	
 	// Scene Skill Levels
@@ -3024,6 +3084,12 @@
 	Scene_Status.prototype.refreshActor = function() {
 		const actor = this.actor();
 		this._statusWindow.setActor(actor);
+	};
+	
+	Scene_Status.prototype.onActorChange = function(direction) {
+		Scene_MenuBase.prototype.onActorChange.call(this, direction);
+		this.refreshActor();
+		this._statusWindow.activate();
 	};
 	
 	// Scene Options
@@ -5455,6 +5521,10 @@
 		textState.x += ImageManager.iconWidth;
 	};
 	
+	Window_Base.prototype.playCursorSound = function(direction) {
+		SoundManager.playCursor(direction);
+	};
+	
 	// Window Scrollable
 	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
 		return this.innerHeight;
@@ -5500,8 +5570,62 @@
 		return (this.maxRows()+1) * this.itemHeight();
 	};
 	
-	Window_Scrollable.prototype.overallHeightForDownArrow = function() {
+	Window_Selectable.prototype.overallHeightForDownArrow = function() {
 		return this.maxRows() * this.itemHeight();
+	};
+	
+	Window_Selectable.prototype.cursorRight = function(wrap) {
+		const index = this.index();
+		const maxItems = this.maxItems();
+		const maxCols = this.maxCols();
+		const horizontal = this.isHorizontal();
+		if (maxCols >= 2 && ((index < maxItems - 1 && index % maxCols < maxCols - 1) || (wrap && horizontal))) {
+			this.smoothSelect((index + 1) % maxItems);
+		}
+	};
+
+	Window_Selectable.prototype.cursorLeft = function(wrap) {
+		const index = Math.max(0, this.index());
+		const maxItems = this.maxItems();
+		const maxCols = this.maxCols();
+		const horizontal = this.isHorizontal();
+		if (maxCols >= 2 && ((index > 0 && index % maxCols > 0) || (wrap && horizontal))) {
+			this.smoothSelect((index - 1 + maxItems) % maxItems);
+		}
+	};
+	
+	Window_Selectable.prototype.processCursorMove = function() {
+		if (this.isCursorMovable()) {
+			const lastIndex = this.index();
+			let direction = "";
+			if (Input.isRepeated("down")) {
+				this.cursorDown(Input.isTriggered("down"));
+				direction = "down";
+			}
+			if (Input.isRepeated("up")) {
+				this.cursorUp(Input.isTriggered("up"));
+				direction = "up";
+			}
+			if (Input.isRepeated("right")) {
+				this.cursorRight(Input.isTriggered("right"));
+				direction = "right";
+			}
+			if (Input.isRepeated("left")) {
+				this.cursorLeft(Input.isTriggered("left"));
+				direction = "left";
+			}
+			if (!this.isHandled("pagedown") && Input.isTriggered("pagedown")) {
+				this.cursorPagedown();
+				direction = "down";
+			}
+			if (!this.isHandled("pageup") && Input.isTriggered("pageup")) {
+				this.cursorPageup();
+				direction = "up";
+			}
+			if (this.index() !== lastIndex) {
+				this.playCursorSound(direction);
+			}
+		}
 	};
 	
 	Window_Selectable.prototype.ensureCursorVisible = function(smooth) {
@@ -6876,6 +7000,20 @@
 		this.drawText(resultGold+"", x, y4, width, "right");
 	};
 	
+	Window_ShopNumber.prototype.changeNumber = function(amount) {
+		const lastNumber = this._number;
+		this._number = (this._number + amount).clamp(1, this._max);
+		if (this._number !== lastNumber) {
+			let direction = "";
+			if(amount < -1) { direction = "down"; }
+			else if(amount === -1) { direction = "left"; }
+			else if(amount === 1) { direction = "right"; }
+			else if(amount > 1) { direction = "up"; }
+			this.playCursorSound(direction);
+			this.refresh();
+		}
+	};
+	
 	Window_ShopNumber.prototype.itemRect = function() {
 		const padding = this.itemPadding();
 		const spriteW = $gameMap.tileWidth()/2;
@@ -7405,6 +7543,21 @@
 		rect.y += this.itemPadding();
 		//this.resetTextColor();
 		this.drawText(c, rect.x, rect.y, rect.width);
+	};
+	
+	Window_NumberInput.prototype.changeDigit = function(up) {
+		const index = this.index();
+		const place = Math.pow(10, this._maxDigits - 1 - index);
+		let n = Math.floor(this._number / place) % 10;
+		this._number -= n * place;
+		if (up) {
+			n = (n + 1) % 10;
+		} else {
+			n = (n + 9) % 10;
+		}
+		this._number += n * place;
+		this.refresh();
+		this.playCursorSound(up ? "up" : "down");
 	};
 	
 	Window_NumberInput.prototype.processOk = function() {

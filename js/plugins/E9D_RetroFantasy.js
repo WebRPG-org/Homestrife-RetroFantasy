@@ -765,11 +765,12 @@
 	// Game Temp
 	// prettier-ignore
 	Game_Temp.prototype.requestAnimation = function(
-		targets, effect
+		targets, effect, isAttack
 	) {
 		const request = {
 			targets: targets,
-			effect: effect
+			effect: effect,
+			isAttack: isAttack
 		};
 		this._animationQueue.push(request);
 		for (const target of targets) {
@@ -785,6 +786,10 @@
 	};
 	
 	// Game Action
+	Game_Action.prototype.checkItemScope = function(list) {
+		return list.includes(this.effectiveItem().scope);
+	};
+
 	Game_Action.prototype.decideRandomTarget = function() {
 		let target;
 		if (this.isForDeadFriend()) {
@@ -1615,7 +1620,7 @@
 	
 	Game_Battler.prototype.performDamage = function(action) {
 		let hitBuffer = null;
-		if(!action.effectiveItem().e9dInfo.effect) {
+		if(action && !action.effectiveItem().e9dInfo.effect) {
 			const hitType = this._hitTypes[0];
 			hitBuffer = SoundManager.playHit(hitType);
 			this.requestEffect(hitType === "hit" ? "blink" : "blinkFast");
@@ -3926,6 +3931,10 @@
 		return this._battler && this._battler.isSelected();
 	};
 	
+	Sprite_Battler.prototype.performDamage = function() {
+		return this._battler ? this._battler.performDamage() : null;
+	};
+	
 	Sprite_Battler.prototype.hitType = function() {
 		return this._battler ? this._battler.hitType() : null;
 	};
@@ -4780,16 +4789,18 @@
 		this._cellSprite = null;
 		this.z = 8;
 		this._wentWideOffset = null;
+		this._isAttack = false;
 	};
 	
 	// prettier-ignore
 	Sprite_AnimationMV.prototype.setup = function(
-		targets, effect, shouldMirror, delay
+		targets, effect, shouldMirror, delay, isAttack
 	) {
 		this._targets = targets;
 		this._effect = effect;
 		this._shouldMirror = !!shouldMirror;
 		this._delay = delay;
+		this._isAttack = isAttack;
 		this._wentWideOffset = this._targets.length > 0 ? this._targets[0].wentWideOffset() : null;
 		this._targetHit = this._targets.length > 0 ? this._targets[0].hitType() : false;
 		if (this._effect) {
@@ -4918,6 +4929,9 @@
 		for (const filter of filters) {
 			for (const target of this._targets) {
 				if(this._targetHit && frameIndex >= filter.startFrame && frameIndex < filter.startFrame + filter.duration) {
+					if(this._isAttack && frameIndex === filter.startFrame) {
+						target.performDamage();
+					}
 					const shiftAmount = frameIndex - filter.startFrame;
 					switch(filter.name) {
 						case "hueRotate":
@@ -5370,25 +5384,25 @@
 	Spriteset_Base.prototype.createAnimation = function(request) {
 		const effect = request.effect;
 		const targets = request.targets;
+		const isAttack = request.isAttack;
 		let delay = this.animationBaseDelay();
 		const nextDelay = this.animationNextDelay();
 		for (const target of targets) {
-			this.createAnimationSprite([target], effect, delay);
+			this.createAnimationSprite([target], effect, delay, isAttack);
 			delay += nextDelay;
 		}
 	};
 	
 	// prettier-ignore
 	Spriteset_Base.prototype.createAnimationSprite = function(
-		targets, effect, delay
+		targets, effect, delay, isAttack
 	) {
 		const sprite = new Sprite_AnimationMV();
 		const targetSprites = this.makeTargetSprites(targets);
 		const baseDelay = this.animationBaseDelay();
-		const previous = delay > baseDelay ? this.lastAnimationSprite() : null;
 		const shouldMirror = this.animationShouldMirror(targets[0]);
 		sprite.targetObjects = targets;
-		sprite.setup(targetSprites, effect, shouldMirror, delay, previous);
+		sprite.setup(targetSprites, effect, shouldMirror, delay, isAttack);
 		this._effectsContainer.addChild(sprite);
 		this._animationSprites.push(sprite);
 	};
@@ -7867,7 +7881,7 @@
 		subject, action, targets, effect
 	) {
 		if(effect) {
-			this.showNormalAnimation(targets, effect);
+			this.showNormalAnimation(targets, effect, action.isForOpponent());
 		} else {
 			this.showAttackAnimation(subject, action, targets);
 		}
@@ -7891,10 +7905,10 @@
 	
 	// prettier-ignore
 	Window_BattleLog.prototype.showNormalAnimation = function(
-		targets, effect
+		targets, effect, isAttack
 	) {
 		if(effect) {
-			$gameTemp.requestAnimation(targets, effect);
+			$gameTemp.requestAnimation(targets, effect, isAttack);
 		}
 	};
 	

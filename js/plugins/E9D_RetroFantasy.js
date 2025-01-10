@@ -1477,19 +1477,23 @@
 		return paramTotal;
 	};
 	
+	Game_BattlerBase.prototype.skillDiceMult = function() {
+		return 2;
+	};
+	
 	const _Game_BattlerBase__xparam = Game_BattlerBase.prototype.xparam;
 	Game_BattlerBase.prototype.xparam = function(xparamId) {
 		let xparamTotal = _Game_BattlerBase__xparam.call(this, xparamId);
 		switch(xparamId) {
 			case 0: //melee accuracy, using Hit Rate
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAc");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("MeleeAc") * this.skillDiceMult();
 				break;
 			case 1: //evasion, using Evasion Rate
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Defense");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Defense") * this.skillDiceMult();
 				break;
 			case 2: //range accuracy, using Critical Rate
 			case 4: //special accuracy, using Magic Evasion (???)
-				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("RangeAc");
+				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("RangeAc") * this.skillDiceMult();
 				break;
 			case 9: //focus, using TP Regeneration
 				xparamTotal = Math.round(xparamTotal*100) + this.skillLevel("Focus");

@@ -95,6 +95,13 @@
  * @min 1
  * @decimals 0
  *
+ * @param bottomOffset
+ * @text Bottom Offset
+ * @desc The distance the effect is positioned downward releative to the target.
+ * @type number
+ * @default 0
+ * @decimals 0
+ *
  * @param frameCount
  * @text Frame Count
  * @desc The number of frames in the file.
@@ -213,6 +220,7 @@
 			const effectInfo = JSON.parse($pluginParams.effects[effectInfoStringIndex]);
 			effectInfo.frameW = parseJSONInt(effectInfo.frameW, 64, 1);
 			effectInfo.frameH = parseJSONInt(effectInfo.frameH, 64, 1);
+			effectInfo.bottomOffset = parseJSONInt(effectInfo.bottomOffset, 0);
 			effectInfo.frameCount = parseJSONInt(effectInfo.frameCount, 1, 1);
 			
 			effectInfo.filters = parseStringToJson(effectInfo.filters, []);
@@ -4879,6 +4887,7 @@
 			this.y += parent.y;
 		}
 		this.y -= this._effect.frameH / 2;
+		this.y += this._effect.bottomOffset;
 		if(this._wentWideOffset) {
 			this.x += this._wentWideOffset.x;
 			this.y += this._wentWideOffset.y;

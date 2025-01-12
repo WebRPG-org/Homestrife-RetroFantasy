@@ -91,7 +91,7 @@
  * @text Frame Height
  * @desc The height of an individual animation frame.
  * @type number
- * @default 64
+ * @default 72
  * @min 1
  * @decimals 0
  *
@@ -99,7 +99,7 @@
  * @text Bottom Offset
  * @desc The distance the effect is positioned downward releative to the target.
  * @type number
- * @default 0
+ * @default 8
  * @decimals 0
  *
  * @param frameCount

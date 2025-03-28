@@ -670,6 +670,10 @@
 		}
 	};
 	
+	BattleManager.stressFromFlails = function() {
+		return 10;
+	};
+	
 	BattleManager.endAction = function() {
 		const item = this._action.effectiveItem();
 		this._subject.useItem(item);
@@ -679,8 +683,8 @@
 			const weapon = this._subject.equips()[0];
 			if(weapon && weapon.wtypeId > 6 && weapon.wtypeId < 10) {
 				const skill = item;
-				if(skill.id === 1 || skill.id === 4) {
-					this._subject._tp += Game_Action.prototype.stressThreshold();
+				if(skill.id === 1 || skill.id === 4 || skill.id === 5) {
+					this._subject._tp += this.stressFromFlails();
 					this._subject._tp = this._subject._tp.clamp(0, this._subject.maxTp());
 					$gameTemp.requestBattleRefresh();
 				}
@@ -977,7 +981,7 @@
 	};
 	
 	Game_Action.prototype.stressThreshold = function() {
-		return 20;
+		return 10;
 	};
 	
 	Game_Action.prototype.effectiveItem = function() {
@@ -1057,7 +1061,7 @@
 			subjectHit += (isElectro ? 8 : 4);
 			break;
 		}
-		subjectHit -= adjustType === "swordTech" ? 1 : 0;
+		subjectHit -= adjustType === "swordTech" ? 2 : 0;
 		return Math.max(0, subjectHit - Math.floor(this.subject().tp / this.stressThreshold()));
 	};
 	
@@ -1096,7 +1100,7 @@
 			distance += friendsGroupIsBackRow && !friendsUnitFrontlineGroupsDown ? 1 : 0;
 			distance += opponentsGroupIsBackRow && !opponentsUnitFrontlineGroupsDown ? 1 : 0;
 		}
-		return Math.max(0, target.eva + (target.isGuard() ? 5 : 0) - (distance*2) - Math.floor(target.tp / this.stressThreshold()));
+		return Math.max(0, target.eva + (target.isGuard() ? 10 : 0) - (distance*2) - Math.floor(target.tp / this.stressThreshold()));
 	};
 	
 	Game_Action.prototype.itemCri = function(target) {
@@ -1191,10 +1195,10 @@
 			}
 			if(result.parry) {
 				// apply stress to attacker
-				this.subject().gainTp(Math.max(0, Math.round(this.stressThreshold() - (this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)))));
+				this.subject().gainTp(Math.max(0, Math.round(this.stressFromDamageBase() - (this.stressFromDamageBase() * (Math.min(result.successRate, 0.5) / 0.5)))));
 			} else {
 				// apply stress even on miss
-				target.gainTp(Math.round(this.stressThreshold() * (Math.min(result.successRate, 0.5) / 0.5)));
+				target.gainTp(Math.round(this.stressFromDamageBase() * (Math.min(result.successRate, 0.5) / 0.5)));
 			}
 		}
 		this.updateLastTarget(target);
@@ -1268,12 +1272,16 @@
 		return Math.round(Math.max(0, power + bonusBlunt + elementalPower - armor));
 	};
 	
+	Game_Action.prototype.stressFromDamageBase = function() {
+		return 20;
+	};
+	
 	Game_Action.prototype.executeMpDamage = function(target, value) {
 		if (value !== 0) {
 			this.makeSuccess(target);
 		}
 		// reduction from balance
-		const reducedValue = Math.max(0, this.stressThreshold() + value - target.sparam(8)*4);
+		const reducedValue = Math.max(0, this.stressFromDamageBase() + value - target.sparam(8)*4);
 		// gain stress instead
 		target.gainTp(reducedValue);
 		this.gainDrainedMp(-reducedValue);
@@ -1557,16 +1565,19 @@
 	
 	Game_Battler.prototype.chargeTpByDamage = function(damageRate) {
 		const stressFromDamage = Math.round((damageRate / this.mhp) * 100);
-		this.gainSilentTp(Game_Action.prototype.stressThreshold()+stressFromDamage);
+		this.gainSilentTp(Game_Action.prototype.stressFromDamageBase()+stressFromDamage);
+	};
+	
+	Game_Battler.prototype.tpRegenMult = function() {
+		return 4;
 	};
 	
 	Game_Battler.prototype.regenerateTp = function() {
-		const regenRate = this.xparam(9)*Game_Action.prototype.stressThreshold()/5;
-		const tpRate = Math.min(Math.floor(this.mp*Game_Action.prototype.enduranceStressRatio()), regenRate);
-		const adjustedTpRate = Math.max(this.xparam(9), tpRate);
-		const mpRate = Math.min(this.tp, tpRate);
-		this.gainSilentTp(-adjustedTpRate);
-		this.gainSilentMp(-mpRate/Game_Action.prototype.enduranceStressRatio());
+		const regenRate = this.xparam(9)*this.tpRegenMult(); // multiply focus by the base regen rate
+		// calculate energy loss based on regenRate or the current amount of stress, whichever is lower
+		const energyLoss = (Math.min(this.tp, regenRate))/Game_Action.prototype.enduranceStressRatio();
+		this.gainSilentTp(-regenRate); // reduce stress by the calculated regen rate
+		this.gainSilentMp(-energyLoss); // reduce energy by calculcated energy loss
 	};
 	
 	Game_Battler.prototype.onDamage = function(value) {

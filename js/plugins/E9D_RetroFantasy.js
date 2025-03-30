@@ -1617,9 +1617,11 @@
 		switch(this._motionType) {
 		case "wait":
 			if(stance === "low") { if(isFired) { return "waitLowFired"; } return "waitLow"; }
+			else if(stance === "choke") { return "waitChoke"; }
 			break;
 		case "thrust":
 			if(stance === "low") { if(isFired) { return "thrust2HFired"; } return "thrust2H"; }
+			else if(stance === "choke") { return "thrustChoke"; }
 			break;
 		}
 		
@@ -3970,39 +3972,47 @@
 	Sprite_Actor.POSES = {
 		waitLow: { index: 0 },
 		wait: { index: 1 },
-		walkLow: { index: 2 },
-		walk: { index: 3 },
-		chargeLow: { index: 4 },
-		charge: { index: 5 },
-		thrust2H: { index: 6 },
-		thrust: { index: 7 },
-		swing: { index: 8 },
-		bow: { index: 9 },
-		longGun: { index: 10 },
-		handGun: { index: 11 },
-		skill: { index: 12 },
-		item: { index: 13 },
-		victory: { index: 14 },
-		evade: { index: 15 },
-		damage: { index: 16 },
-		abnormal: { index: 17 },
-		sleep: { index: 18 },
-		dead: { index: 19 }
+		waitChoke: { index: 2 },
+		walkLow: { index: 3 },
+		walk: { index: 4 },
+		walkChoke: { index: 5 },
+		chargeLow: { index: 6 },
+		charge: { index: 7 },
+		chargeChoke: { index: 8 },
+		thrust2H: { index: 9 },
+		thrust: { index: 10 },
+		swing: { index: 11 },
+		bow: { index: 12 },
+		longGun: { index: 13 },
+		handGun: { index: 14 },
+		skill: { index: 15 },
+		item: { index: 16 },
+		victory: { index: 17 },
+		evade: { index: 18 },
+		damage: { index: 19 },
+		abnormal: { index: 20 },
+		sleep: { index: 21 },
+		dead: { index: 22 }
 	};
 	
 	Sprite_Actor.MOTIONS = {
 		waitLow: { poses: ["waitLow", "waitLow", "waitLow"], loop: true },
 		waitLowFired: { poses: ["waitLow", "waitLow", "waitLow"], loop: true },
 		wait: { poses: ["wait", "wait", "wait"], loop: true },
+		waitChoke: { poses: ["waitChoke", "waitChoke", "waitChoke"], loop: true },
 		walkLow: { poses: ["walkLow", "waitLow", "walkLow"], loop: true },
 		walkLowFired: { poses: ["walkLow", "waitLow", "walkLow"], loop: true },
 		walk: { poses: ["walk", "wait", "walk"], loop: true },
+		walkChoke: { poses: ["walkChoke", "waitChoke", "walkChoke"], loop: true },
 		thrust2H: { poses: ["chargeLow", "thrust2H", "thrust2H"], loop: false },
 		thrust2HFired: { poses: ["chargeLow", "thrust2H", "thrust2H"], loop: false },
 		thrust: { poses: ["charge", "thrust", "thrust"], loop: false },
+		thrustChoke: { poses: ["chargeChoke", "thrust", "thrust"], loop: false },
 		pommel: { poses: ["charge", "thrust", "thrust"], loop: false },
+		pommelChoke: { poses: ["chargeChoke", "thrust", "thrust"], loop: false },
 		unarmed: { poses: ["charge", "thrust", "thrust"], loop: false },
 		swing: { poses: ["charge", "swing", "swing"], loop: false },
+		swingChoke: { poses: ["chargeChoke", "swing", "swing"], loop: false },
 		swingTwirl: { poses: ["charge", "swing", "swing"], loop: false },
 		swingBow: { poses: ["charge", "swing", "swing"], loop: false },
 		throw: { poses: ["swing", "swing", "swing"], loop: false },
@@ -4349,12 +4359,15 @@
 	Sprite_Actor.prototype.motionTypeIsMelee = function() {
 		return (
 			this._motionType === "swing" ||
+			this._motionType === "swingChoke" ||
 			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
 			this._motionType === "thrust" ||
+			this._motionType === "thrustChoke" ||
 			this._motionType === "thrust2H" ||
 			this._motionType === "thrust2HFired" ||
 			this._motionType === "pommel" ||
+			this._motionType === "pommelChoke" ||
 			this._motionType === "unarmed"
 		);
 	};
@@ -4493,8 +4506,27 @@
 	
 	Sprite_Actor.prototype.startMotion = function(motionType) {
 		this.scale.x = motionType === "escape" ? -1 : 1;
-		motionType = motionType === "wait" && this._actor.weaponStance() === "low" ? (this._actor.weaponIsFired() ? "waitLowFired" : "waitLow") : motionType;
-		motionType = motionType === "walk" && this._actor.weaponStance() === "low" ? (this._actor.weaponIsFired() ? "walkLowFired" : "walkLow") : motionType;
+		var weaponStance = this._actor.weaponStance();
+		var weaponIsFired = this._actor.weaponIsFired();
+		if(motionType === "wait") {
+			switch(weaponStance) {
+			case "low":
+				motionType = weaponIsFired ? "waitLowFired" : "waitLow";
+				break;
+			case "choke":
+				motionType = "waitChoke";
+				break;
+			}
+		} else if(motionType === "walk") {
+			switch(weaponStance) {
+			case "low":
+				motionType = weaponIsFired ? "walkLowFired" : "walkLow";
+				break;
+			case "choke":
+				motionType = "walkChoke";
+				break;
+			}
+		}
 		const newMotion = Sprite_Actor.MOTIONS[motionType];
 		if (this._motion !== newMotion) {
 			if(this._motionType === "damage" || this._motionType === "evade") {
@@ -4506,9 +4538,11 @@
 			this._pattern = 0;
 			if(
 				motionType === "walk" ||
+				motionType === "walkChoke" ||
 				motionType === "walkLow" ||
 				motionType === "walkLowFired" ||
 				motionType === "wait" ||
+				motionType === "waitChoke" ||
 				motionType === "waitLow" ||
 				motionType === "waitLowFired" ||
 				motionType === "damage" ||
@@ -4628,7 +4662,8 @@
 		Sprite_Battler.prototype.updateFrame.call(this);
 		const bitmap = this._mainSprite.bitmap;
 		if (bitmap) {
-			const motion = this._motion ? this._motion : (this._actor.weaponStance() === "low" ? Sprite_Actor.MOTIONS.waitLow : Sprite_Actor.MOTIONS.wait);
+			var weaponStance = this._actor.weaponStance();
+			const motion = this._motion ? this._motion : (weaponStance === "low" ? Sprite_Actor.MOTIONS.waitLow : (weaponStance === "choke" ? Sprite_Actor.MOTIONS.waitChoke : Sprite_Actor.MOTIONS.wait));
 			const pattern = this._pattern < 3 ? this._pattern : 1;
 			const poseIndex = Sprite_Actor.POSES[motion.poses[pattern]].index;
 			const cw = bitmap.width / 9;
@@ -5196,12 +5231,15 @@
 	Sprite_Weapon.prototype.motionTypeIsAttack = function() {
 		return (
 			this._motionType === "thrust" ||
+			this._motionType === "thrustChoke" ||
 			this._motionType === "thrust2H" ||
 			this._motionType === "thrust2HFired" ||
 			this._motionType === "swing" ||
+			this._motionType === "swingChoke" ||
 			this._motionType === "swingTwirl" ||
 			this._motionType === "swingBow" ||
 			this._motionType === "pommel" ||
+			this._motionType === "pommelChoke" ||
 			this._motionType === "throw" ||
 			this._motionType === "sling" ||
 			this._motionType === "bow" ||

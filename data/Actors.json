@@ -23,5 +23,6 @@ null,
 {"id":21,"battlerName":"Actor1_6_8Bit","characterIndex":5,"characterName":"Actor1","classId":6,"equips":[51,0,0,0,451,601,0,901,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"WarlockA","nickname":"","note":"","profile":""},
 {"id":22,"battlerName":"Actor1_6_8Bit","characterIndex":5,"characterName":"Actor1","classId":6,"equips":[51,0,0,0,451,601,0,901,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"WarlockB","nickname":"","note":"","profile":""},
 {"id":23,"battlerName":"Actor1_6_8Bit","characterIndex":5,"characterName":"Actor1","classId":6,"equips":[51,0,0,0,451,601,0,901,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"WarlockC","nickname":"","note":"","profile":""},
-{"id":24,"battlerName":"Actor1_6_8Bit","characterIndex":5,"characterName":"Actor1","classId":6,"equips":[51,0,0,0,451,601,0,901,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"WarlockD","nickname":"","note":"","profile":""}
+{"id":24,"battlerName":"Actor1_6_8Bit","characterIndex":5,"characterName":"Actor1","classId":6,"equips":[51,0,0,0,451,601,0,901,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"WarlockD","nickname":"","note":"","profile":""},
+{"id":25,"battlerName":"","characterIndex":5,"characterName":"!Flame","classId":7,"equips":[0,0,0,0,0],"faceIndex":0,"faceName":"","traits":[],"initialLevel":1,"maxLevel":99,"name":"Spirit","nickname":"","note":"","profile":""}
 ]

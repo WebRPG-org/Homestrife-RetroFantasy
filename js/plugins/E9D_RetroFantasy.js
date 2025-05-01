@@ -39,6 +39,19 @@
  * @text Effects
  * @desc An array of effects to be used by skills.
  * @type struct<effectInfo>[]
+ *
+ *
+ * @command Remove Party Member
+ * @desc Removes the party member at the given position.
+ * 
+ * @arg partyIndex
+ * @text Party Index
+ * @desc The index of the party member to be removed.
+ * @type number
+ * @default 1
+ * @min 1
+ * @max 4
+ * @decimals 0
  */
  
 /*~struct~textImageInfo:
@@ -124,6 +137,7 @@
  * @text SE
  * @desc The sound effect.
  * @type struct<seInfo>
+ *
  */
  
 /*~struct~filterInfo:
@@ -201,6 +215,10 @@
 	// plugin parameters
 	const $pluginParams = PluginManager.parameters('E9D_RetroFantasy');
 	parsePluginParameters();
+	
+	PluginManager.registerCommand('E9D_RetroFantasy', 'Remove Party Member', args => {
+		$gameParty.removePartyMember(args.partyIndex);
+	});
 	
 	// plugin variables
 	let curTextImage = 0;
@@ -2520,6 +2538,39 @@
 		}
 	};
 	
+	Game_Party.prototype.removePartyMember = function(index) {
+		const members = $gameParty.allMembers();
+		
+		if(members.length <= 1) {
+			for(const actor of $dataActors) {
+				if(!actor) { continue; }
+				if($dataClasses[actor.classId].name === "") {
+					this.addActor(actor.id);
+					break;
+				}
+			}
+		}
+		
+		const actor = members[index-1];
+		
+		if (actor) {
+			const wasBattleMember = this.battleMembers().includes(actor);
+			this._actors.remove(actor.actorId());
+			$gamePlayer.refresh();
+			$gameMap.requestRefresh();
+			$gameTemp.requestBattleRefresh();
+			if (this.inBattle() && wasBattleMember) {
+				actor.onBattleEnd();
+			}
+		}
+		
+		for(const event of $gameMap.events()) {
+			if(actor.actor().name === event.event().name) {
+				event.setSelfSwitch("A", false);
+			}
+		}
+	};
+	
 	// Game Troop
 	const _Game_Troop__clear = Game_Troop.prototype.clear;
 	Game_Troop.prototype.clear = function() {
@@ -2708,6 +2759,12 @@
 			return;
 		}
 		this.moveDiagonally(horiz, vert);
+	};
+	
+	// Game Event
+	Game_Event.prototype.setSelfSwitch = function(code, enabled) {
+		const key = [this._mapId, this._eventId, code];
+        $gameSelfSwitches.setValue(key, enabled);
 	};
 	
 	// Scene Boot
@@ -5579,6 +5636,21 @@
 		return rect;
 	};
 	
+	const _Window_Base__processEscapeCharacter = Window_Base.prototype.processEscapeCharacter;
+	Window_Base.prototype.processEscapeCharacter = function(code, textState) {
+		switch (code) {
+			case "A":
+				const actor = $gameActors.actor(this.obtainEscapeParam(textState));
+				if (actor) {
+					textState.buffer += actor.name();
+				}
+				break;
+			default:
+				_Window_Base__processEscapeCharacter.call(this, code, textState);
+				break;
+		}
+	};
+	
 	Window_Base.prototype.drawIconAndText = function(icon, text, x, y, width, iconFirst) {
 		const iconWidth = ImageManager.iconWidth;
 		const textX = iconFirst ? x+iconWidth : x;
@@ -7548,6 +7620,22 @@
 
 	Window_NameBox.prototype.windowHeight = function() {
 		return $gameSystem.windowPadding()*2 + this.itemPadding()*2 + this.lineHeight();
+	};
+	
+	Window_NameBox.prototype.updatePlacement = function() {
+		this.width = this.windowWidth();
+		this.height = this.windowHeight();
+		const messageWindow = this._messageWindow;
+		if ($gameMessage.isRTL()) {
+			this.x = messageWindow.x + messageWindow.width - this.width;
+		} else {
+			this.x = messageWindow.x;
+		}
+		if (messageWindow.y > 0) {
+			this.y = messageWindow.y - this.height + $gameMap.tileWidth();
+		} else {
+			this.y = messageWindow.y + messageWindow.height - $gameMap.tileWidth();
+		}
 	};
 	
 	// Window Choice List

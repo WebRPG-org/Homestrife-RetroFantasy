@@ -73,6 +73,7 @@
  * @type number
  * @default 0
  * @min -9999
+ * @max 9999
  * @decimals 0
  *
  * @arg shiftAmountVar
@@ -80,18 +81,24 @@
  * @desc If not 0 (None), gets the shift amount from a variable.
  * @type variable
  * @default 0
+ * @min 0
+ * @decimals 0
  *
  * @arg target
  * @text Target
  * @desc Target actor. If 0 (None), targets the event.
  * @type actor
  * @default 0
+ * @min 0
+ * @decimals 0
  *
  * @arg targetVar
  * @text Target Variable
  * @desc If not 0 (None), gets the target from a variable.
  * @type variable
  * @default 0
+ * @min 0
+ * @decimals 0
  *
  */
  
@@ -102,17 +109,22 @@
 	// plugin commands
 	PluginManager.registerCommand('E9D_PaletteJail', 'Palette Jail Tint Screen', args => {
 		$gameScreen.startPaletteJailTint(
-			Math.floor(parseInt(args.lightHue)),
-			Math.floor(parseInt(args.hueIntensity)),
-			Math.floor(parseInt(args.brightness)),
-			Math.floor(parseInt(args.hueDarkenThreshold))
+			parseInt(args.lightHue),
+			parseInt(args.hueIntensity),
+			parseInt(args.brightness),
+			parseInt(args.hueDarkenThreshold)
 		);
 	});
 	
 	PluginManager.registerCommand('E9D_PaletteJail', 'Palette Jail Hue Rotate', args => {
-		const shiftAmount = args.shiftAmountVar === 0 ? args.shiftAmount : $gameVariables.value(args.shiftAmountVar);
-		const target = args.targetVar === 0 ? args.target : $gameVariables.value(args.targetVar);
-		
+		const shiftAmount = parseInt(args.shiftAmount);
+		const targetVar = parseInt(args.targetVar);
+		const target = targetVar === 0 ? parseInt(args.target) : parseInt($gameVariables.value(targetVar));
+		if(target) {
+			$gameActors.actor(target);
+		} else {
+			
+		}
 	});
 	
 	// plugin variables

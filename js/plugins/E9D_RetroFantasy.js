@@ -7619,7 +7619,7 @@
 	};
 
 	Window_NameBox.prototype.windowHeight = function() {
-		return $gameSystem.windowPadding()*2 + this.itemPadding()*2 + this.lineHeight();
+		return $gameSystem.windowPadding()*2 + this.itemPadding()*2 + this.lineHeight()/2;
 	};
 	
 	Window_NameBox.prototype.updatePlacement = function() {
@@ -7632,10 +7632,16 @@
 			this.x = messageWindow.x;
 		}
 		if (messageWindow.y > 0) {
-			this.y = messageWindow.y - this.height + $gameMap.tileWidth();
+			this.y = messageWindow.y - this.height + $gameMap.tileWidth()/2;
 		} else {
-			this.y = messageWindow.y + messageWindow.height - $gameMap.tileWidth();
+			this.y = messageWindow.y + messageWindow.height - $gameMap.tileWidth()/2;
 		}
+	};
+	
+	Window_NameBox.prototype.refresh = function() {
+		const rect = this.baseTextRect();
+		this.contents.clear();
+		this.drawTextEx(this._name, rect.x, rect.y - this.lineHeight()/2, rect.width);
 	};
 	
 	// Window Choice List

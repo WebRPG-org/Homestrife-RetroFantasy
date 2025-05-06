@@ -399,6 +399,50 @@
 		sprite.visible = this.isOpen();
 	};
 	
+	// Input
+	Input.keyMapper = {
+		9: "tab", // tab
+		13: "ok", // enter
+		16: "shift", // shift
+		17: "control", // control
+		18: "control", // alt
+		27: "escape", // escape
+		32: "ok", // space
+		33: "pageup", // pageup
+		34: "pagedown", // pagedown
+		34: "jump", // home
+		37: "left", // left arrow
+		38: "up", // up arrow
+		39: "right", // right arrow
+		40: "down", // down arrow
+		45: "escape", // insert
+		67: "jump", // C
+		81: "pageup", // Q
+		87: "pagedown", // W
+		88: "escape", // X
+		90: "ok", // Z
+		96: "escape", // numpad 0
+		98: "down", // numpad 2
+		100: "left", // numpad 4
+		102: "right", // numpad 6
+		104: "up", // numpad 8
+		107: "jump", // plus
+		120: "debug" // F9
+	};
+
+	Input.gamepadMapper = {
+		0: "ok", // A
+		1: "cancel", // B
+		2: "shift", // X
+		3: "menu", // Y
+		4: "pageup", // LB
+		5: "pagedown", // RB
+		12: "up", // D-pad up
+		13: "down", // D-pad down
+		14: "left", // D-pad left
+		15: "right" // D-pad right
+	};
+	
 	// Data Manager
 	const _DataManager__makeSavefileInfo = DataManager.makeSavefileInfo;
 	DataManager.makeSavefileInfo = function() {
@@ -505,6 +549,11 @@
 				}
 			}
 		}
+	};
+	
+	DataManager.parseMapNotes = function() {
+		if(!$dataMap) { return; }
+		$dataMap.e9dInfo = $dataMap.note && $dataMap.note.length > 0 ? JSON.parse($dataMap.note) : {};
 	};
 	
 	DataManager.handleTroopCommentText = function(text, trackingData) {
@@ -2539,7 +2588,9 @@
 	};
 	
 	Game_Party.prototype.removePartyMember = function(index) {
+		const arrayIndex = index - 1;
 		const members = $gameParty.allMembers();
+		if(members.length <= arrayIndex) { return; }
 		
 		if(members.length <= 1) {
 			for(const actor of $dataActors) {
@@ -2551,7 +2602,7 @@
 			}
 		}
 		
-		const actor = members[index-1];
+		const actor = members[arrayIndex];
 		
 		if (actor) {
 			const wasBattleMember = this.battleMembers().includes(actor);
@@ -2667,9 +2718,28 @@
 		}
 	};
 	
+	// Game Map
+	Game_Map.prototype.isJumpDisabled = function() {
+		return $dataMap.e9dInfo.disableJumping;
+	};
+	
 	// Game Character Base
 	Game_CharacterBase.prototype.shiftY = function() {
 		return this.isObjectCharacter() ? 0 : 2;
+	};
+	
+	Game_CharacterBase.prototype.updateJump = function() {
+		this._jumpCount -= 0.5;
+		this._realX =
+			(this._realX * this._jumpCount + this._x) / (this._jumpCount + 1.0);
+		this._realY =
+			(this._realY * this._jumpCount + this._y) / (this._jumpCount + 1.0);
+		this.refreshBushDepth();
+		if (this._jumpCount === 0) {
+			this.setPriorityType(1);
+			this._realX = this._x = $gameMap.roundX(this._x);
+			this._realY = this._y = $gameMap.roundY(this._y);
+		}
 	};
 	
 	Game_CharacterBase.prototype.refreshBushDepth = function() {
@@ -2717,7 +2787,84 @@
 		}
 	};
 	
+	
+	Game_CharacterBase.prototype.jump = function(xPlus, yPlus) {
+		if (Math.abs(xPlus) > Math.abs(yPlus)) {
+			if (xPlus !== 0) {
+				this.setDirection(xPlus < 0 ? 4 : 6);
+			}
+		} else {
+			if (yPlus !== 0) {
+				this.setDirection(yPlus < 0 ? 8 : 2);
+			}
+		}
+		this._x += xPlus;
+		this._y += yPlus;
+		const distance = Math.round(Math.sqrt(xPlus * xPlus + yPlus * yPlus));
+		this._jumpPeak = 8 + distance - this._moveSpeed;
+		this._jumpCount = this._jumpPeak * 2;
+		this.resetStopCount();
+		this.straighten();
+		this.setPriorityType(1.5);
+	};
+	
 	// Game Player
+	Game_Player.prototype.moveByInput = function() {
+		if (!this.isMoving() && this.canMove()) {
+			let jumped = false;
+			if(!$gameMap.isJumpDisabled() && Input.isPressed("jump")) {
+				const d = this.direction();
+				const x2 = $gameMap.roundXWithDirection(this._x, d);
+				const y2 = $gameMap.roundYWithDirection(this._y, d);
+				const x3 = $gameMap.roundXWithDirection(x2, d);
+				const y3 = $gameMap.roundYWithDirection(y2, d);
+				if(this.isJumpPassable(x2, y2) && this.canJumpTo(x3, y3)) {
+					const xPlus = d === 4 ? -2 : (d === 6 ? 2 : 0);
+					const yPlus = d === 8 ? -2 : (d === 2 ? 2 : 0);
+					this.jump(xPlus, yPlus);
+					jumped = true;
+				} else if(this.canJumpTo(x2, y2)) {
+					const xPlus = d === 4 ? -1 : (d === 6 ? 1 : 0);
+					const yPlus = d === 8 ? -1 : (d === 2 ? 1 : 0);
+					this.jump(xPlus, yPlus);
+					jumped = true;
+				}
+			}
+			if (!jumped) {
+				let direction = this.getInputDirection();
+				if (direction > 0) {
+					$gameTemp.clearDestination();
+				} else if ($gameTemp.isDestinationValid()) {
+					const x = $gameTemp.destinationX();
+					const y = $gameTemp.destinationY();
+					direction = this.findDirectionTo(x, y);
+				}
+				if (direction > 0) {
+					this.executeMove(direction);
+				}
+			}
+		}
+	};
+	
+	Game_Player.prototype.canJumpTo = function(x, y) {
+		return $gameMap.isValid(x, y) &&
+				(
+					this.isThrough() || this.isDebugThrough() || (
+						!this.isCollidedWithCharacters(x, y) && this.isJumpPassable(x, y) &&
+						(
+							$gameMap.isPassable(x, y, 2) ||
+							$gameMap.isPassable(x, y, 4) ||
+							$gameMap.isPassable(x, y, 6) ||
+							$gameMap.isPassable(x, y, 8)
+						)
+					)
+				);
+	};
+	
+	Game_Player.prototype.isJumpPassable = function(x, y) {
+		return $gameMap.terrainTag(x, y) !== 7;
+	};
+	
 	Game_Player.prototype.getInputDirection = function() {
 		return Input.dir8;
 	};
@@ -2819,13 +2966,19 @@
 	// Scene Message
 	Scene_Message.prototype.messageWindowRect = function() {
 		const ww = Graphics.boxWidth;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*4;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*3;
 		const wx = Graphics.boxWidth - ww;
 		const wy = Graphics.boxHeight - wh;
 		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	// Scene Map
+	const _Scene_Map__onMapLoaded = Scene_Map.prototype.onMapLoaded;
+	Scene_Map.prototype.onMapLoaded = function() {
+		DataManager.parseMapNotes();
+		_Scene_Map__onMapLoaded.call(this);
+	};
+	
 	Scene_Map.prototype.createMenuButton = function() {
 		this._menuButton = new Sprite_Button("menu");
 		this._menuButton.x = Graphics.boxWidth - this._menuButton.width;

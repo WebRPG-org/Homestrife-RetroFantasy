@@ -554,6 +554,10 @@
 	DataManager.parseMapNotes = function() {
 		if(!$dataMap) { return; }
 		$dataMap.e9dInfo = $dataMap.note && $dataMap.note.length > 0 ? JSON.parse($dataMap.note) : {};
+		for(const event of $dataMap.events) {
+			if(!event) { continue; }
+			event.e9dInfo = event.note && event.note.length > 0 ? JSON.parse(event.note) : {};
+		}
 	};
 	
 	DataManager.handleTroopCommentText = function(text, trackingData) {
@@ -2862,6 +2866,10 @@
 	};
 	
 	Game_Player.prototype.isJumpPassable = function(x, y) {
+		for(const event of $gameMap.eventsXyNt(x, y)) {
+			if(!event) { continue; }
+			if(event.event().e9dInfo.jumpImpassable) { return false; }
+		}
 		return $gameMap.terrainTag(x, y) !== 7;
 	};
 	

@@ -2728,18 +2728,30 @@
 	};
 	
 	// Game Character Base
+	_Game_CharacterBase__initMembers = Game_CharacterBase.prototype.initMembers;
+	Game_CharacterBase.prototype.initMembers = function() {
+		_Game_CharacterBase__initMembers.call(this);
+		this._jumpCountMax = 0;
+	};
+	
+	Game_CharacterBase.prototype.jumpHeight = function() {
+		if(this._jumpCount <= 0) { return 0; }
+		return Math.sqrt(Math.pow(this._jumpPeak, 2) - Math.pow(this._jumpPeak * Math.abs((this._jumpCount - (this._jumpCountMax / 2)) / (this._jumpCountMax / 2)), 2));
+	};
+	
 	Game_CharacterBase.prototype.shiftY = function() {
 		return this.isObjectCharacter() ? 0 : 2;
 	};
 	
 	Game_CharacterBase.prototype.updateJump = function() {
-		this._jumpCount -= 0.5;
+		this._jumpCount--;
 		this._realX =
 			(this._realX * this._jumpCount + this._x) / (this._jumpCount + 1.0);
 		this._realY =
 			(this._realY * this._jumpCount + this._y) / (this._jumpCount + 1.0);
 		this.refreshBushDepth();
-		if (this._jumpCount === 0) {
+		if (this._jumpCount <= 0) {
+			this._jumpCount = 0;
 			this.setPriorityType(1);
 			this._realX = this._x = $gameMap.roundX(this._x);
 			this._realY = this._y = $gameMap.roundY(this._y);
@@ -2791,7 +2803,6 @@
 		}
 	};
 	
-	
 	Game_CharacterBase.prototype.jump = function(xPlus, yPlus) {
 		if (Math.abs(xPlus) > Math.abs(yPlus)) {
 			if (xPlus !== 0) {
@@ -2805,18 +2816,27 @@
 		this._x += xPlus;
 		this._y += yPlus;
 		const distance = Math.round(Math.sqrt(xPlus * xPlus + yPlus * yPlus));
-		this._jumpPeak = 8 + distance - this._moveSpeed;
-		this._jumpCount = this._jumpPeak * 2;
+		this._jumpPeak = 16 * (distance / 2);
+		this._jumpCount = (distance * 16) / (this._moveSpeed / 2);
+		this._jumpCountMax = this._jumpCount;
 		this.resetStopCount();
 		this.straighten();
 		this.setPriorityType(1.5);
 	};
 	
 	// Game Player
+	_Game_Player__initMembers = Game_Player.prototype.initMembers;
+	Game_Player.prototype.initMembers = function() {
+		_Game_Player__initMembers.call(this);
+		this._jumpBuffer = 0;
+	};
+	
 	Game_Player.prototype.moveByInput = function() {
+		this._jumpBuffer = !$gameMap.isJumpDisabled() && Input.isTriggered("jump") ? 8 : Math.max(0, this._jumpBuffer - 1);
 		if (!this.isMoving() && this.canMove()) {
 			let jumped = false;
-			if(!$gameMap.isJumpDisabled() && Input.isPressed("jump")) {
+			if(this._jumpBuffer > 0) {
+				this._jumpBuffer = 0;
 				const d = this.direction();
 				const x2 = $gameMap.roundXWithDirection(this._x, d);
 				const y2 = $gameMap.roundYWithDirection(this._y, d);

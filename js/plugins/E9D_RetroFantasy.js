@@ -2828,11 +2828,18 @@
 	_Game_Player__initMembers = Game_Player.prototype.initMembers;
 	Game_Player.prototype.initMembers = function() {
 		_Game_Player__initMembers.call(this);
+		this._triggerBuffer = 0;
 		this._jumpBuffer = 0;
 	};
 	
-	Game_Player.prototype.moveByInput = function() {
+	_Game_Player__update = Game_Player.prototype.update;
+	Game_Player.prototype.update = function(sceneActive) {
+		this._triggerBuffer = Input.isTriggered("ok") ? 8 : Math.max(0, this._triggerBuffer - 1);
 		this._jumpBuffer = !$gameMap.isJumpDisabled() && Input.isTriggered("jump") ? 8 : Math.max(0, this._jumpBuffer - 1);
+		_Game_Player__update.call(this, sceneActive);
+	};
+	
+	Game_Player.prototype.moveByInput = function() {
 		if (!this.isMoving() && this.canMove()) {
 			let jumped = false;
 			if(this._jumpBuffer > 0) {
@@ -2934,6 +2941,24 @@
 			return;
 		}
 		this.moveDiagonally(horiz, vert);
+	};
+	
+	Game_Player.prototype.triggerButtonAction = function() {
+		if (this._triggerBuffer > 0) {
+			this._triggerBuffer = 0;
+			if (this.getOnOffVehicle()) {
+				return true;
+			}
+			this.checkEventTriggerHere([0]);
+			if ($gameMap.setupStartingEvent()) {
+				return true;
+			}
+			this.checkEventTriggerThere([0, 1, 2]);
+			if ($gameMap.setupStartingEvent()) {
+				return true;
+			}
+		}
+		return false;
 	};
 	
 	// Game Event

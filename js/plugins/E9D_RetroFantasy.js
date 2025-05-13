@@ -3413,12 +3413,54 @@
 	};
 	
 	// Scene Options
-	Scene_Options.prototype.optionsWindowRect = function() {
-		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth()*11;
-		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight()*7;
-		const wx = Graphics.boxWidth - ww;
-		const wy = Graphics.boxHeight - wh;
+	Scene_Options.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createOptionsCategoryWindow();
+		this.createOptionsWindow();
+	};
+	
+	Scene_Options.prototype.createOptionsCategoryWindow = function() {
+		const rect = this.optionsCategoryWindowRect();
+		this._categoryWindow = new Window_OptionsCategory(rect);
+		this._categoryWindow.setHandler("ok", this.onCategoryOk.bind(this));
+		this._categoryWindow.setHandler("cancel", this.popScene.bind(this));
+		this.addWindow(this._categoryWindow);
+	};
+
+	Scene_Options.prototype.optionsCategoryWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
+		const wx = 0;
+		const wy = 0;
 		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Options.prototype.createOptionsWindow = function() {
+		const rect = this.optionsWindowRect();
+		this._optionsWindow = new Window_Options(rect);
+		this._optionsWindow.setHandler("cancel", this.onOptionsCancel.bind(this));
+		this._categoryWindow.setOptionsWindow(this._optionsWindow);
+		this.addWindow(this._optionsWindow);
+		
+		this._optionsWindow.deselect();
+	};
+
+	Scene_Options.prototype.optionsWindowRect = function() {
+		const ww = Graphics.boxWidth;
+		const wh = Graphics.boxHeight - this._categoryWindow.height;
+		const wx = 0;
+		const wy = this._categoryWindow.height;
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Options.prototype.onCategoryOk = function() {
+		this._optionsWindow.activate();
+		this._optionsWindow.select(0);
+	};
+	
+	Scene_Options.prototype.onOptionsCancel = function() {
+		this._optionsWindow.deselect();
+		this._categoryWindow.activate();
 	};
 	
 	// Scene File
@@ -7207,7 +7249,79 @@
 		this.drawText(this.resistSymbol(), x3, y5, spriteW*4);
 	};
 	
+	// Window Options Category
+	function Window_OptionsCategory() {
+		this.initialize(...arguments);
+	}
+
+	Window_OptionsCategory.prototype = Object.create(Window_HorzCommand.prototype);
+	Window_OptionsCategory.prototype.constructor = Window_OptionsCategory;
+
+	Window_OptionsCategory.prototype.initialize = function(rect) {
+		Window_HorzCommand.prototype.initialize.call(this, rect);
+	};
+
+	Window_OptionsCategory.prototype.maxCols = function() {
+		return 4;
+	};
+
+	Window_OptionsCategory.prototype.update = function() {
+		Window_HorzCommand.prototype.update.call(this);
+		if (this._optionsWindow) {
+			this._optionsWindow.setCategory(this.currentSymbol());
+		}
+	};
+
+	Window_OptionsCategory.prototype.makeCommandList = function() {
+		this.addCommand("Game",		"game");
+		this.addCommand("Video",	"video");
+		this.addCommand("Audio",	"audio");
+		this.addCommand("Input",	"input");
+	};
+
+	Window_OptionsCategory.prototype.setOptionsWindow = function(optionsWindow) {
+		this._optionsWindow = optionsWindow;
+	};
+	
 	// Window Options
+	Window_Options.prototype.setCategory = function(category) {
+		if (this._category !== category) {
+			this._category = category;
+			this.refresh();
+			this.scrollTo(0, 0);
+		}
+	};
+	
+	Window_Options.prototype.makeCommandList = function() {
+		switch(this._category) {
+			case "video":	this.addVideoOptions();	break;
+			case "audio":	this.addAudioOptions();	break;
+			case "input":	this.addInputOptions();	break;
+			default:		this.addGameOptions();	break;
+		}
+	};
+	
+	Window_Options.prototype.addGameOptions = function() {
+		this.addCommand(TextManager.alwaysDash, "alwaysDash");
+		this.addCommand(TextManager.commandRemember, "commandRemember");
+		this.addCommand(TextManager.touchUI, "touchUI");
+	};
+	
+	Window_Options.prototype.addVideoOptions = function() {
+		
+	};
+
+	Window_Options.prototype.addAudioOptions = function() {
+		this.addCommand(TextManager.bgmVolume, "bgmVolume");
+		this.addCommand(TextManager.bgsVolume, "bgsVolume");
+		this.addCommand(TextManager.meVolume, "meVolume");
+		this.addCommand(TextManager.seVolume, "seVolume");
+	};
+	
+	Window_Options.prototype.addInputOptions = function() {
+		
+	};
+	
 	Window_Options.prototype.drawItem = function(index) {
 		const title = this.commandName(index);
 		const status = this.statusText(index);
@@ -7219,6 +7333,28 @@
 		this.changePaintOpacity(this.isCommandEnabled(index));
 		this.drawText(title, rect.x, rect.y, titleWidth, "left");
 		this.drawText(status, rect.x + titleWidth, rect.y, statusWidth, "right");
+	};
+	
+	Window_Options.prototype.cursorRight = function() {
+		const index = this.index();
+		if(index < 0) { return; }
+		const symbol = this.commandSymbol(index);
+		if (this.isVolumeSymbol(symbol)) {
+			this.changeVolume(symbol, true, false);
+		} else {
+			this.changeValue(symbol, true);
+		}
+	};
+
+	Window_Options.prototype.cursorLeft = function() {
+		const index = this.index();
+		if(index < 0) { return; }
+		const symbol = this.commandSymbol(index);
+		if (this.isVolumeSymbol(symbol)) {
+			this.changeVolume(symbol, false, false);
+		} else {
+			this.changeValue(symbol, false);
+		}
 	};
 	
 	// Window Savefile List

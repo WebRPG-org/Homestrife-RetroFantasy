@@ -328,12 +328,35 @@
 	}
 	
 	// Graphics
+	_Graphics__initialize = Graphics.initialize;
+	Graphics.initialize = function() {
+		this._pixelPerfect = false;
+		return _Graphics__initialize.call(this);
+	};
+	
+	/**
+	 * Pixel perfect or not. Manipulate this in your own game's code!
+	 *
+	 * @type boolean
+	 * @name Graphics.pixelPerfect
+	 */
+	Object.defineProperty(Graphics, "pixelPerfect", {
+		get: function() {
+			return this._pixelPerfect;
+		},
+		set: function(value) {
+			this._pixelPerfect = value;
+			this._updateAllElements();
+		},
+		configurable: true
+	});
+	
 	Graphics._updateRealScale = function() {
 		if (this._stretchEnabled && this._width > 0 && this._height > 0) {
 			const h = this._stretchWidth() / this._width;
 			const v = this._stretchHeight() / this._height;
 			this._realScale = Math.min(h, v);
-			if(ppParams.forceWholeResolution) {
+			if(ppParams.forceWholeResolution || this._pixelPerfect) {
 				this._realScale = Math.floor(this._realScale);
 			}
 			window.scrollTo(0, 0);

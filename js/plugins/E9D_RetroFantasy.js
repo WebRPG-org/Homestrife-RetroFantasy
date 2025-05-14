@@ -303,23 +303,6 @@
 		configurable: true
 	});
 	
-	/**
-	 * Stretch mode or not.
-	 *
-	 * @type boolean
-	 * @name Graphics.stretchMode
-	 */
-	Object.defineProperty(Graphics, "stretchMode", {
-		get: function() {
-			return this._stretchEnabled;
-		},
-		set: function(value) {
-			this._stretchEnabled = value;
-			this._updateAllElements();
-		},
-		configurable: true
-	});
-	
 	Graphics._onKeyDown = function(event) {
 		if (!event.ctrlKey && !event.altKey) {
 			switch (event.keyCode) {
@@ -622,24 +605,24 @@
 	// Config Manager
 	ConfigManager.defaults = {};
 	ConfigManager.defaults.fullScreen = true;
-	ConfigManager.defaults.stretchMode = true;
+	ConfigManager.defaults.pixelPerfect = false;
 	
 	ConfigManager.fullScreen = ConfigManager.defaults.fullScreen;
-	ConfigManager.stretchMode = ConfigManager.defaults.stretchMode;
+	ConfigManager.pixelPerfect = ConfigManager.defaults.pixelPerfect;
 	
 	ConfigManager.eventHandlersSetUp = false;
 	ConfigManager.windowOptions = null;
 	
 	ConfigManager.updateGraphics = function() {
-		Graphics.fullScreen = this.fullScreen;
-		Graphics.stretchMode = this.stretchMode;
+		if(Graphics.fullScreen		!= this.fullScreen)		{ Graphics.fullScreen	= this.fullScreen; }
+		if(Graphics.pixelPerfect	!= this.pixelPerfect)	{ Graphics.pixelPerfect	= this.pixelPerfect; }
 	};
 	
 	_ConfigManager__makeData = ConfigManager.makeData;
 	ConfigManager.makeData = function() {
 		const config = _ConfigManager__makeData.call(this);
 		config.fullScreen = this.fullScreen;
-		config.stretchMode = this.stretchMode;
+		config.pixelPerfect = this.pixelPerfect;
 		return config;
 	};
 
@@ -647,7 +630,7 @@
 	ConfigManager.applyData = function(config) {
 		_ConfigManager__applyData.call(this, config);
 		this.fullScreen = this.readFlag(config, "fullScreen", ConfigManager.defaults.fullScreen);
-		this.stretchMode = this.readFlag(config, "stretchMode", ConfigManager.defaults.stretchMode);
+		this.pixelPerfect = this.readFlag(config, "pixelPerfect", ConfigManager.defaults.pixelPerfect);
 	};
 	
 	ConfigManager.setupEventHandlers = function() {
@@ -660,7 +643,7 @@
 		if (!event.ctrlKey && !event.altKey) {
 			switch (event.keyCode) {
 				case 114: // F3
-					this.stretchMode = !this.stretchMode;
+					this.pixelPerfect = !this.pixelPerfect;
 					this.afterKeyDown();
 					break;
 				case 115: // F4
@@ -675,7 +658,7 @@
 		ConfigManager.save();
 		this.updateGraphics();
 		if(this.windowOptions) {
-			this.windowOptions.refresh();
+			this.windowOptions.refreshIfVideo();
 		}
 	};
 	
@@ -3558,6 +3541,7 @@
 		this._optionsWindow.setHandler("cancel", this.onOptionsCancel.bind(this));
 		this._categoryWindow.setOptionsWindow(this._optionsWindow);
 		this.addWindow(this._optionsWindow);
+		this._optionsWindow.deactivate();
 		this._optionsWindow.deselect();
 		ConfigManager.windowOptions = this._optionsWindow;
 	};
@@ -3581,6 +3565,7 @@
 	};
 	
 	Scene_Options.prototype.onOptionsCancel = function() {
+		this._optionsWindow.deactivate();
 		this._optionsWindow.deselect();
 		this._categoryWindow.activate();
 	};
@@ -7430,8 +7415,8 @@
 	};
 	
 	Window_Options.prototype.addVideoOptions = function() {
-		this.addCommand("Full Screen", "fullScreen");
-		this.addCommand("Stretch Mode", "stretchMode");
+		this.addCommand("(F4) Full Screen", "fullScreen");
+		this.addCommand("(F3) Pixel Perfect", "pixelPerfect");
 	};
 
 	Window_Options.prototype.addAudioOptions = function() {
@@ -7509,6 +7494,12 @@
 	
 	Window_Options.prototype.volumeFastOffset = function() {
 		return 10;
+	};
+	
+	Window_Options.prototype.refreshIfVideo = function() {
+		if(this._category === "video") {
+			this.refresh();
+		}
 	};
 	
 	// Window Savefile List

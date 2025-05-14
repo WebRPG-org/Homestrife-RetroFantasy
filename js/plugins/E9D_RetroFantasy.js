@@ -432,33 +432,164 @@
 	};
 	
 	// Input
+	Input.keyText = {
+		8:		"Backspace",
+		9:		"Tab",
+		13:		"Enter",
+		16:		"Shift",
+		17:		"Control",
+		18:		"Alt",
+		19:		"Pause",
+		20:		"Caps",
+		27:		"Escape",
+		32:		"Space",
+		33:		"Page Up",
+		34:		"Page Down",
+		35:		"End",
+		36:		"Home",
+		37:		"Left",
+		38:		"Up",
+		39:		"Right",
+		40:		"Down",
+		41:		"Select",
+		42:		"Print",
+		43:		"Execute",
+		44:		"Print Screen",
+		45:		"Insert",
+		46:		"Delete",
+		47:		"Help",
+		48:		"0",
+		49:		"1",
+		50:		"2",
+		51:		"3",
+		52:		"4",
+		53:		"5",
+		54:		"6",
+		55:		"7",
+		56:		"8",
+		57:		"9",
+		65:		"A",
+		66:		"B",
+		67:		"C",
+		68:		"D",
+		69:		"E",
+		70:		"F",
+		71:		"G",
+		72:		"H",
+		73:		"I",
+		74:		"J",
+		75:		"K",
+		76:		"L",
+		77:		"M",
+		78:		"N",
+		79:		"O",
+		80:		"P",
+		81:		"Q",
+		82:		"R",
+		83:		"S",
+		84:		"T",
+		85:		"U",
+		86:		"V",
+		87:		"W",
+		88:		"X",
+		89:		"Y",
+		90:		"Z",
+		91:		"L Win",
+		92:		"R Win",
+		93:		"Apps",
+		95:		"Sleep",
+		96:		"NumPad 0",
+		97:		"NumPad 1",
+		98:		"NumPad 2",
+		99:		"NumPad 3",
+		100:	"NumPad 4",
+		101:	"NumPad 5",
+		102:	"NumPad 6",
+		103:	"NumPad 7",
+		104:	"NumPad 8",
+		105:	"NumPad 9",
+		106:	"*",
+		107:	"+",
+		108:	"|",
+		109:	"-",
+		110:	".",
+		111:	"/",
+		112:	"F1",
+		//113:	"F2",
+		//114:	"F3",
+		//115:	"F4",
+		116:	"F5",
+		117:	"F6",
+		118:	"F7",
+		//119:	"F8",
+		120:	"F9",
+		121:	"F10",
+		122:	"F11",
+		//123:	"F12",
+		124:	"F13",
+		125:	"F14",
+		126:	"F15",
+		127:	"F16",
+		128:	"F17",
+		129:	"F18",
+		130:	"F19",
+		131:	"F20",
+		132:	"F21",
+		133:	"F22",
+		134:	"F23",
+		135:	"F24",
+		160:	"L Shift",
+		161:	"R Shift",
+		162:	"L Control",
+		163:	"R Control",
+		164:	"L Alt",
+		165:	"R Alt"
+	};
+	
+	Input.functionText = {
+		ok: "Interact/Confirm",
+		escape: "Menu/Cancel",
+		jump: "Jump",
+		shift: "Sprint",
+		up: "Up",
+		down: "Down",
+		left: "Left",
+		right: "Right",
+		pageup: "Prev Page/Decr 10",
+		pagedown: "Next Page/Incr 10"
+	}
+	
 	Input.keyMapper = {
 		9: "tab", // tab
 		13: "ok", // enter
 		16: "shift", // shift
 		17: "control", // control
-		18: "control", // alt
 		27: "escape", // escape
-		32: "ok", // space
+		32: "jump", // space
 		33: "pageup", // pageup
 		34: "pagedown", // pagedown
-		34: "jump", // home
 		37: "left", // left arrow
 		38: "up", // up arrow
 		39: "right", // right arrow
 		40: "down", // down arrow
-		45: "escape", // insert
-		67: "jump", // C
 		81: "pageup", // Q
 		87: "pagedown", // W
 		88: "escape", // X
 		90: "ok", // Z
-		96: "escape", // numpad 0
-		98: "down", // numpad 2
-		100: "left", // numpad 4
-		102: "right", // numpad 6
-		104: "up", // numpad 8
-		107: "jump", // plus
+		120: "debug" // F9
+	};
+	
+	Input.keyMapperStandards = {
+		9: "tab", // tab
+		13: "ok", // enter
+		17: "control", // control
+		27: "escape", // escape
+		33: "pageup", // pageup
+		34: "pagedown", // pagedown
+		37: "left", // left arrow
+		38: "up", // up arrow
+		39: "right", // right arrow
+		40: "down", // down arrow
 		120: "debug" // F9
 	};
 
@@ -473,6 +604,17 @@
 		13: "down", // D-pad down
 		14: "left", // D-pad left
 		15: "right" // D-pad right
+	};
+	
+	Input.updateKeyMapper = function(config) {
+		this.keyMapper = this.keyMapperStandards;
+		for(const inputConfig in config) {
+			if(!inputConfig.includes("Input")) { continue; }
+			const inputKey = config[inputConfig];
+			if(this.keyMapper[inputKey] || !this.keyText[inputKey]) { continue; }
+			const inputFunction = inputConfig.slice(0, inputConfig.indexOf("Input"));
+			this.keyMapper[inputKey] = inputFunction;
+		}
 	};
 	
 	// Data Manager
@@ -606,9 +748,32 @@
 	ConfigManager.defaults = {};
 	ConfigManager.defaults.fullScreen = true;
 	ConfigManager.defaults.pixelPerfect = false;
+	ConfigManager.defaults.leftInput = -1;
+	ConfigManager.defaults.rightInput = -1;
+	ConfigManager.defaults.upInput = -1;
+	ConfigManager.defaults.downInput = -1;
+	ConfigManager.defaults.pageupInput = 81;
+	ConfigManager.defaults.pagedownInput = 87;
+	ConfigManager.defaults.okInput = 90;
+	ConfigManager.defaults.escapeInput = 88;
+	ConfigManager.defaults.jumpInput = 32;
+	ConfigManager.defaults.shiftInput = 16;
 	
 	ConfigManager.fullScreen = ConfigManager.defaults.fullScreen;
 	ConfigManager.pixelPerfect = ConfigManager.defaults.pixelPerfect;
+	ConfigManager.leftInput = ConfigManager.defaults.leftInput;
+	ConfigManager.rightInput = ConfigManager.defaults.rightInput;
+	ConfigManager.upInput = ConfigManager.defaults.upInput;
+	ConfigManager.downInput = ConfigManager.defaults.downInput;
+	ConfigManager.pageupInput = ConfigManager.defaults.pageupInput;
+	ConfigManager.pagedownInput = ConfigManager.defaults.pagedownInput;
+	ConfigManager.okInput = ConfigManager.defaults.okInput;
+	ConfigManager.escapeInput = ConfigManager.defaults.escapeInput;
+	ConfigManager.jumpInput = ConfigManager.defaults.jumpInput;
+	ConfigManager.shiftInput = ConfigManager.defaults.shiftInput;
+	ConfigManager.tabInput = ConfigManager.defaults.tabInput;
+	ConfigManager.controlInput = ConfigManager.defaults.controlInput;
+	ConfigManager.debugInput = ConfigManager.defaults.debugInput;
 	
 	ConfigManager.eventHandlersSetUp = false;
 	ConfigManager.windowOptions = null;
@@ -616,6 +781,10 @@
 	ConfigManager.updateGraphics = function() {
 		if(Graphics.fullScreen		!= this.fullScreen)		{ Graphics.fullScreen	= this.fullScreen; }
 		if(Graphics.pixelPerfect	!= this.pixelPerfect)	{ Graphics.pixelPerfect	= this.pixelPerfect; }
+	};
+	
+	ConfigManager.updateInputs = function() {
+		Input.updateKeyMapper(this);
 	};
 	
 	_ConfigManager__makeData = ConfigManager.makeData;
@@ -629,8 +798,39 @@
 	_ConfigManager__applyData = ConfigManager.applyData;
 	ConfigManager.applyData = function(config) {
 		_ConfigManager__applyData.call(this, config);
-		this.fullScreen = this.readFlag(config, "fullScreen", ConfigManager.defaults.fullScreen);
-		this.pixelPerfect = this.readFlag(config, "pixelPerfect", ConfigManager.defaults.pixelPerfect);
+		this.fullScreen = this.readFlag(config, "fullScreen", this.defaults.fullScreen);
+		this.pixelPerfect = this.readFlag(config, "pixelPerfect", this.defaults.pixelPerfect);
+		this.leftInput = this.readFlag(config, "leftInput", this.defaults.leftInput);
+		this.rightInput = this.readFlag(config, "rightInput", this.defaults.rightInput);
+		this.upInput = this.readFlag(config, "upInput", this.defaults.upInput);
+		this.downInput = this.readFlag(config, "downInput", this.defaults.downInput);
+		this.pageupInput = this.readFlag(config, "pageupInput", this.defaults.pageupInput);
+		this.pagedownInput = this.readFlag(config, "pagedownInput", this.defaults.pagedownInput);
+		this.okInput = this.readFlag(config, "okInput", this.defaults.okInput);
+		this.escapeInput = this.readFlag(config, "escapeInput", this.defaults.escapeInput);
+		this.jumpInput = this.readFlag(config, "jumpInput", this.defaults.jumpInput);
+		this.shiftInput = this.readFlag(config, "shiftInput", this.defaults.shiftInput);
+		this.tabInput = this.readFlag(config, "tabInput", this.defaults.tabInput);
+		this.controlInput = this.readFlag(config, "controlInput", this.defaults.controlInput);
+		this.debugInput = this.readFlag(config, "debugInput", this.defaults.debugInput);
+	};
+	
+	ConfigManager.defaultInputs = function() {
+		this.leftInput = this.defaults.leftInput;
+		this.rightInput = this.defaults.rightInput;
+		this.upInput = this.defaults.upInput;
+		this.downInput = this.defaults.downInput;
+		this.pageupInput = this.defaults.pageupInput;
+		this.pagedownInput = this.defaults.pagedownInput;
+		this.okInput = this.defaults.okInput;
+		this.escapeInput = this.defaults.escapeInput;
+		this.jumpInput = this.defaults.jumpInput;
+		this.shiftInput = this.defaults.shiftInput;
+		this.tabInput = this.defaults.tabInput;
+		this.controlInput = this.defaults.controlInput;
+		this.debugInput = this.defaults.debugInput;
+		this.save();
+		this.updateInputs();
 	};
 	
 	ConfigManager.setupEventHandlers = function() {
@@ -655,7 +855,7 @@
 	};
 	
 	ConfigManager.afterKeyDown = function() {
-		ConfigManager.save();
+		this.save();
 		this.updateGraphics();
 		if(this.windowOptions) {
 			this.windowOptions.refreshIfVideo();
@@ -792,6 +992,7 @@
 	SceneManager.onSceneStart = function() {
 		_SceneManager__onSceneStart.call(this);
 		ConfigManager.updateGraphics();
+		ConfigManager.updateInputs();
 		ConfigManager.setupEventHandlers();
 	};
 	
@@ -7427,7 +7628,10 @@
 	};
 	
 	Window_Options.prototype.addInputOptions = function() {
-		
+		this.addCommand("Reset to defaults", "defaultInputs");
+		for(const textKey in Input.functionText) {
+			this.addCommand(Input.functionText[textKey], textKey+"Input");
+		}
 	};
 	
 	Window_Options.prototype.drawItem = function(index) {
@@ -7443,8 +7647,45 @@
 		this.drawText(status, rect.x + titleWidth, rect.y, statusWidth, "right");
 	};
 	
+	Window_Options.prototype.statusText = function(index) {
+		const symbol = this.commandSymbol(index);
+		const value = this.getConfigValue(symbol);
+		if (this.isVolumeSymbol(symbol)) {
+			return this.volumeStatusText(value);
+		} else if (this.isDefaultInputsSymbol(symbol)) {
+			return "";
+		} else if (this.isInputSymbol(symbol)) {
+			return this.inputStatusText(value);
+		} else {
+			return this.booleanStatusText(value);
+		}
+	};
+	
+	Window_Options.prototype.isDefaultInputsSymbol = function(symbol) {
+		return symbol.includes("defaultInputs");
+	};
+
+	Window_Options.prototype.isInputSymbol = function(symbol) {
+		return symbol.includes("Input");
+	};
+
+	Window_Options.prototype.inputStatusText = function(value) {
+		if(value < 0) { return ""; }
+		const keyText = Input.keyText[value];
+		return !!keyText ? keyText : "???";
+	};
+	
 	Window_Options.prototype.processOk = function() {
-		this.optionChange(true, true);
+		const index = this.index();
+		if(index < 0) { return; }
+		const symbol = this.commandSymbol(index);
+		if(this.isDefaultInputsSymbol(symbol)) {
+			this.defaultInputs();
+		} else if(this.isInputSymbol(symbol)) {
+			this.queryInput(symbol);
+		} else {
+			this.optionChange(true, true);
+		}
 	};
 		
 	Window_Options.prototype.cursorRight = function() {
@@ -7463,13 +7704,24 @@
 		this.optionChange(false, true); 
 	};
 	
+	Window_Options.prototype.defaultInputs = function() {
+		ConfigManager.defaultInputs();
+        this.playCursorSound();
+		this.refresh();
+	};
+	
+	Window_Options.prototype.queryInput = function(symbol) {
+		const keyFunction = symbol.slice(0, symbol.indexOf("Input"));
+		console.log(keyFunction);
+	};
+	
 	Window_Options.prototype.optionChange = function(forward, fast) {
 		const index = this.index();
 		if(index < 0) { return; }
 		const symbol = this.commandSymbol(index);
 		if (this.isVolumeSymbol(symbol)) {
 			this.changeVolume(symbol, forward, fast, false);
-		} else {
+		} else if(!this.isDefaultInputsSymbol(symbol) && !this.isInputSymbol(symbol)) {
 			this.changeValue(symbol, !this.getConfigValue(symbol));
 		}
 		if(this._category === "video") {

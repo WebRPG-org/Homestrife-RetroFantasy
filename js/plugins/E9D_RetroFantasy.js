@@ -282,6 +282,55 @@
 		return defaultValue;
 	}
 	
+	// Graphics
+	/**
+	 * Full screen or not.
+	 *
+	 * @type boolean
+	 * @name Graphics.fullScreen
+	 */
+	Object.defineProperty(Graphics, "fullScreen", {
+		get: function() {
+			return this._isFullScreen();
+		},
+		set: function(value) {
+			if(value) {
+				this._requestFullScreen();
+			} else {
+				this._cancelFullScreen();
+			}
+		},
+		configurable: true
+	});
+	
+	/**
+	 * Stretch mode or not.
+	 *
+	 * @type boolean
+	 * @name Graphics.stretchMode
+	 */
+	Object.defineProperty(Graphics, "stretchMode", {
+		get: function() {
+			return this._stretchEnabled;
+		},
+		set: function(value) {
+			this._stretchEnabled = value;
+			this._updateAllElements();
+		},
+		configurable: true
+	});
+	
+	Graphics._onKeyDown = function(event) {
+		if (!event.ctrlKey && !event.altKey) {
+			switch (event.keyCode) {
+				case 113: // F2
+					event.preventDefault();
+					this._switchFPSCounter();
+					break;
+			}
+		}
+	};
+	
 	// Bitmap
 	const _Bitmap__drawText = Bitmap.prototype.drawText;
 	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
@@ -570,6 +619,66 @@
 		}
 	};
 	
+	// Config Manager
+	ConfigManager.defaults = {};
+	ConfigManager.defaults.fullScreen = true;
+	ConfigManager.defaults.stretchMode = true;
+	
+	ConfigManager.fullScreen = ConfigManager.defaults.fullScreen;
+	ConfigManager.stretchMode = ConfigManager.defaults.stretchMode;
+	
+	ConfigManager.eventHandlersSetUp = false;
+	ConfigManager.windowOptions = null;
+	
+	ConfigManager.updateGraphics = function() {
+		Graphics.fullScreen = this.fullScreen;
+		Graphics.stretchMode = this.stretchMode;
+	};
+	
+	_ConfigManager__makeData = ConfigManager.makeData;
+	ConfigManager.makeData = function() {
+		const config = _ConfigManager__makeData.call(this);
+		config.fullScreen = this.fullScreen;
+		config.stretchMode = this.stretchMode;
+		return config;
+	};
+
+	_ConfigManager__applyData = ConfigManager.applyData;
+	ConfigManager.applyData = function(config) {
+		_ConfigManager__applyData.call(this, config);
+		this.fullScreen = this.readFlag(config, "fullScreen", ConfigManager.defaults.fullScreen);
+		this.stretchMode = this.readFlag(config, "stretchMode", ConfigManager.defaults.stretchMode);
+	};
+	
+	ConfigManager.setupEventHandlers = function() {
+		if(this.eventHandlersSetUp) { return; }
+		document.addEventListener("keydown", this.onKeyDown.bind(this));
+		this.eventHandlersSetUp = true;
+	};
+
+	ConfigManager.onKeyDown = function(event) {
+		if (!event.ctrlKey && !event.altKey) {
+			switch (event.keyCode) {
+				case 114: // F3
+					this.stretchMode = !this.stretchMode;
+					this.afterKeyDown();
+					break;
+				case 115: // F4
+					this.fullScreen = !this.fullScreen;
+					this.afterKeyDown();
+					break;
+			}
+		}
+	};
+	
+	ConfigManager.afterKeyDown = function() {
+		ConfigManager.save();
+		this.updateGraphics();
+		if(this.windowOptions) {
+			this.windowOptions.refresh();
+		}
+	};
+	
 	// Audio Manager
 	AudioManager.playSe = function(se) {
 		if (se.name) {
@@ -693,6 +802,14 @@
 		se.pitch = 100;
 		se.pan = 0;
 		AudioManager.playSe(se);
+	};
+	
+	// Scene Manager
+	_SceneManager__onSceneStart = SceneManager.onSceneStart;
+	SceneManager.onSceneStart = function() {
+		_SceneManager__onSceneStart.call(this);
+		ConfigManager.updateGraphics();
+		ConfigManager.setupEventHandlers();
 	};
 	
 	// Battle Manager
@@ -3423,7 +3540,7 @@
 		const rect = this.optionsCategoryWindowRect();
 		this._categoryWindow = new Window_OptionsCategory(rect);
 		this._categoryWindow.setHandler("ok", this.onCategoryOk.bind(this));
-		this._categoryWindow.setHandler("cancel", this.popScene.bind(this));
+		this._categoryWindow.setHandler("cancel", this.onCategoryCancel.bind(this));
 		this.addWindow(this._categoryWindow);
 	};
 
@@ -3441,8 +3558,8 @@
 		this._optionsWindow.setHandler("cancel", this.onOptionsCancel.bind(this));
 		this._categoryWindow.setOptionsWindow(this._optionsWindow);
 		this.addWindow(this._optionsWindow);
-		
 		this._optionsWindow.deselect();
+		ConfigManager.windowOptions = this._optionsWindow;
 	};
 
 	Scene_Options.prototype.optionsWindowRect = function() {
@@ -3456,6 +3573,11 @@
 	Scene_Options.prototype.onCategoryOk = function() {
 		this._optionsWindow.activate();
 		this._optionsWindow.select(0);
+	};
+	
+	Scene_Options.prototype.onCategoryCancel = function() {
+		ConfigManager.windowOptions = null;
+		this.popScene.bind(this)
 	};
 	
 	Scene_Options.prototype.onOptionsCancel = function() {
@@ -7308,7 +7430,8 @@
 	};
 	
 	Window_Options.prototype.addVideoOptions = function() {
-		
+		this.addCommand("Full Screen", "fullScreen");
+		this.addCommand("Stretch Mode", "stretchMode");
 	};
 
 	Window_Options.prototype.addAudioOptions = function() {
@@ -7335,26 +7458,57 @@
 		this.drawText(status, rect.x + titleWidth, rect.y, statusWidth, "right");
 	};
 	
+	Window_Options.prototype.processOk = function() {
+		this.optionChange(true, true);
+	};
+		
 	Window_Options.prototype.cursorRight = function() {
-		const index = this.index();
-		if(index < 0) { return; }
-		const symbol = this.commandSymbol(index);
-		if (this.isVolumeSymbol(symbol)) {
-			this.changeVolume(symbol, true, false);
-		} else {
-			this.changeValue(symbol, true);
-		}
+		this.optionChange(true, false); 
 	};
 
 	Window_Options.prototype.cursorLeft = function() {
+		this.optionChange(false, false); 
+	};
+	
+	Window_Options.prototype.cursorPagedown = function() {
+		this.optionChange(true, true); 
+	};
+
+	Window_Options.prototype.cursorPageup = function() {
+		this.optionChange(false, true); 
+	};
+	
+	Window_Options.prototype.optionChange = function(forward, fast) {
 		const index = this.index();
 		if(index < 0) { return; }
 		const symbol = this.commandSymbol(index);
 		if (this.isVolumeSymbol(symbol)) {
-			this.changeVolume(symbol, false, false);
+			this.changeVolume(symbol, forward, fast, false);
 		} else {
-			this.changeValue(symbol, false);
+			this.changeValue(symbol, !this.getConfigValue(symbol));
 		}
+		if(this._category === "video") {
+			ConfigManager.updateGraphics();
+		}
+	};
+	
+	Window_Options.prototype.changeVolume = function(symbol, forward, fast, wrap) {
+		const lastValue = this.getConfigValue(symbol);
+		const offset = fast ? this.volumeFastOffset() : this.volumeOffset();
+		const value = lastValue + (forward ? offset : -offset);
+		if (value > 100 && wrap) {
+			this.changeValue(symbol, 0);
+		} else {
+			this.changeValue(symbol, value.clamp(0, 100));
+		}
+	};
+
+	Window_Options.prototype.volumeOffset = function() {
+		return 1;
+	};
+	
+	Window_Options.prototype.volumeFastOffset = function() {
+		return 10;
 	};
 	
 	// Window Savefile List

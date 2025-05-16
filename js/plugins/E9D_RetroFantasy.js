@@ -840,6 +840,11 @@
 	};
 	
 	ConfigManager.setKeyMap = function(keyCode, input) {
+		for(const setting in this) {
+			if(setting.contains("Input") && keyCode === this[setting]) {
+				this[setting] = -1;
+			}
+		}
 		this[input] = keyCode;
 		this.save();
 		this.updateInputs();

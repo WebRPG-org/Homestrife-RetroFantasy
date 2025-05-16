@@ -433,14 +433,14 @@
 	
 	// Input
 	Input.keyText = {
-		8:		"Backspace",
+		//8:		"Backspace",
 		9:		"Tab",
 		13:		"Enter",
 		16:		"Shift",
 		17:		"Control",
 		18:		"Alt",
 		19:		"Pause",
-		20:		"Caps",
+		//20:		"Caps Lock",
 		27:		"Escape",
 		32:		"Space",
 		33:		"Page Up",
@@ -551,12 +551,13 @@
 		escape: "Menu/Cancel",
 		jump: "Jump",
 		shift: "Sprint",
+		tool: "Use Tool",
+		pageup: "Prev Tool/Page/-10",
+		pagedown: "Next Tool/Page/+10",
 		up: "Up",
 		down: "Down",
 		left: "Left",
-		right: "Right",
-		pageup: "Prev Page/Decr 10",
-		pagedown: "Next Page/Incr 10"
+		right: "Right"
 	}
 	
 	Input.keyMapper = {
@@ -572,6 +573,7 @@
 		38: "up", // up arrow
 		39: "right", // right arrow
 		40: "down", // down arrow
+		67: "tool", // C
 		81: "pageup", // Q
 		87: "pagedown", // W
 		88: "escape", // X
@@ -607,7 +609,10 @@
 	};
 	
 	Input.updateKeyMapper = function(config) {
-		this.keyMapper = this.keyMapperStandards;
+		this.keyMapper = {};
+		for(const keyCode in this.keyMapperStandards) {
+			this.keyMapper[keyCode] = this.keyMapperStandards[keyCode];
+		}
 		for(const inputConfig in config) {
 			if(!inputConfig.includes("Input")) { continue; }
 			const inputKey = config[inputConfig];
@@ -756,6 +761,7 @@
 	ConfigManager.defaults.pagedownInput = 87;
 	ConfigManager.defaults.okInput = 90;
 	ConfigManager.defaults.escapeInput = 88;
+	ConfigManager.defaults.toolInput = 67;
 	ConfigManager.defaults.jumpInput = 32;
 	ConfigManager.defaults.shiftInput = 16;
 	
@@ -769,11 +775,9 @@
 	ConfigManager.pagedownInput = ConfigManager.defaults.pagedownInput;
 	ConfigManager.okInput = ConfigManager.defaults.okInput;
 	ConfigManager.escapeInput = ConfigManager.defaults.escapeInput;
+	ConfigManager.toolInput = ConfigManager.defaults.toolInput;
 	ConfigManager.jumpInput = ConfigManager.defaults.jumpInput;
 	ConfigManager.shiftInput = ConfigManager.defaults.shiftInput;
-	ConfigManager.tabInput = ConfigManager.defaults.tabInput;
-	ConfigManager.controlInput = ConfigManager.defaults.controlInput;
-	ConfigManager.debugInput = ConfigManager.defaults.debugInput;
 	
 	ConfigManager.eventHandlersSetUp = false;
 	ConfigManager.windowOptions = null;
@@ -808,11 +812,9 @@
 		this.pagedownInput = this.readFlag(config, "pagedownInput", this.defaults.pagedownInput);
 		this.okInput = this.readFlag(config, "okInput", this.defaults.okInput);
 		this.escapeInput = this.readFlag(config, "escapeInput", this.defaults.escapeInput);
+		this.toolInput = this.readFlag(config, "toolInput", this.defaults.toolInput);
 		this.jumpInput = this.readFlag(config, "jumpInput", this.defaults.jumpInput);
 		this.shiftInput = this.readFlag(config, "shiftInput", this.defaults.shiftInput);
-		this.tabInput = this.readFlag(config, "tabInput", this.defaults.tabInput);
-		this.controlInput = this.readFlag(config, "controlInput", this.defaults.controlInput);
-		this.debugInput = this.readFlag(config, "debugInput", this.defaults.debugInput);
 	};
 	
 	ConfigManager.defaultInputs = function() {
@@ -824,11 +826,21 @@
 		this.pagedownInput = this.defaults.pagedownInput;
 		this.okInput = this.defaults.okInput;
 		this.escapeInput = this.defaults.escapeInput;
+		this.toolInput = this.defaults.toolInput;
 		this.jumpInput = this.defaults.jumpInput;
 		this.shiftInput = this.defaults.shiftInput;
-		this.tabInput = this.defaults.tabInput;
-		this.controlInput = this.defaults.controlInput;
-		this.debugInput = this.defaults.debugInput;
+		this.save();
+		this.updateInputs();
+	};
+	
+	ConfigManager.clearKeyMap = function(input) {
+		this[input] = -1;
+		this.save();
+		this.updateInputs();
+	};
+	
+	ConfigManager.setKeyMap = function(keyCode, input) {
+		this[input] = keyCode;
 		this.save();
 		this.updateInputs();
 	};
@@ -3716,6 +3728,7 @@
 	// Scene Options
 	Scene_Options.prototype.create = function() {
 		Scene_MenuBase.prototype.create.call(this);
+		document.addEventListener("keydown", this.onKeyDownInputting.bind(this));
 		this.createOptionsCategoryWindow();
 		this.createOptionsWindow();
 	};
@@ -3762,13 +3775,38 @@
 	
 	Scene_Options.prototype.onCategoryCancel = function() {
 		ConfigManager.windowOptions = null;
-		this.popScene.bind(this)
+		this.popScene();
 	};
 	
 	Scene_Options.prototype.onOptionsCancel = function() {
 		this._optionsWindow.deactivate();
 		this._optionsWindow.deselect();
 		this._categoryWindow.activate();
+	};
+	
+	Scene_Options.prototype.onKeyDownInputting = function(event) {
+		if(this._optionsWindow.isInputting()) {
+			if(event.keyCode === 27) {
+				this.exitInputting();
+			} else if(event.keyCode === 8 || event.keyCode === 46) {
+				ConfigManager.clearKeyMap(this._optionsWindow.currentSymbol());
+				this.exitInputting();
+			} else if(
+				!Input.keyMapperStandards[event.keyCode] &&
+				Input.keyText[event.keyCode]
+			) {
+				ConfigManager.setKeyMap(event.keyCode, this._optionsWindow.currentSymbol());
+				this.exitInputting();
+			}
+		}
+	};
+	
+	Scene_Options.prototype.exitInputting = function() {
+		this._optionsWindow.setInputting(false);
+		this._optionsWindow.activate();
+		this._optionsWindow.playCursorSound();
+		this._optionsWindow.refresh();
+		Input.clear();
 	};
 	
 	// Scene File
@@ -7628,7 +7666,7 @@
 	};
 	
 	Window_Options.prototype.addInputOptions = function() {
-		this.addCommand("Reset to defaults", "defaultInputs");
+		this.addCommand("Reset to defaults", "resetToDefaults");
 		for(const textKey in Input.functionText) {
 			this.addCommand(Input.functionText[textKey], textKey+"Input");
 		}
@@ -7650,9 +7688,11 @@
 	Window_Options.prototype.statusText = function(index) {
 		const symbol = this.commandSymbol(index);
 		const value = this.getConfigValue(symbol);
-		if (this.isVolumeSymbol(symbol)) {
+		if (this._isInputting && index === this.index()) {
+			return "Press any key"
+		} else if (this.isVolumeSymbol(symbol)) {
 			return this.volumeStatusText(value);
-		} else if (this.isDefaultInputsSymbol(symbol)) {
+		} else if (this.isResetToDefaultsSymbol(symbol)) {
 			return "";
 		} else if (this.isInputSymbol(symbol)) {
 			return this.inputStatusText(value);
@@ -7661,8 +7701,8 @@
 		}
 	};
 	
-	Window_Options.prototype.isDefaultInputsSymbol = function(symbol) {
-		return symbol.includes("defaultInputs");
+	Window_Options.prototype.isResetToDefaultsSymbol = function(symbol) {
+		return symbol.includes("resetToDefaults");
 	};
 
 	Window_Options.prototype.isInputSymbol = function(symbol) {
@@ -7679,29 +7719,29 @@
 		const index = this.index();
 		if(index < 0) { return; }
 		const symbol = this.commandSymbol(index);
-		if(this.isDefaultInputsSymbol(symbol)) {
+		if(this.isResetToDefaultsSymbol(symbol)) {
 			this.defaultInputs();
 		} else if(this.isInputSymbol(symbol)) {
-			this.queryInput(symbol);
+			this.beginInputting();
 		} else {
 			this.optionChange(true, true);
 		}
 	};
 		
 	Window_Options.prototype.cursorRight = function() {
-		this.optionChange(true, false); 
+		this.optionChange(true, false);
 	};
 
 	Window_Options.prototype.cursorLeft = function() {
-		this.optionChange(false, false); 
+		this.optionChange(false, false);
 	};
 	
 	Window_Options.prototype.cursorPagedown = function() {
-		this.optionChange(true, true); 
+		this.optionChange(true, true);
 	};
 
 	Window_Options.prototype.cursorPageup = function() {
-		this.optionChange(false, true); 
+		this.optionChange(false, true);
 	};
 	
 	Window_Options.prototype.defaultInputs = function() {
@@ -7710,9 +7750,19 @@
 		this.refresh();
 	};
 	
-	Window_Options.prototype.queryInput = function(symbol) {
-		const keyFunction = symbol.slice(0, symbol.indexOf("Input"));
-		console.log(keyFunction);
+	Window_Options.prototype.beginInputting = function() {
+		this.setInputting(true);
+		this.deactivate();
+		this.playCursorSound();
+		this.refresh();
+	};
+	
+	Window_Options.prototype.isInputting = function() {
+		return this._isInputting;
+	};
+	
+	Window_Options.prototype.setInputting = function(inputting) {
+		this._isInputting = inputting;
 	};
 	
 	Window_Options.prototype.optionChange = function(forward, fast) {
@@ -7721,7 +7771,7 @@
 		const symbol = this.commandSymbol(index);
 		if (this.isVolumeSymbol(symbol)) {
 			this.changeVolume(symbol, forward, fast, false);
-		} else if(!this.isDefaultInputsSymbol(symbol) && !this.isInputSymbol(symbol)) {
+		} else if(!this.isResetToDefaultsSymbol(symbol) && !this.isInputSymbol(symbol)) {
 			this.changeValue(symbol, !this.getConfigValue(symbol));
 		}
 		if(this._category === "video") {

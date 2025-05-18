@@ -2880,30 +2880,38 @@
 		this._tools.pole = {};
 		this._tools.pole.name = "Pole";
 		this._tools.pole.icon = 0;
+		this._tools.pole.range = 2;
+		this._tools.pole.fixedRange = true;
 		
 		this._tools.bomb = {};
 		this._tools.bomb.name = "Bomb";
 		this._tools.bomb.icon = 1;
+		this._tools.bomb.range = 1;
 		this._tools.bomb.showCount = true;
 		
 		this._tools.grapple = {};
 		this._tools.grapple.name = "Grapple";
+		this._tools.grapple.range = 6;
 		this._tools.grapple.icon = 2;
 		
 		this._tools.repair = {};
 		this._tools.repair.name = "Repair";
+		this._tools.repair.range = 1;
 		this._tools.repair.icon = 3;
 		
 		this._tools.fire = {};
 		this._tools.fire.name = "Fire";
+		this._tools.fire.range = 6;
 		this._tools.fire.icon = 4;
 		
 		this._tools.ice = {};
 		this._tools.ice.name = "Ice";
+		this._tools.ice.range = 6;
 		this._tools.ice.icon = 5;
 		
 		this._tools.bolt = {};
 		this._tools.bolt.name = "Bolt";
+		this._tools.bolt.range = 6;
 		this._tools.bolt.icon = 6;
 	};
 	
@@ -3015,8 +3023,12 @@
 		return this._toolsAvailable.length > 0;
 	};
 	
-	Game_Party.prototype.toolIcon = function() {
-		return this._tools[this._toolsAvailable[this._curTool]].icon;
+	Game_Party.prototype.tool = function() {
+		return this._tools[this.toolSymbol()];
+	};
+	
+	Game_Party.prototype.toolSymbol = function() {
+		return this.toolsAreAvailable() ? this._toolsAvailable[this._curTool] : "";
 	};
 	
 	Game_Party.prototype.switchTool = function(forward) {
@@ -3263,14 +3275,17 @@
 	_Game_Player__initMembers = Game_Player.prototype.initMembers;
 	Game_Player.prototype.initMembers = function() {
 		_Game_Player__initMembers.call(this);
+		this._bufferTime = 8;
 		this._triggerBuffer = 0;
 		this._jumpBuffer = 0;
+		this._toolBuffer = 0;
 	};
 	
 	_Game_Player__update = Game_Player.prototype.update;
 	Game_Player.prototype.update = function(sceneActive) {
-		this._triggerBuffer = Input.isTriggered("ok") ? 8 : Math.max(0, this._triggerBuffer - 1);
-		this._jumpBuffer = !$gameMap.isJumpDisabled() && Input.isTriggered("jump") ? 8 : Math.max(0, this._jumpBuffer - 1);
+		this._triggerBuffer = Input.isTriggered("ok") ? this._bufferTime : Math.max(0, this._triggerBuffer - 1);
+		this._jumpBuffer = !$gameMap.isJumpDisabled() && Input.isTriggered("jump") ? this._bufferTime : Math.max(0, this._jumpBuffer - 1);
+		this._toolBuffer = Input.isTriggered("tool") ? this._bufferTime : Math.max(0, this._toolBuffer - 1);
 		_Game_Player__update.call(this, sceneActive);
 	};
 	
@@ -3378,6 +3393,29 @@
 		this.moveDiagonally(horiz, vert);
 	};
 	
+	Game_Player.prototype.updateNonmoving = function(wasMoving, sceneActive) {
+		if (!$gameMap.isEventRunning()) {
+			if (wasMoving) {
+				$gameParty.onPlayerWalk();
+				this.checkEventTriggerHere([1, 2]);
+				if ($gameMap.setupStartingEvent()) {
+					return;
+				}
+			}
+			if (sceneActive && this.triggerAction()) {
+				return;
+			}
+			if (sceneActive && this.triggerTool()) {
+				return;
+			}
+			if (wasMoving) {
+				this.updateEncounterCount();
+			} else {
+				$gameTemp.clearDestination();
+			}
+		}
+	};
+	
 	Game_Player.prototype.triggerButtonAction = function() {
 		if (this._triggerBuffer > 0) {
 			this._triggerBuffer = 0;
@@ -3391,6 +3429,41 @@
 			this.checkEventTriggerThere([0, 1, 2]);
 			if ($gameMap.setupStartingEvent()) {
 				return true;
+			}
+		}
+		return false;
+	};
+	
+	Game_Player.prototype.triggerTool = function() {
+		if(!this.canStartLocalEvents()) { return false; }
+		if (this._toolBuffer > 0) {
+			this._toolBuffer = 0;
+			let checkX = this._x;
+			let checkY = this._y;
+			const d = this.direction();
+			const tool = $gameParty.tool();
+			const toolSymbol = $gameParty.toolSymbol();
+			if(tool) {
+				for(let i = 0; i < tool.range; i++) {
+					checkX = $gameMap.roundXWithDirection(checkX, d);
+					checkY = $gameMap.roundYWithDirection(checkY, d);
+					if(tool.fixedRange && i < tool.range-1) { continue; }
+					let eventTriggered = false;
+					for(const event of $gameMap.eventsXyNt(checkX, checkY)) {
+						if(!event) { continue; }
+						const eventData = event.event();
+						if(!eventData.e9dInfo.toolTriggers || !eventData.e9dInfo.toolTriggers.length) { continue; }
+						for(const trigger of eventData.e9dInfo.toolTriggers) {
+							if(trigger === toolSymbol) {
+								this.startMapEvent(checkX, checkY, [0,1,2], false);
+								eventTriggered = true;
+								break;
+							}
+						}
+						if(eventTriggered) { break; }
+					}
+					if(eventTriggered && $gameMap.setupStartingEvent()) { return true; }
+				}
 			}
 		}
 		return false;
@@ -8994,8 +9067,9 @@
 
 	Window_Tool.prototype.refresh = function() {
 		this.contents.clear();
-		if($gameParty.toolsAreAvailable()) {
-			this.drawToolIcon($gameParty.toolIcon(), $gameSystem.windowPadding(), $gameSystem.windowPadding());
+		const tool = $gameParty.tool();
+		if(tool) {
+			this.drawToolIcon(tool.icon, $gameSystem.windowPadding(), $gameSystem.windowPadding());
 		}
 	};
 	

@@ -3011,20 +3011,30 @@
 		this.updateTools();
 	};
 	
+	Game_Party.prototype.toolsAreAvailable = function() {
+		return this._toolsAvailable.length > 0;
+	};
+	
+	Game_Party.prototype.toolIcon = function() {
+		return this._tools[this._toolsAvailable[this._curTool]].icon;
+	};
+	
 	Game_Party.prototype.switchTool = function(forward) {
 		if(this._toolsAvailable.length <= 0) {
 			this._curTool = 0;
-			return;
+			return false;
 		}
+		const prevTool = this._curTool;
 		this._curTool += forward ? 1 : -1;
 		this._curTool = this._curTool < 0 ? this._toolsAvailable.length-1 : (this._curTool >= this._toolsAvailable.length ? this._curTool = 0 : this._curTool);
+		return prevTool != this._curTool;
 	};
 	
 	Game_Party.prototype.updateTools = function() {
 		this._toolsAvailable = [];
 		for(const symbol in this._tools) {
 			let symbolFound = false;
-			for(const item in this.allItems()) {
+			for(const item of this.allItems()) {
 				if(item.e9dInfo.providesTool && item.e9dInfo.providesTool.length && item.e9dInfo.providesTool.indexOf(symbol) >= 0) {
 					this._toolsAvailable.push(symbol);
 					symbolFound = true;
@@ -3451,11 +3461,18 @@
 	};
 	
 	// Scene Map
+	const _Sceme_Map__initialize = Scene_Map.prototype.initialize;
+	Scene_Map.prototype.initialize = function() {
+		_Sceme_Map__initialize.call(this);
+		this._toolWindowRefreshTime = -1;
+	};
+	
 	const _Scene_Map__onMapLoaded = Scene_Map.prototype.onMapLoaded;
 	Scene_Map.prototype.onMapLoaded = function() {
 		DataManager.parseMapNotes();
 		_Scene_Map__onMapLoaded.call(this);
 		$gameParty.updateTools();
+		this._toolWindowRefreshTime = 2;
 	};
 	
 	const _Scene_Map__updateScene = Scene_Map.prototype.updateScene;
@@ -3475,11 +3492,25 @@
 	};
 	
 	Scene_Map.prototype.updateTool = function() {
-		if(Input.isTriggered("pageup")) {
-			$gameParty.switchTool();
-		} else if(Input.isTriggered("pagedown")) {
-			$gameParty.switchTool(true);
+		if(this._toolWindowRefreshTime >= 0) {
+			this._toolWindowRefreshTime--;
 		}
+		if(this._toolWindowRefreshTime <= 0) {
+			this._toolWindow.refresh();
+			this._toolWindowNeedsRefresh = -1;
+		}
+		if(Input.isTriggered("pageup")) {
+			this.switchTool();
+		} else if(Input.isTriggered("pagedown")) {
+			this.switchTool(true);
+		}
+	};
+	
+	Scene_Map.prototype.switchTool = function(forward) {
+		if($gameParty.switchTool(forward)) {
+			this._toolWindow.playCursorSound(forward ? "pagedown" : "pageup");
+		}
+		this._toolWindow.refresh();
 	};
 	
 	Scene_Map.prototype.callMenu = function() {
@@ -3489,6 +3520,34 @@
 		$gameTemp.clearDestination();
 		this._mapNameWindow.hide();
 		this._waitCount = 2;
+	};
+	
+	const _Scene_Map__createAllWindows = Scene_Map.prototype.createAllWindows;
+	Scene_Map.prototype.createAllWindows = function() {
+		this.createToolWindow();
+		_Scene_Map__createAllWindows.call(this);
+	};
+	
+	Scene_Map.prototype.createToolWindow = function() {
+		const rect = this.toolWindowRect();
+		this._toolWindow = new Window_Tool(rect);
+		this.addWindow(this._toolWindow);
+	};
+
+	Scene_Map.prototype.toolWindowRect = function() {
+		const wx = $gameMap.tileWidth() - $gameSystem.windowPadding()*2;
+		const wy = $gameMap.tileHeight() - $gameSystem.windowPadding()*2;
+		const ww = $gameSystem.windowPadding()*4 + $gameMap.tileWidth();
+		const wh = $gameSystem.windowPadding()*4 + $gameMap.tileHeight();
+		return new Rectangle(wx, wy, ww, wh);
+	};
+	
+	Scene_Map.prototype.mapNameWindowRect = function() {
+		const wx = 0;
+		const wy = 0;
+		const ww = 0;
+		const wh = 0;
+		return new Rectangle(wx, wy, ww, wh);
 	};
 	
 	// Scene Menu Base
@@ -8923,6 +8982,36 @@
 				);
 				break;
 		}
+	};
+	
+	// Window Tool
+	function Window_Tool() {
+		this.initialize(...arguments);
+	}
+
+	Window_Tool.prototype = Object.create(Window_Base.prototype);
+	Window_Tool.prototype.constructor = Window_Tool;
+
+	Window_Tool.prototype.refresh = function() {
+		this.contents.clear();
+		if($gameParty.toolsAreAvailable()) {
+			this.drawToolIcon($gameParty.toolIcon(), $gameSystem.windowPadding(), $gameSystem.windowPadding());
+		}
+	};
+	
+	Window_Base.prototype.drawToolIcon = function(icon, x, y) {
+		width = $gameMap.tileWidth();
+		height = $gameMap.tileHeight();
+		const bitmap = ImageManager.loadBitmap("img/toolIcons/", "toolIcon1");
+		this.contents.blt(
+			bitmap,
+			width*(icon % 12),
+			height*Math.floor(icon / 12),
+			width,
+			height,
+			x,
+			y
+		);
 	};
 	
 	// Window Battle Log

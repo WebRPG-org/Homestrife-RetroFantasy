@@ -1,7 +1,7 @@
 [
 null,
-{"id":1,"expanded":true,"name":"MAP001","order":1,"parentId":0,"scrollX":880,"scrollY":653.2},
+{"id":1,"expanded":true,"name":"MAP001","order":1,"parentId":0,"scrollX":832,"scrollY":653.4545454545455},
 {"id":2,"expanded":true,"name":"CharacterCreation","order":2,"parentId":0,"scrollX":2465.4545454545455,"scrollY":1718.1818181818182,"quick":false},
-{"id":3,"expanded":false,"name":"FirstCave","order":4,"parentId":4,"scrollX":1885.7142857142856,"scrollY":1266,"quick":false},
-{"id":4,"expanded":true,"name":"World01","order":3,"parentId":0,"scrollX":5346.857142857142,"scrollY":6558,"quick":false}
+{"id":3,"expanded":false,"name":"FirstCave","order":4,"parentId":4,"scrollX":872.7272727272727,"scrollY":1720.3636363636363,"quick":false},
+{"id":4,"expanded":true,"name":"World01","order":3,"parentId":0,"scrollX":5346.909090909091,"scrollY":6558.181818181818,"quick":false}
 ]

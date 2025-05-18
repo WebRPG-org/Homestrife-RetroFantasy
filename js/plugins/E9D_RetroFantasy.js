@@ -2179,6 +2179,7 @@
 			}
 		});
 		this._skills.sort((a, b) => a - b);
+		$gameParty.updateTools();
 	};
 	
 	Game_Actor.prototype.meetsAbilityRequirements = function(reqs, ignoreEquipAbilities) {
@@ -2857,12 +2858,53 @@
 		}
 	};
 	
-	// Game Party
 	Game_Unit.prototype.groups = function() {
 		const group = {};
 		group.members = this.battleMembers();
 		group.backRow = false;
 		return [group];
+	};
+	
+	// Game Party
+	const _Game_Party__initialize = Game_Party.prototype.initialize;
+	Game_Party.prototype.initialize = function() {
+		_Game_Party__initialize.call(this);
+		this.initTools();
+	};
+	
+	Game_Party.prototype.initTools = function() {
+		this._curTool = 0;
+		this._toolsAvailable = [];
+		this._tools = {};
+		
+		this._tools.pole = {};
+		this._tools.pole.name = "Pole";
+		this._tools.pole.icon = 0;
+		
+		this._tools.bomb = {};
+		this._tools.bomb.name = "Bomb";
+		this._tools.bomb.icon = 1;
+		this._tools.bomb.showCount = true;
+		
+		this._tools.grapple = {};
+		this._tools.grapple.name = "Grapple";
+		this._tools.grapple.icon = 2;
+		
+		this._tools.repair = {};
+		this._tools.repair.name = "Repair";
+		this._tools.repair.icon = 3;
+		
+		this._tools.fire = {};
+		this._tools.fire.name = "Fire";
+		this._tools.fire.icon = 4;
+		
+		this._tools.ice = {};
+		this._tools.ice.name = "Ice";
+		this._tools.ice.icon = 5;
+		
+		this._tools.bolt = {};
+		this._tools.bolt.name = "Bolt";
+		this._tools.bolt.icon = 6;
 	};
 	
 	Game_Party.prototype.swapOrder = function(index1, index2) {
@@ -2909,6 +2951,18 @@
 		}
 	};
 	
+	const _Game_Party__addActor = Game_Party.prototype.addActor;
+	Game_Party.prototype.addActor = function(actorId) {
+		_Game_Party__addActor.call(this, actorId);
+		this.updateTools();
+	};
+
+	const _Game_Party__removeActor = Game_Party.prototype.removeActor;
+	Game_Party.prototype.removeActor = function(actorId) {
+		_Game_Party__removeActor.call(this, actorId);
+		this.updateTools();
+	};
+	
 	Game_Party.prototype.removePartyMember = function(index) {
 		const arrayIndex = index - 1;
 		const members = $gameParty.allMembers();
@@ -2942,6 +2996,59 @@
 				event.setSelfSwitch("A", false);
 			}
 		}
+		this.updateTools();
+	};
+	
+	const _Game_Party__gainItem = Game_Party.prototype.gainItem;
+	Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
+		_Game_Party__gainItem.call(this, item, amount, includeEquip);
+		this.updateTools();
+	};
+	
+	const _Game_Party__loseItem = Game_Party.prototype.loseItem;
+	Game_Party.prototype.loseItem = function(item, amount, includeEquip) {
+		_Game_Party__loseItem.call(this, item, amount, includeEquip);
+		this.updateTools();
+	};
+	
+	Game_Party.prototype.switchTool = function(forward) {
+		if(this._toolsAvailable.length <= 0) {
+			this._curTool = 0;
+			return;
+		}
+		this._curTool += forward ? 1 : -1;
+		this._curTool = this._curTool < 0 ? this._toolsAvailable.length-1 : (this._curTool >= this._toolsAvailable.length ? this._curTool = 0 : this._curTool);
+	};
+	
+	Game_Party.prototype.updateTools = function() {
+		this._toolsAvailable = [];
+		for(const symbol in this._tools) {
+			let symbolFound = false;
+			for(const item in this.allItems()) {
+				if(item.e9dInfo.providesTool && item.e9dInfo.providesTool.length && item.e9dInfo.providesTool.indexOf(symbol) >= 0) {
+					this._toolsAvailable.push(symbol);
+					symbolFound = true;
+					break;
+				}
+			}
+			if(!symbolFound) {
+				for(const member of this.members()) {
+					for(const skill of member.skills()) {
+						if(skill.e9dInfo.providesTool  && skill.e9dInfo.providesTool.length && skill.e9dInfo.providesTool.indexOf(symbol) >= 0) {
+							this._toolsAvailable.push(symbol);
+							symbolFound = true;
+							break;
+						}
+					}
+					if(symbolFound) { break; }
+				}
+			}
+		}
+		if(this._toolsAvailable.length <= 0) {
+			this._curTool = 0;
+			return;
+		}
+		this._curTool = this._curTool.clamp(0, this._toolsAvailable.length-1);
 	};
 	
 	// Game Troop
@@ -3348,6 +3455,15 @@
 	Scene_Map.prototype.onMapLoaded = function() {
 		DataManager.parseMapNotes();
 		_Scene_Map__onMapLoaded.call(this);
+		$gameParty.updateTools();
+	};
+	
+	const _Scene_Map__updateScene = Scene_Map.prototype.updateScene;
+	Scene_Map.prototype.updateScene = function() {
+		_Scene_Map__updateScene.call(this);
+		if (!SceneManager.isSceneChanging()) {
+			this.updateTool();
+		}
 	};
 	
 	Scene_Map.prototype.createMenuButton = function() {
@@ -3356,6 +3472,14 @@
 		this._menuButton.y = this.buttonY();
 		this._menuButton.visible = false;
 		this.addWindow(this._menuButton);
+	};
+	
+	Scene_Map.prototype.updateTool = function() {
+		if(Input.isTriggered("pageup")) {
+			$gameParty.switchTool();
+		} else if(Input.isTriggered("pagedown")) {
+			$gameParty.switchTool(true);
+		}
 	};
 	
 	Scene_Map.prototype.callMenu = function() {
@@ -7461,11 +7585,10 @@
 	Window_SkillLevelsConfirm.prototype.constructor = Window_SkillLevelsConfirm;
 
 	Window_SkillLevelsConfirm.prototype.initialize = function(rect) {
-		Window_Command.prototype.initialize.call(this, rect);
-		this.select(0);
 		this._canRepeat = false;
 		this._upgradeEnabled = false;
 		this._refundEnabled = false;
+		Window_Command.prototype.initialize.call(this, rect);
 	};
 	
 	Window_SkillLevelsConfirm.prototype.makeCommandList = function() {

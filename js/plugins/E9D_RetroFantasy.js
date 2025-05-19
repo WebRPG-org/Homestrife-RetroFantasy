@@ -2880,39 +2880,64 @@
 		this._tools.pole = {};
 		this._tools.pole.name = "Pole";
 		this._tools.pole.icon = 0;
-		this._tools.pole.range = 2;
-		this._tools.pole.fixedRange = true;
+		this._tools.pole.anim = {};
+		this._tools.pole.anim.type = "reach";
+		this._tools.pole.anim.frames = 4;
+		this._tools.pole.anim.triggerFrame = 1;
+		this._tools.pole.anim.range = 2;
 		
 		this._tools.bomb = {};
 		this._tools.bomb.name = "Bomb";
 		this._tools.bomb.icon = 1;
-		this._tools.bomb.range = 1;
 		this._tools.bomb.showCount = true;
+		this._tools.bomb.anim = {};
+		this._tools.bomb.anim.type = "point";
+		this._tools.bomb.anim.frames = 4;
+		this._tools.bomb.anim.triggerFrame = 2;
+		this._tools.bomb.anim.range = 1;
 		
 		this._tools.grapple = {};
 		this._tools.grapple.name = "Grapple";
-		this._tools.grapple.range = 6;
 		this._tools.grapple.icon = 2;
+		this._tools.grapple.anim = {};
+		this._tools.grapple.anim.type = "boomerang";
+		this._tools.grapple.anim.frames = 12;
 		
 		this._tools.repair = {};
 		this._tools.repair.name = "Repair";
-		this._tools.repair.range = 1;
 		this._tools.repair.icon = 3;
+		this._tools.repair.anim = {};
+		this._tools.repair.anim.type = "point";
+		this._tools.repair.anim.frames = 4;
+		this._tools.repair.anim.triggerFrame = 3;
+		this._tools.repair.anim.range = 1;
 		
 		this._tools.fire = {};
 		this._tools.fire.name = "Fire";
-		this._tools.fire.range = 6;
 		this._tools.fire.icon = 4;
+		this._tools.fire.anim = {};
+		this._tools.fire.anim.type = "point";
+		this._tools.fire.anim.frames = 4;
+		this._tools.fire.anim.triggerFrame = 0;
+		this._tools.fire.anim.range = 6;
 		
 		this._tools.ice = {};
 		this._tools.ice.name = "Ice";
-		this._tools.ice.range = 6;
 		this._tools.ice.icon = 5;
+		this._tools.ice.anim = {};
+		this._tools.ice.anim.type = "point";
+		this._tools.ice.anim.frames = 4;
+		this._tools.ice.anim.triggerFrame = 0;
+		this._tools.ice.anim.range = 6;
 		
 		this._tools.bolt = {};
 		this._tools.bolt.name = "Bolt";
-		this._tools.bolt.range = 6;
 		this._tools.bolt.icon = 6;
+		this._tools.bolt.anim = {};
+		this._tools.bolt.anim.type = "point";
+		this._tools.bolt.anim.frames = 4;
+		this._tools.bolt.anim.triggerFrame = 0;
+		this._tools.bolt.anim.range = 6;
 	};
 	
 	Game_Party.prototype.swapOrder = function(index1, index2) {
@@ -3279,6 +3304,11 @@
 		this._triggerBuffer = 0;
 		this._jumpBuffer = 0;
 		this._toolBuffer = 0;
+		this._tool = null;
+		this._toolSymbol = "";
+		this._toolAnimFrame = 0;
+		this._toolPointX = 0;
+		this._toolPointY = 0;
 	};
 	
 	_Game_Player__update = Game_Player.prototype.update;
@@ -3287,6 +3317,8 @@
 		this._jumpBuffer = !$gameMap.isJumpDisabled() && Input.isTriggered("jump") ? this._bufferTime : Math.max(0, this._jumpBuffer - 1);
 		this._toolBuffer = Input.isTriggered("tool") ? this._bufferTime : Math.max(0, this._toolBuffer - 1);
 		_Game_Player__update.call(this, sceneActive);
+		this.updateToolAnim();
+		this._toolAnimFrame += this._tool ? 1 : 0;
 	};
 	
 	Game_Player.prototype.moveByInput = function() {
@@ -3381,6 +3413,29 @@
 		}
 		return 0;
 	};
+	
+	Game_Player.prototype.canMove = function() {
+		if ($gameMap.isEventRunning() || $gameMessage.isBusy()) {
+			return false;
+		}
+		if (this.isMoveRouteForcing() || this.areFollowersGathering()) {
+			return false;
+		}
+		if (this.isUsingTool()) {
+			return false;
+		}
+		if (this._vehicleGettingOn || this._vehicleGettingOff) {
+			return false;
+		}
+		if (this.isInVehicle() && !this.vehicle().canMove()) {
+			return false;
+		}
+		return true;
+	};
+	
+	Game_Player.prototype.isUsingTool = function() {
+		return !!this._tool;
+	};
 
 	Game_Player.prototype.executeMove = function(direction) {
 		const horiz = this.getInputHoriz(direction);
@@ -3416,6 +3471,42 @@
 		}
 	};
 	
+	Game_Player.prototype.updateToolAnim = function() {
+		if(!this._tool) { return; }
+		if(this._toolAnimFrame >= this._tool.anim.frames) {
+			this._tool = null;
+			return;
+		}
+		switch(this._tool.anim.type) {
+		case "reach":
+			this.updateReachToolAnim();
+			break;
+		case "point":
+			this.updatePointToolAnim();
+			break;
+		}
+	};
+	
+	Game_Player.prototype.updateReachToolAnim = function() {
+		if(this._toolAnimFrame === this._tool.anim.triggerFrame) {
+			let checkX = this._x;
+			let checkY = this._y;
+			const d = this.direction();
+			const distance = this._tool.anim.range;
+			if(d === 2) { checkY += distance; }
+			else if(d === 4) { checkX -= distance; }
+			else if(d === 6) { checkX += distance; }
+			else if(d === 8) { checkY -= distance; }
+			this.toolTriggerEvent(checkX, checkY);
+		}
+	};
+	
+	Game_Player.prototype.updatePointToolAnim = function() {
+		if(this._toolAnimFrame === this._tool.anim.triggerFrame) {
+			this.toolTriggerEvent(this._toolPointX, this._toolPointY);
+		}
+	};
+	
 	Game_Player.prototype.triggerButtonAction = function() {
 		if (this._triggerBuffer > 0) {
 			this._triggerBuffer = 0;
@@ -3438,33 +3529,53 @@
 		if(!this.canStartLocalEvents()) { return false; }
 		if (this._toolBuffer > 0) {
 			this._toolBuffer = 0;
-			let checkX = this._x;
-			let checkY = this._y;
-			const d = this.direction();
-			const tool = $gameParty.tool();
-			const toolSymbol = $gameParty.toolSymbol();
-			if(tool) {
-				for(let i = 0; i < tool.range; i++) {
-					checkX = $gameMap.roundXWithDirection(checkX, d);
-					checkY = $gameMap.roundYWithDirection(checkY, d);
-					if(tool.fixedRange && i < tool.range-1) { continue; }
-					let eventTriggered = false;
-					for(const event of $gameMap.eventsXyNt(checkX, checkY)) {
-						if(!event) { continue; }
-						const eventData = event.event();
-						if(!eventData.e9dInfo.toolTriggers || !eventData.e9dInfo.toolTriggers.length) { continue; }
-						for(const trigger of eventData.e9dInfo.toolTriggers) {
-							if(trigger === toolSymbol) {
-								this.startMapEvent(checkX, checkY, [0,1,2], false);
-								eventTriggered = true;
-								break;
-							}
-						}
-						if(eventTriggered) { break; }
-					}
-					if(eventTriggered && $gameMap.setupStartingEvent()) { return true; }
+			this._tool = $gameParty.tool();
+			if(this._tool) {
+				this._toolSymbol = $gameParty.toolSymbol();
+				this._toolAnimFrame = 0;
+				if(this._toolSymbol === "point") {
+					this.seekToolPoint();
+				}
+				return true;
+			}
+		}
+		return false;
+	};
+	
+	Game_Player.prototype.seekToolPoint = function() {
+		let checkX = this._x;
+		let checkY = this._y;
+		const d = this.direction();
+		for(let i = 1; i <= this._tool.anim.range; i++) {
+			checkX = $gameMap.roundXWithDirection(checkX, d);
+			checkY = $gameMap.roundYWithDirection(checkY, d);
+			if(this.hasTriggerableEvents(checkX, checkY)) {
+				this._toolPointX = checkX;
+				this._toolPointY = checkY;
+				break;
+			}
+		}
+	};
+	
+	Game_Player.prototype.hasTriggerableEvents = function(x, y) {
+		for(const event of $gameMap.eventsXyNt(x, y)) {
+			if(!event) { continue; }
+			const eventData = event.event();
+			if(!eventData.e9dInfo.toolTriggers || !eventData.e9dInfo.toolTriggers.length) { continue; }
+			for(const trigger of eventData.e9dInfo.toolTriggers) {
+				if(trigger === this._toolSymbol) {
+					return true;
+					break;
 				}
 			}
+		}
+		return false;
+	};
+	
+	Game_Player.prototype.toolTriggerEvent = function(x, y) {
+		if(this.hasTriggerableEvents(x, y)) {
+			this.startMapEvent(x, y, [0,1,2], false);
+			if($gameMap.setupStartingEvent()) { return true; }
 		}
 		return false;
 	};

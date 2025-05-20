@@ -946,6 +946,15 @@
 		}
 	};
 	
+	SoundManager.playSe = function(seName) {
+		const se = {};
+		se.name = seName;
+		se.volume = 90;
+		se.pitch = 100;
+		se.pan = 0;
+		AudioManager.playSe(se);
+	};
+	
 	SoundManager.playSwing = function(weight) {
 		const se = {};
 		se.name = weight === "heavy" ? "swingHeavy" : "swing";
@@ -1179,6 +1188,16 @@
 				target.startAnimation();
 			}
 		}
+	};
+	
+	Game_Temp.prototype.requestTool = function(target) {
+		this._toolRequest = { target: target };
+	};
+
+	Game_Temp.prototype.retrieveTool = function() {
+		const request = this._toolRequest;
+		this._toolRequest = null;
+		return request;
 	};
 	
 	// Game System
@@ -2880,64 +2899,85 @@
 		this._tools.pole = {};
 		this._tools.pole.name = "Pole";
 		this._tools.pole.icon = 0;
+		this._tools.pole.se = "swingHeavy";
 		this._tools.pole.anim = {};
 		this._tools.pole.anim.type = "reach";
 		this._tools.pole.anim.frames = 4;
 		this._tools.pole.anim.triggerFrame = 1;
 		this._tools.pole.anim.range = 2;
+		this._tools.pole.anim.width = 80;
+		this._tools.pole.anim.height = 80;
 		
 		this._tools.bomb = {};
 		this._tools.bomb.name = "Bomb";
 		this._tools.bomb.icon = 1;
+		this._tools.bomb.se = null;
 		this._tools.bomb.showCount = true;
 		this._tools.bomb.anim = {};
 		this._tools.bomb.anim.type = "point";
 		this._tools.bomb.anim.frames = 4;
 		this._tools.bomb.anim.triggerFrame = 2;
 		this._tools.bomb.anim.range = 1;
+		this._tools.bomb.anim.width = 2;
+		this._tools.bomb.anim.height = 2;
 		
 		this._tools.grapple = {};
 		this._tools.grapple.name = "Grapple";
 		this._tools.grapple.icon = 2;
+		this._tools.grapple.se = null;
 		this._tools.grapple.anim = {};
 		this._tools.grapple.anim.type = "boomerang";
 		this._tools.grapple.anim.frames = 12;
+		this._tools.grapple.anim.width = 2;
+		this._tools.grapple.anim.height = 2;
 		
 		this._tools.repair = {};
 		this._tools.repair.name = "Repair";
 		this._tools.repair.icon = 3;
+		this._tools.repair.se = null;
 		this._tools.repair.anim = {};
 		this._tools.repair.anim.type = "point";
 		this._tools.repair.anim.frames = 4;
 		this._tools.repair.anim.triggerFrame = 3;
 		this._tools.repair.anim.range = 1;
+		this._tools.repair.anim.width = 2;
+		this._tools.repair.anim.height = 2;
 		
 		this._tools.fire = {};
 		this._tools.fire.name = "Fire";
 		this._tools.fire.icon = 4;
+		this._tools.fire.se = null;
 		this._tools.fire.anim = {};
 		this._tools.fire.anim.type = "point";
 		this._tools.fire.anim.frames = 4;
 		this._tools.fire.anim.triggerFrame = 0;
 		this._tools.fire.anim.range = 6;
+		this._tools.fire.anim.width = 2;
+		this._tools.fire.anim.height = 2;
 		
 		this._tools.ice = {};
 		this._tools.ice.name = "Ice";
 		this._tools.ice.icon = 5;
+		this._tools.ice.se = null;
 		this._tools.ice.anim = {};
 		this._tools.ice.anim.type = "point";
 		this._tools.ice.anim.frames = 4;
 		this._tools.ice.anim.triggerFrame = 0;
 		this._tools.ice.anim.range = 6;
+		this._tools.ice.anim.width = 2;
+		this._tools.ice.anim.height = 2;
 		
 		this._tools.bolt = {};
 		this._tools.bolt.name = "Bolt";
 		this._tools.bolt.icon = 6;
+		this._tools.bolt.se = null;
 		this._tools.bolt.anim = {};
 		this._tools.bolt.anim.type = "point";
 		this._tools.bolt.anim.frames = 4;
 		this._tools.bolt.anim.triggerFrame = 0;
 		this._tools.bolt.anim.range = 6;
+		this._tools.bolt.anim.width = 2;
+		this._tools.bolt.anim.height = 2;
 	};
 	
 	Game_Party.prototype.swapOrder = function(index1, index2) {
@@ -3199,6 +3239,14 @@
 		return $dataMap.e9dInfo.disableJumping;
 	};
 	
+	Game_Map.prototype.mapToCanvasX = function(x) {
+		return (x - this._displayX) * this.tileWidth();
+	};
+
+	Game_Map.prototype.mapToCanvasY = function(y) {
+		return (y - this._displayY) * this.tileHeight();
+	};
+	
 	// Game Character Base
 	_Game_CharacterBase__initMembers = Game_CharacterBase.prototype.initMembers;
 	Game_CharacterBase.prototype.initMembers = function() {
@@ -3306,7 +3354,8 @@
 		this._toolBuffer = 0;
 		this._tool = null;
 		this._toolSymbol = "";
-		this._toolAnimFrame = 0;
+		this._toolAnimTimer = 0;
+		this._toolSpriteReady = false;
 		this._toolPointX = 0;
 		this._toolPointY = 0;
 	};
@@ -3318,7 +3367,14 @@
 		this._toolBuffer = Input.isTriggered("tool") ? this._bufferTime : Math.max(0, this._toolBuffer - 1);
 		_Game_Player__update.call(this, sceneActive);
 		this.updateToolAnim();
-		this._toolAnimFrame += this._tool ? 1 : 0;
+		this._toolAnimTimer += this._tool && this._toolSpriteReady ? 1 : 0;
+	};
+	
+	Game_Player.prototype.pattern = function() {
+		if(this._tool) {
+			return 2;
+		}
+		return Game_CharacterBase.prototype.pattern.call(this);
 	};
 	
 	Game_Player.prototype.moveByInput = function() {
@@ -3436,6 +3492,31 @@
 	Game_Player.prototype.isUsingTool = function() {
 		return !!this._tool;
 	};
+	
+	Game_Player.prototype.tool = function() {
+		return this._tool;
+	};
+	
+	Game_Player.prototype.toolSymbol = function() {
+		return this._tool ? this._toolSymbol : "";
+	};
+	
+	Game_Player.prototype.toolFrame = function() {
+		return this._tool ? (this._toolAnimTimer >= 0 ? Math.floor(this._toolAnimTimer / this.toolSpeed()) : 0) : 0;
+	};
+	
+	Game_Player.prototype.toolSpeed = function() {
+		return 4;
+	};
+	
+	Game_Player.prototype.toolAnimTime = function() {
+		return this._tool ? this._tool.anim.frames * this.toolSpeed() : 0;
+	};
+	
+	Game_Player.prototype.isTriggerTime = function(triggerFrame) {
+		if(!this._tool) { false; }
+		return this._toolAnimTimer % this.toolSpeed() === 0 && this.toolFrame() === triggerFrame;
+	};
 
 	Game_Player.prototype.executeMove = function(direction) {
 		const horiz = this.getInputHoriz(direction);
@@ -3471,10 +3552,16 @@
 		}
 	};
 	
+	Game_Player.prototype.setToolSpriteToReady = function() {
+		this._toolSpriteReady = true;
+		SoundManager.playSe(this._tool.se);
+	};
+	
 	Game_Player.prototype.updateToolAnim = function() {
 		if(!this._tool) { return; }
-		if(this._toolAnimFrame >= this._tool.anim.frames) {
+		if(this._toolAnimTimer >= this.toolAnimTime()-1) {
 			this._tool = null;
+			this._toolSpriteReady = false;
 			return;
 		}
 		switch(this._tool.anim.type) {
@@ -3488,7 +3575,7 @@
 	};
 	
 	Game_Player.prototype.updateReachToolAnim = function() {
-		if(this._toolAnimFrame === this._tool.anim.triggerFrame) {
+		if(this.isTriggerTime(this._tool.anim.triggerFrame)) {
 			let checkX = this._x;
 			let checkY = this._y;
 			const d = this.direction();
@@ -3502,7 +3589,7 @@
 	};
 	
 	Game_Player.prototype.updatePointToolAnim = function() {
-		if(this._toolAnimFrame === this._tool.anim.triggerFrame) {
+		if(this.isTriggerTime(this._tool.anim.triggerFrame)) {
 			this.toolTriggerEvent(this._toolPointX, this._toolPointY);
 		}
 	};
@@ -3526,16 +3613,17 @@
 	};
 	
 	Game_Player.prototype.triggerTool = function() {
-		if(!this.canStartLocalEvents()) { return false; }
+		if(this._tool || !this.canStartLocalEvents()) { return false; }
 		if (this._toolBuffer > 0) {
 			this._toolBuffer = 0;
 			this._tool = $gameParty.tool();
 			if(this._tool) {
 				this._toolSymbol = $gameParty.toolSymbol();
-				this._toolAnimFrame = 0;
+				this._toolAnimTimer = -1;
 				if(this._toolSymbol === "point") {
 					this.seekToolPoint();
 				}
+				$gameTemp.requestTool(this);
 				return true;
 			}
 		}
@@ -3555,6 +3643,14 @@
 				break;
 			}
 		}
+	};
+	
+	Game_Player.prototype.toolPointX = function() {
+		return this._toolPointX;
+	};
+	
+	Game_Player.prototype.toolPointY = function() {
+		return this._toolPointY;
 	};
 	
 	Game_Player.prototype.hasTriggerableEvents = function(x, y) {
@@ -4673,6 +4769,18 @@
 	};
 	
 	// Sprite Character
+	const _Sprite_Character__initMembers = Sprite_Character.prototype.initMembers;
+	Sprite_Character.prototype.initMembers = function() {
+		_Sprite_Character__initMembers.call(this);
+		this._toolDuration = 0;
+	};
+	
+	const _Sprite_Character__update = Sprite_Character.prototype.update;
+	Sprite_Character.prototype.update = function() {
+		_Sprite_Character__update.call(this);
+		this.updateTool();
+	};
+	
 	Sprite_Character.prototype.updateCharacterFrame = function() {
 		const pw = this.patternWidth();
 		const ph = this.patternHeight();
@@ -4703,6 +4811,10 @@
 			this._upperBody.visible = false;
 			this._lowerBody.visible = false;
 		}
+	};
+	
+	Sprite_Character.prototype.updateTool = function() {
+		
 	};
 	
 	// Sprite Battler
@@ -6465,6 +6577,93 @@
 		}
 	};
 	
+	// Sprite Tool
+	function Sprite_Tool() {
+		this.initialize(...arguments);
+	}
+
+	Sprite_Tool.prototype = Object.create(Sprite.prototype);
+	Sprite_Tool.prototype.constructor = Sprite_Tool;
+
+	Sprite_Tool.prototype.initialize = function() {
+		Sprite.prototype.initialize.call(this);
+		this.initMembers();
+	};
+
+	Sprite_Tool.prototype.initMembers = function() {
+		this._target = null;
+		this._toolSymbol = 0;
+		this.anchor.x = 0.5;
+		this.anchor.y = 0.5;
+		this.z = 7;
+	};
+
+	Sprite_Tool.prototype.loadBitmap = function() {
+		this.bitmap = ImageManager.loadBitmap("img/toolAnims/", this._toolSymbol);
+		this.setFrame(0, 0, 0, 0);
+	};
+
+	Sprite_Tool.prototype.setup = function(targetSprite) {
+		this._target = targetSprite;
+		this._toolSymbol = this.targetObject.toolSymbol();
+		this.loadBitmap();
+		this.targetObject.setToolSpriteToReady();
+	};
+
+	Sprite_Tool.prototype.update = function() {
+		Sprite.prototype.update.call(this);
+		this.updatePosition();
+		this.updateFrame();
+	};
+
+	Sprite_Tool.prototype.updatePosition = function() {
+		const tool = this.targetObject.tool();
+		if(!tool) { return; }
+		const toolType = tool.anim.type;
+		switch(toolType) {
+		case "reach":
+			this.x = this._target.x;
+			this.y = this._target.y - $gameMap.tileHeight()/2;
+			this.z = this._target.z - 0.1;
+			this.scale.x = 1;
+			const d = this.targetObject.direction();
+			if(d === 2) 		{ this.rotation = 180 * Math.PI / 180; this.z += 0.2; }
+			else if(d === 4)	{ this.rotation = 270 * Math.PI / 180; this.scale.x = -1; }
+			else if(d === 6)	{ this.rotation = 90 * Math.PI / 180; }
+			else if(d === 8)	{ this.rotation = 0; }
+			break;
+		case "point":
+			this.x = $gameMap.mapToCanvasX(this.targetObject.toolPointX());
+			this.y = $gameMap.mapToCanvasY(this.targetObject.toolPointY());
+			break;
+		}
+		console.log("x: " + this.x);
+		console.log("y: " + this.y);
+		console.log("rotation: " + this.y);
+	};
+
+	Sprite_Tool.prototype.updateFrame = function() {
+		const tool = this.targetObject.tool();
+		if(!tool) { return; }
+		const w = tool.anim.width;
+		const h = tool.anim.height;
+		const framesW = this.bitmap.width / w;
+		const framesH = this.bitmap.height / h;
+		const frameIndex = this.frameIndex();
+		const sx = (frameIndex % framesW) * w;
+		const sy = Math.floor(frameIndex / framesH) * h;
+		this.setFrame(sx, sy, w, h);
+		console.log("frame: " + frameIndex);
+	};
+
+	Sprite_Tool.prototype.frameIndex = function() {
+		return this.targetObject.toolFrame();
+	};
+
+	Sprite_Tool.prototype.isPlaying = function() {
+		return !!this.targetObject.tool();
+	};
+	
 	// Spriteset Base
 	Spriteset_Base.prototype.createAnimation = function(request) {
 		const effect = request.effect;
@@ -6490,6 +6689,68 @@
 		sprite.setup(targetSprites, effect, shouldMirror, delay, isAttack);
 		this._effectsContainer.addChild(sprite);
 		this._animationSprites.push(sprite);
+	};
+	
+	// Spriteset_Map
+	const _Spriteset_Map__initialize = Spriteset_Map.prototype.initialize;
+	Spriteset_Map.prototype.initialize = function() {
+		_Spriteset_Map__initialize.call(this);
+		this._toolSprites = [];
+	};
+	
+	const _Spriteset_Map__destroy = Spriteset_Map.prototype.destroy;
+	Spriteset_Map.prototype.destroy = function(options) {
+		this.removeAllTools();
+		_Spriteset_Map__destroy.call(this, options);
+	};
+	
+	const _Spriteset_Map__update = Spriteset_Map.prototype.update;
+	Spriteset_Map.prototype.update = function() {
+		_Spriteset_Map__update.call(this);
+		this.updateTools();
+	};
+	
+	Spriteset_Map.prototype.updateTools = function() {
+		for (const sprite of this._toolSprites) {
+			if (!sprite.isPlaying()) {
+				this.removeTool(sprite);
+			}
+		}
+		this.processToolRequests();
+	};
+
+	Spriteset_Map.prototype.processToolRequests = function() {
+		for (;;) {
+			const request = $gameTemp.retrieveTool();
+			if (request) {
+				this.createTool(request);
+			} else {
+				break;
+			}
+		}
+	};
+
+	Spriteset_Map.prototype.createTool = function(request) {
+		const targetSprite = this.findTargetSprite(request.target);
+		if (targetSprite) {
+			const sprite = new Sprite_Tool();
+			sprite.targetObject = request.target;
+			sprite.setup(targetSprite);
+			this._effectsContainer.addChild(sprite);
+			this._toolSprites.push(sprite);
+		}
+	};
+
+	Spriteset_Map.prototype.removeTool = function(sprite) {
+		this._toolSprites.remove(sprite);
+		this._effectsContainer.removeChild(sprite);
+		sprite.destroy();
+	};
+
+	Spriteset_Map.prototype.removeAllTools = function() {
+		for (const sprite of this._toolSprites.clone()) {
+			this.removeTool(sprite);
+		}
 	};
 	
 	// Spriteset Battle

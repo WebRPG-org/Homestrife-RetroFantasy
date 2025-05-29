@@ -6149,14 +6149,31 @@
 	};
 	
 	// Sprite Battleback
+	const _Sprite_Battleback__initialize = Sprite_Battleback.prototype.initialize;
+	Sprite_Battleback.prototype.initialize = function(type) {
+		_Sprite_Battleback__initialize.call(this, type);
+		this._scrollAmount = 0;
+		this._scrollTimer = 0;
+	};
+	
 	Sprite_Battleback.prototype.adjustPosition = function() {
 		this.width = 272;
 		this.height = 208;
 		this.x = 0;
 		this.y = 0;
-		this.y = 0;
 		this.scale.x = 1;
 		this.scale.y = 1;
+	};
+	
+	Sprite_Battleback.prototype.updateHorizontalScroll = function(startY, height, speed) {
+		speed = speed && !isNaN(speed) ? speed : 1;
+		this.setHorizontalScrollFilter(startY, height, this._scrollAmount);
+		this._scrollTimer += speed;
+		if(this._scrollTimer >= 60) {
+			this._scrollTimer = 0;
+			this._scrollAmount++;
+			this._scrollAmount = this._scrollAmount >= this.width ? 0 : this._scrollAmount;
+		}
 	};
 	
 	// Sprite Damage
@@ -6764,6 +6781,20 @@
 	Spriteset_Battle.prototype.update = function() {
 		_Spriteset_Battle__update.call(this);
 		this.updateCursor();
+	};
+	
+	const _Spriteset_Battle__updateBattleback = Spriteset_Battle.prototype.updateBattleback;
+	Spriteset_Battle.prototype.updateBattleback = function() {
+		_Spriteset_Battle__updateBattleback.call(this);
+		switch(this._back2Sprite.battleback2Name()) {
+			case "Grassland8Bit":
+				this.updateHorizontalScroll(0, 8);
+				break;
+		}
+	};
+	
+	Spriteset_Battle.prototype.updateHorizontalScroll = function(startY, height) {
+		this._back2Sprite.updateHorizontalScroll(startY, height);
 	};
 	
 	Spriteset_Battle.prototype.updateCursor = function() {

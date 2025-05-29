@@ -135,6 +135,7 @@
 	let hueRotateShaderSource = null;
 	let monochromeTumbleShaderSource = null;
 	let noiseFadeShaderSource = null;
+	let horizontalScrollShaderSource = null;
 	let paletteJailImage = null;
 	loadPaletteJailFiles();
 	
@@ -148,6 +149,7 @@
 		let hueRotateSourceReady = false;
 		let monochromeTumbleSourceReady = false;
 		let noiseFadeSourceReady = false;
+		let horizontalScrollSourceReady = false;
 		
 		const paletteImage = ImageManager.loadBitmapFromUrl(pluginParams.paletteFile + ".png");
 		paletteImage.addLoadListener(() => {
@@ -225,6 +227,16 @@
 		};
 		noiseFadeXhr.send();
 		
+		const horizontalScrollXhr = new XMLHttpRequest();
+		horizontalScrollXhr.open("GET", 'js/plugins/paletteJailHorizontalScrollShader.frag');
+		horizontalScrollXhr.onreadystatechange = () => {
+			if(horizontalScrollXhr.readyState == 4 && (horizontalScrollXhr.status === 200 || horizontalScrollXhr.status === 0)) {
+				horizontalScrollSourceReady = true;
+				compileShader();
+			}
+		};
+		horizontalScrollXhr.send();
+		
 		function compileShader() {
 			if(
 				!imageReady 					||
@@ -234,7 +246,8 @@
 				!lightingSourceReady 			||
 				!hueRotateSourceReady			||
 				!monochromeTumbleSourceReady	||
-				!noiseFadeSourceReady
+				!noiseFadeSourceReady			||
+				!horizontalScrollSourceReady
 			) { return; }
 			
 			// save universal uniforms
@@ -264,6 +277,8 @@
 				.replaceAll('%%PALETTE_HEIGHT%%', paletteImage.height);
 			
 			noiseFadeShaderSource = noiseFadeXhr.responseText;
+			
+			horizontalScrollShaderSource = horizontalScrollXhr.responseText;
 		}
 	}
 	
@@ -302,14 +317,22 @@
 	}
 	
 	Sprite.prototype.setNoiseFadeFilter = function(rate) {
+		const prevNoiseBitmap = this._noiseFadeFilterUniforms.noiseSampler ? this._noiseFadeFilterUniforms.noiseSampler : null;
 		const noiseBitmap = new Bitmap(this.width, this.height);
 		const imageData = noiseBitmap.context.getImageData(0, 0, noiseBitmap.width, noiseBitmap.height);
+		let prevImageData = null;
+		try {
+			prevImageData = prevNoiseBitmap ? prevNoiseBitmap.context.getImageData(0, 0, prevNoiseBitmap.width, prevNoiseBitmap.height) : null;
+		} catch(e) {
+			prevImageData = null;
+		}
 		const data = imageData.data;
+		const prevData = prevImageData ? prevImageData.data : null;
 		for (let i = 0; i < data.length; i += 4) {
-			data[i] = 0;								// red
-			data[i+1] = 0;								// green
-			data[i+2] = 0;								// blue
-			data[i+3] = Math.random() < rate ? 0 : 255;	// alpha
+			data[i] = 0;																		// red
+			data[i+1] = 0;																		// green
+			data[i+2] = 0;																		// blue
+			data[i+3] = prevData && prevData[i+3] === 0 ? 0 : (Math.random() < rate ? 0 : 255);	// alpha
 		}
 		noiseBitmap.context.putImageData(imageData, 0, 0);
 		if(this._noiseFadeFilterUniforms.noiseSampler) {
@@ -317,7 +340,7 @@
 		}
 		this._noiseFadeFilterUniforms.noiseSampler = noiseBitmap;
 		this._updateColorFilter();
-	}
+	};
 	
 	Sprite.prototype.clearFilterParams = function() {
 		this._hueRotateFilterUniforms.shiftAmount = 0;
@@ -519,6 +542,67 @@
 		this._lightingFilterUniforms.hueIntensity = hueIntensity;
 		this._lightingFilterUniforms.brightness = brightness;
 		this._lightingFilterUniforms.hueDarkenThreshold = hueDarkenThreshold;
+	};
+	
+	// Tiling Sprite
+	const _TilingSprite__initialize = TilingSprite.prototype.initialize;
+	TilingSprite.prototype.initialize = function(bitmap) {
+		_TilingSprite__initialize.call(this, bitmap);
+		this._createColorFilter();
+	};
+	
+	TilingSprite.prototype.setHorizontalScrollFilter = function(startY, height, scrollAmt, scrollDir) {
+		if(height <= 0) {
+			this._horizontalScrollFilterUniforms.scrollAmt = 0;
+			return;
+		}
+		while(scrollAmt < 0) { scrollAmt += this.width; }
+		while(scrollAmt > this.width-1) { scrollAmt -= this.width; }
+		if(scrollAmt == 0) {
+			this._horizontalScrollFilterUniforms.scrollAmt = 0;
+			return;
+		}
+		this._horizontalScrollFilterUniforms.startY = startY < 0 ? 0 : startY / this.height;
+		this._horizontalScrollFilterUniforms.height = height / this.height;
+		this._horizontalScrollFilterUniforms.scrollAmt = scrollAmt / this.width;
+		this._horizontalScrollFilterUniforms.scrollDir = !scrollDir || scrollDir > 0 ? 1 : -1;
+		this._updateColorFilter();
+	};
+	
+	TilingSprite.prototype.clearFilterParams = function() {
+		this._horizontalScrollFilterUniforms.startY = 0;
+		this._horizontalScrollFilterUniforms.height = 0;
+		this._horizontalScrollFilterUniforms.scrollAmt = 0;
+		this._horizontalScrollFilterUniforms.scrollDir = 1;
+		this._updateColorFilter();
+	};
+	
+	TilingSprite.prototype._createColorFilter = function() {
+		this.filters = [];
+		if(emptyShaderSource) {
+			this._emptyFilter = new PIXI.Filter(null, emptyShaderSource);
+			this.filters.push(this._emptyFilter);
+		}
+		if(horizontalScrollShaderSource) {
+			this._horizontalScrollFilterUniforms = {};
+			this._horizontalScrollFilterUniforms.startY = 0;
+			this._horizontalScrollFilterUniforms.height = 0;
+			this._horizontalScrollFilterUniforms.scrollAmt = 0;
+			this._horizontalScrollFilterUniforms.scrollDir = 1;
+			this._horizontalScrollFilter = new PIXI.Filter(null, horizontalScrollShaderSource, this._horizontalScrollFilterUniforms);
+		}
+	};
+
+	TilingSprite.prototype._updateColorFilter = function() {
+		if(this._horizontalScrollFilterUniforms.scrollAmt > 0 && this._horizontalScrollFilterUniforms.height > 0) {
+			if(this.filters.length === 0 || this.filters[0] !== this._horizontalScrollFilter) {
+				this.filters[0] = this._horizontalScrollFilter;
+			}
+		} else {
+			if(this.filters.length === 0 || this.filters[0] !== this._emptyFilter) {
+				this.filters[0] = this._emptyFilter;
+			}
+		}
 	};
 	
 	// Window

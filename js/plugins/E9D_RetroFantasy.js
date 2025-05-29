@@ -5623,9 +5623,9 @@
 		if(this._handIsSetUp) { return; }
 		let handImage = this._actor.currentClass().e9dInfo.hand;
 		handImage = !handImage ? "Default" : handImage;
-		this._handSprite.bitmap = ImageManager.loadSystem("ActorHand" + handImage);
+		this._handSprite.bitmap = ImageManager.loadBitmap("img/hands/", "hand" + handImage);
 		this._handSprite.setFrame(0, 0, 4, 3);
-		this._fistSprite.bitmap = ImageManager.loadSystem("ActorFist" + handImage);
+		this._fistSprite.bitmap = ImageManager.loadBitmap("img/hands/", "fist" + handImage);
 		this._fistSprite.setFrame(0, 0, 3, 3);
 		this._handIsSetUp = true;
 	};

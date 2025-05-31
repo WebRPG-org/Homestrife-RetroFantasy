@@ -316,15 +316,15 @@
 	
 	// Bitmap
 	const _Bitmap__drawText = Bitmap.prototype.drawText;
-	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align) {
+	Bitmap.prototype.drawText = function(text, x, y, maxWidth, lineHeight, align, dark) {
 		if($pluginParams.useTextImages && $pluginParams.textImages.length > 0) {
-			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align);
+			this.drawTextFromImage(text, x, y, maxWidth, lineHeight, align, dark);
 		} else {
 			_Bitmap__drawText.call(this, text, x, y, maxWidth, lineHeight, align);
 		}
 	};
 	
-	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align) {
+	Bitmap.prototype.drawTextFromImage = function(text, x, y, maxWidth, lineHeight, align, dark) {
 		const context = this.context;
 		maxWidth = maxWidth || 0xffffffff;
 		const textImage = $pluginParams.textImages[curTextImage] === undefined ? $pluginParams.textImages[0] : $pluginParams.textImages[curTextImage];
@@ -336,7 +336,7 @@
 		if (align === "right") {
 			tx += maxWidth - text.length*textImage.characterW;
 		}
-		const bmp = ImageManager.loadBitmapFromUrl("img/system/" + textImage.file + ".png");
+		const bmp = ImageManager.loadBitmapFromUrl("img/system/" + textImage.file + (dark ? "Dark" : "") + ".png");
 		tx = Math.round(tx);
 		ty = Math.round(ty);
 		let curTx = tx;
@@ -6911,17 +6911,21 @@
 		}
 	};
 	
-	Window_Base.prototype.drawIconAndText = function(icon, text, x, y, width, iconFirst) {
+	Window_Base.prototype.drawText = function(text, x, y, maxWidth, align, dark) {
+		this.contents.drawText(text, x, y, maxWidth, this.lineHeight(), align, dark);
+	};
+	
+	Window_Base.prototype.drawIconAndText = function(icon, text, x, y, width, dark, iconFirst) {
 		const iconWidth = ImageManager.iconWidth;
 		const textX = iconFirst ? x+iconWidth : x;
 		const iconX = iconFirst ? x : x+width-iconWidth;
-		this.drawText(text, textX, y, width-iconWidth);
+		this.drawText(text, textX, y, width-iconWidth, "left", dark);
 		this.drawIcon(icon, iconX, y);
 	};
 	
-	Window_Base.prototype.drawItemName = function(item, x, y, width) {
+	Window_Base.prototype.drawItemName = function(item, x, y, width, disabled) {
 		if (item) {
-			this.drawIconAndText(item.iconIndex, item.name, x, y, width);
+			this.drawIconAndText(item.iconIndex, item.name, x, y, width, disabled);
 		}
 	};
 	
@@ -7152,11 +7156,13 @@
 		const charWidth = $gameMap.tileWidth()/2;
 		width = width || charWidth*8;
 		const lineHeight = this.lineHeight();
-		this.drawIconAndText(77, "LI", x, y, charWidth*4);
-		this.drawText(actor.hp + " /", x+charWidth*3, y, width, "right");
+		this.drawIconAndText(77, "LI", x, y, charWidth*4, true);
+		this.drawText(actor.hp+"", x+charWidth*5, y, charWidth*4, "right");
+		this.drawText("/", x+charWidth*10, y, charWidth, "left", true);
 		this.drawText(actor.mhp + "", x+width+charWidth*4, y, width/2, "right");
-		this.drawIconAndText(78, "EN", x, y + lineHeight/2, charWidth*4);
-		this.drawText(Math.floor(actor.mp) + "%", x, y + lineHeight/2, width, "right");
+		this.drawIconAndText(78, "EN", x, y + lineHeight/2, charWidth*4, true);
+		this.drawText(Math.floor(actor.mp) + "", x+charWidth*3, y + lineHeight/2, charWidth*4, "right");
+		this.drawText("%", x+charWidth*7, y + lineHeight/2, charWidth, "left", true);
 	};
 	
 	Window_StatusBase.prototype.drawActorName = function(actor, x, y, width) {
@@ -7168,7 +7174,7 @@
 	Window_StatusBase.prototype.drawActorClass = function(actor, x, y, width) {
 		width = width || $gameMap.tileWidth()/2*8;
 		this.resetTextColor();
-		this.drawText(actor.currentClass().name, x, y, width);
+		this.drawText(actor.currentClass().name, x, y, width, "left", true);
 	};
 	
 	Window_StatusBase.prototype.drawActorLevel = function(actor, x, y) {
@@ -7180,7 +7186,7 @@
 	
 	Window_StatusBase.prototype.drawActorSkillPoints = function(actor, x, y) {
 		const width = this.textWidthFromImage("00000000");
-		this.drawText("SP", x, y, width);
+		this.drawText("SP", x, y, width, "left", true);
 		this.drawText(actor.currentExp()+"", x, y, width, "right");
 	};
 	
@@ -7248,7 +7254,7 @@
 		const iconWidth = ImageManager.iconWidth;
 		const lineHeight = this.lineHeight()/2;
 		const firstX = x + (name.length + 1) * iconWidth;
-		this.drawText(name, x, y, width);
+		this.drawText(name, x, y, width, "left", true);
 		let curX = x + width - iconWidth;
 		let curY = y+lineHeight;
 		for(let i = icons.length-1; i >= 0; i--) {
@@ -7354,9 +7360,12 @@
 		const spriteW = $gameMap.tileWidth()/2;
 		const textWidth = spriteW*8;
 		const plusMinusWidth = spriteW*4;
-		this.drawIconAndText(icon, name, x, y, spriteW*5);
+		this.drawIconAndText(icon, name, x, y, spriteW*5, true);
 		const newValueExists = newValue != null && newValue != undefined ;
-		this.drawText((newValueExists ? newValue : curValue)+(isPercent ? "%" : ""), x, y, textWidth, "right");
+		this.drawText((newValueExists ? newValue : curValue)+"", x, y, textWidth-(isPercent ? spriteW : 0), "right");
+		if(isPercent) {
+			this.drawText("%"+textWidth-spriteW, x, y, spriteW, "left", true);
+		}
 		this.drawPlusMinus(x, y, curValue, newValue, usePlusMinus);
 	};
 	
@@ -7504,16 +7513,16 @@
 	Window_StatusBase.prototype.actorSlotIcon = function(actor, index) {
 		const slots = actor.equipSlots();
 		switch(slots[index]) {
-			case  1: returnVal =  97; break; // MainHand
+			case  1: returnVal =  98; break; // MainHand
 			case  2: returnVal = 129; break; // Off-Hand
 			case  3: returnVal = 134; break; // Head
-			case  4: returnVal = 146; break; // Back
+			case  4: returnVal = 147; break; // Back
 			case  5: returnVal = 137; break; // Torso
 			case  6: returnVal = 139; break; // Legs
-			case  7: returnVal = 142; break; // Hands
-			case  8: returnVal = 144; break; // Feet
-			case  9: returnVal = 153; break; // Accessory
-			case 10: returnVal = 153; break; // Accessory
+			case  7: returnVal = 143; break; // Hands
+			case  8: returnVal = 145; break; // Feet
+			case  9: returnVal = 155; break; // Accessory
+			case 10: returnVal = 155; break; // Accessory
 		}
 		return returnVal;
 	};
@@ -7587,7 +7596,7 @@
 			const numberWidth = this.numberWidth();
 			const rect = this.itemLineRect(index);
 			rect.y += $gameSystem.windowPadding();
-			this.drawItemName(item, rect.x, rect.y, rect.width - numberWidth);
+			this.drawItemName(item, rect.x, rect.y, rect.width - numberWidth, !this.isEnabled(item));
 			this.drawItemNumber(item, rect.x, rect.y, rect.width);
 			this.changePaintOpacity(1);
 		}
@@ -7642,7 +7651,7 @@
 			const rect = this.itemLineRect(index);
 			rect.y += $gameSystem.windowPadding();
 			//this.changePaintOpacity(this.isEnabled(skill));
-			this.drawItemName(skill, rect.x, rect.y, rect.width - costWidth);
+			this.drawItemName(skill, rect.x, rect.y, rect.width - costWidth, !this.isEnabled(skill));
 			this.drawSkillCost(skill, rect.x, rect.y, rect.width);
 			this.changePaintOpacity(1);
 		}
@@ -7737,7 +7746,7 @@
 		this.drawIconNameAndValue(x3, y2, this.evadeIcon(), this.evadeSymbol(), this._actor.xparam(1), tempActor.xparam(1));
 		this.drawIconNameAndValue(x3, y3, this.parryIcon(), this.parrySymbol(), Math.round(this._actor.xparam(5)*100), Math.round(tempActor.xparam(5)*100));
 		this.drawIconNameAndValue(x3, y4, this.coverageIcon(), this.coverageSymbol(), Math.round(this._actor.xparam(3)*100), Math.round(tempActor.xparam(3)*100), true);
-		this.drawText(this.resistSymbol(), x3, y5, spriteW*4);
+		this.drawText(this.resistSymbol(), x3, y5, spriteW*4, "left", true);
 	};
 	
 	Window_EquipStatus.prototype.drawAllPlusMinuses = function(x, y) {
@@ -7907,8 +7916,8 @@
 		const x = $gameSystem.windowPadding();
 		const y = $gameSystem.windowPadding() + lineHalfHeight;
 		const y2 = y + lineHeight*4;
-		this.drawText("Performance", x, y, spriteW*11);
-		this.drawText("Ability", x, y2, spriteW*7);
+		this.drawText("Performance", x, y, spriteW*11, "left", true);
+		this.drawText("Ability", x, y2, spriteW*7, "left", true);
 	};
 	
 	Window_SkillLevels.prototype.itemRect = function(index) {
@@ -8183,18 +8192,20 @@
 		this.drawSvActor(actor, x+charWidth*2, y2, true);
 		this.drawActorName(actor, x2, y);
 		
-		this.drawIconAndText(77, "Life", x2, y2, charWidth*6);
-		this.drawText(actor.hp + " /", x2+charWidth*7, y2, charWidth*6, "right");
-		this.drawText(actor.mhp + "", x2+charWidth*14, y2, charWidth*4, "right");
+		this.drawIconAndText(77, "Life", x2, y2, charWidth*6, true);
+		this.drawText(actor.hp + "", x2+charWidth*7, y2, charWidth*4, "right");
+		this.drawText("/", x2+charWidth*13, y2, charWidth, "left");
+		this.drawText(actor.mhp + "", x2+charWidth*15, y2, charWidth*4, "right");
 		
-		this.drawText("Endurance", x2, y3, columnWidth);
-		this.drawIcon(78, x2+columnWidth-charWidth*6, y4);
-		this.drawText(Math.floor(actor.mp) + "%", x2, y4, columnWidth, "right");
+		this.drawText("Endurance", x2, y3, columnWidth, "left", true);
+		this.drawIcon(78, x2, y4);
+		this.drawText(Math.floor(actor.mp) + "", x2+charWidth*2, y4, charWidth*3, "right");
+		this.drawText("%", x2+charWidth*5, y4, charWidth, "left", true);
 		
 		const icons = actor.allIcons().slice(0, Math.floor(columnWidth2 / iconWidth));
 		icons.length > 0 ? this.drawActorIcons(actor, x3, y) : this.drawActorClass(actor, x3, y);
 		
-		this.drawText("Skill Pts", x3, y3, columnWidth2);
+		this.drawText("Skill Pts", x3, y3, columnWidth2, "left", true);
 		this.drawIcon(79, x3, y4);
 		this.drawText(actor.currentExp()+"", x3, y4, columnWidth2, "right");
 	};
@@ -8207,8 +8218,8 @@
 		const skillCount = this.skillCount(actor);
 		const y2 = y + lineHeight;
 		const y3 = y2 + lineHeight*3;
-		this.drawText("Performance", x, y, spriteW*11);
-		this.drawText("Ability", x, y3, spriteW*11);
+		this.drawText("Performance", x, y, spriteW*11, "left", true);
+		this.drawText("Ability", x, y3, spriteW*11, "left", true);
 		const x2 = x + spriteW;
 		const x3 = x2 + textWidth + spriteW;
 		let curX = x2;
@@ -8257,7 +8268,7 @@
 		this.drawIconNameAndValue(x3, y2, this.evadeIcon(), this.evadeSymbol(), actor.xparam(1));
 		this.drawIconNameAndValue(x3, y3, this.parryIcon(), this.parrySymbol(), Math.round(actor.xparam(5)*100));
 		this.drawIconNameAndValue(x3, y4, this.coverageIcon(), this.coverageSymbol(), Math.round(actor.xparam(3)*100), Math.round(actor.xparam(3)*100), true);
-		this.drawText(this.resistSymbol(), x3, y5, spriteW*4);
+		this.drawText(this.resistSymbol(), x3, y5, spriteW*4, "left", true);
 	};
 	
 	// Window Options Category
@@ -9872,9 +9883,9 @@
 		const x2 = x + columnW;
 		const x3 = x2 + columnW;
 		const y = itemPadding;
-		this.drawIconAndText(32, "ST", x,  y, valueW);
-		this.drawIconAndText(78, "EN", x2, y, valueW);
-		this.drawIconAndText(77, "LI", x3, y, valueW);
+		this.drawIconAndText(32, "ST", x,  y, valueW, true);
+		this.drawIconAndText(78, "EN", x2, y, valueW, true);
+		this.drawIconAndText(77, "LI", x3, y, valueW, true);
 	};
 	
 	Window_BattleStatus.prototype.preparePartyRefresh = function() {
@@ -9897,8 +9908,8 @@
 		const actor = this.actor(index);
 		const rect = this.itemRectWithPadding(index);
 		const spriteW = $gameMap.tileWidth()/2;
-		const valueW = spriteW*4;
-		const columnW = valueW+spriteW;
+		const valueW = spriteW*3;
+		const columnW = valueW+spriteW*2;
 		const x = rect.x;
 		const x2 = x + spriteW*9;
 		const x3 = x2 + columnW;
@@ -9910,10 +9921,13 @@
 		const icons = actor.allIcons().slice(0, Math.floor(width / iconWidth));
 		icons.length > 0 ? this.drawActorIcons(actor, x, y) : this.drawActorName(actor, x, y);
 		
-		this.drawText(actor.tp + "%", x2, y, valueW, "right");
-		this.drawText(Math.floor(actor.mp) + "%", x3, y, valueW, "right");
-		this.drawText(actor.hp + "/", x4, y, valueW+spriteW, "right");
-		this.drawText(actor.mhp + "", x4+spriteW+valueW, y, valueW, "right");
+		this.drawText(actor.tp + "", x2, y, valueW, "right");
+		this.drawText("%", x2+valueW, y, spriteW, "left", true);
+		this.drawText(Math.floor(actor.mp) + "", x3, y, valueW, "right");
+		this.drawText("%", x3+valueW, y, spriteW, "left", true);
+		this.drawText(actor.hp + "", x4, y, valueW+spriteW, "right");
+		this.drawText("/", x4+valueW+spriteW, y, spriteW, "left", true);
+		this.drawText(actor.mhp + "", x4+spriteW*2+valueW, y, valueW+spriteW, "right");
 		this.placeActorCursor(actor, x-1, y);
 	};
 	

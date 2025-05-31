@@ -2899,7 +2899,7 @@
 		this._tools.pole = {};
 		this._tools.pole.name = "Pole";
 		this._tools.pole.icon = 0;
-		this._tools.pole.se = "swingHeavy";
+		this._tools.pole.se = "swing";
 		this._tools.pole.anim = {};
 		this._tools.pole.anim.type = "reach";
 		this._tools.pole.anim.frames = 4;
@@ -5314,11 +5314,13 @@
 		this._handSprite.x = -4;
 		this._handSprite.y = -16;
 		this._handSprite.rotation = 0;
+		this._handSprite.scale.x = 1;
 		this._handSprite.scale.y = 1;
 		this._handSprite.show();
 		this._fistSprite.x = -4;
 		this._fistSprite.y = -6;
 		this._fistSprite.rotation = 0;
+		this._fistSprite.scale.x = 1;
 		this._fistSprite.scale.y = 1;
 		this._fistSprite.hide();
 		switch(this._motion.poses[this._pattern]) {

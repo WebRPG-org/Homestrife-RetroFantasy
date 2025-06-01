@@ -1795,7 +1795,7 @@
 		this._skillLevels.DarkEye	= 0;
 	};
 	
-	Game_BattlerBase.prototype.updateAbilities = function() {
+	Game_BattlerBase.prototype.updateAbilities = function(dontUpdateTools) {
 		// this gets overrided in Game_Actor
 	};
 	
@@ -2197,16 +2197,22 @@
 		this.updateAbilities();
 	};
 	
-	Game_Actor.prototype.updateAbilities = function() {
+	Game_Actor.prototype.updateAbilities = function(dontUpdateTools) {
 		this._skills = [];
-		$dataSkills.forEach((skill) => {
-			if(skill === undefined || skill === null || this._skills.indexOf(skill.id) >= 0) { return; }
-			if(this.meetsAbilityRequirements(skill.e9dInfo.requirements, true)) {
+		for(const skill of $dataSkills) {
+			if(!skill || this._skills.indexOf(skill.id) >= 0) { continue; }
+			if(
+				(
+					!skill.e9dInfo.providedByItem ||
+					$gameParty.hasSkillProviderItem(skill.e9dInfo.providedByItem)
+				) &&
+				this.meetsAbilityRequirements(skill.e9dInfo.requirements, true)
+			) {
 				this._skills.push(skill.id);
 			}
-		});
+		}
 		this._skills.sort((a, b) => a - b);
-		$gameParty.updateTools();
+		if(!dontUpdateTools) { $gameParty.updateTools(); }
 	};
 	
 	Game_Actor.prototype.meetsAbilityRequirements = function(reqs, ignoreEquipAbilities) {
@@ -2694,6 +2700,13 @@
 		}
 	};
 	
+	Game_Actors.prototype.updateSkills = function(dontUpdateTools) {
+		for(const actor of this._data) {
+			if(!actor) { continue; }
+			actor.updateAbilities(dontUpdateTools);
+		};
+	};
+	
 	// Game Unit
 	Game_Unit.prototype.members = function(groupIndex) {
 		return [];
@@ -3128,13 +3141,24 @@
 	const _Game_Party__gainItem = Game_Party.prototype.gainItem;
 	Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
 		_Game_Party__gainItem.call(this, item, amount, includeEquip);
+		$gameActors.updateSkills(true);
 		this.updateTools();
 	};
 	
 	const _Game_Party__loseItem = Game_Party.prototype.loseItem;
 	Game_Party.prototype.loseItem = function(item, amount, includeEquip) {
 		_Game_Party__loseItem.call(this, item, amount, includeEquip);
+		$gameActors.updateSkills(true);
 		this.updateTools();
+	};
+	
+	Game_Party.prototype.hasSkillProviderItem = function(skillProvided) {
+		for(const item of this.allItems()) {
+			if(item.e9dInfo.providesSkill === skillProvided) {
+				return true;
+			}
+		}
+		return false;
 	};
 	
 	Game_Party.prototype.toolsAreAvailable = function() {
@@ -3813,6 +3837,7 @@
 	Scene_Map.prototype.onMapLoaded = function() {
 		DataManager.parseMapNotes();
 		_Scene_Map__onMapLoaded.call(this);
+		$gameActors.updateSkills(true);
 		$gameParty.updateTools();
 		this._toolWindowRefreshTime = 2;
 	};

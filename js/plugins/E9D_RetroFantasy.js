@@ -52,6 +52,10 @@
  * @min 1
  * @max 4
  * @decimals 0
+ *
+ *
+ * @command Init Actor Skill Levels
+ * @desc Sets all actors to default starting skill levels.
  */
  
 /*~struct~textImageInfo:
@@ -218,6 +222,10 @@
 	
 	PluginManager.registerCommand('E9D_RetroFantasy', 'Remove Party Member', args => {
 		$gameParty.removePartyMember(args.partyIndex);
+	});
+	
+	PluginManager.registerCommand('E9D_RetroFantasy', 'Init Actor Skill Levels', args => {
+		$gameActors.initSkilLevels();
 	});
 	
 	// plugin variables
@@ -2641,6 +2649,51 @@
 		}
 	};
 	
+	// Game Actors
+	Game_Actors.prototype.initSkilLevels = function() {
+		for(const actor of this._data) {
+			if(!actor) { continue; }
+			switch(actor.currentClass().id) {
+			case 1: // soldier
+				actor.setSkillLevel("MeleeAc", 1);
+				actor.setSkillLevel("Defense", 1);
+				actor.setSkillLevel("Focus", 1);
+				actor.setSkillLevel("MeleeWp", 1);
+				break;
+			case 2: // rover
+				actor.setSkillLevel("Defense", 1);
+				actor.setSkillLevel("Balance", 1);
+				actor.setSkillLevel("Agility", 1);
+				actor.setSkillLevel("Stealth", 1);
+				break;
+			case 3: // duelist
+				actor.setSkillLevel("MeleeAc", 1);
+				actor.setSkillLevel("Defense", 1);
+				actor.setSkillLevel("MeleeWp", 1);
+				actor.setSkillLevel("Tough", 1);
+				break;
+			case 4: // protean
+				actor.setSkillLevel("Defense", 1);
+				actor.setSkillLevel("Balance", 1);
+				actor.setSkillLevel("Focus", 1);
+				actor.setSkillLevel("GrayMgc", 1);
+				break;
+			case 5: // medium
+				actor.setSkillLevel("Balance", 1);
+				actor.setSkillLevel("Agility", 1);
+				actor.setSkillLevel("Focus", 1);
+				actor.setSkillLevel("WhiteMg", 1);
+				break;
+			case 6: // warlock
+				actor.setSkillLevel("RangeAc", 1);
+				actor.setSkillLevel("Agility", 1);
+				actor.setSkillLevel("Focus", 1);
+				actor.setSkillLevel("BlackMg", 1);
+				break;
+			}
+		}
+	};
+	
 	// Game Unit
 	Game_Unit.prototype.members = function(groupIndex) {
 		return [];
@@ -3238,6 +3291,9 @@
 	Game_Map.prototype.isJumpDisabled = function() {
 		return $dataMap.e9dInfo.disableJumping;
 	};
+	Game_Map.prototype.isToolsDisabled = function() {
+		return $dataMap.e9dInfo.disableTools;
+	};
 	
 	Game_Map.prototype.mapToCanvasX = function(x) {
 		return (x - this._displayX) * this.tileWidth();
@@ -3613,14 +3669,16 @@
 	};
 	
 	Game_Player.prototype.triggerTool = function() {
-		if(this._tool || !this.canStartLocalEvents()) { return false; }
+		if(this._tool || this.isToolsDisabled() || !this.canStartLocalEvents()) { return false; }
+		const toolSymbol = $gameParty.toolSymbol();
+		if(toolSymbol !== "pole") { return false; }
 		if (this._toolBuffer > 0) {
 			this._toolBuffer = 0;
 			this._tool = $gameParty.tool();
 			if(this._tool) {
-				this._toolSymbol = $gameParty.toolSymbol();
+				this._toolSymbol = toolSymbol;
 				this._toolAnimTimer = -1;
-				if(this._toolSymbol === "point") {
+				if(this._tool.anim.type === "point") {
 					this.seekToolPoint();
 				}
 				$gameTemp.requestTool(this);
@@ -3628,6 +3686,10 @@
 			}
 		}
 		return false;
+	};
+	
+	Game_Player.prototype.isToolsDisabled = function() {
+		return $gameMap.isToolsDisabled();
 	};
 	
 	Game_Player.prototype.seekToolPoint = function() {
@@ -6656,9 +6718,6 @@
 			this.y = $gameMap.mapToCanvasY(this.targetObject.toolPointY());
 			break;
 		}
-		console.log("x: " + this.x);
-		console.log("y: " + this.y);
-		console.log("rotation: " + this.y);
 	};
 
 	Sprite_Tool.prototype.updateFrame = function() {
@@ -6672,7 +6731,6 @@
 		const sx = (frameIndex % framesW) * w;
 		const sy = Math.floor(frameIndex / framesH) * h;
 		this.setFrame(sx, sy, w, h);
-		console.log("frame: " + frameIndex);
 	};
 
 	Sprite_Tool.prototype.frameIndex = function() {
@@ -7353,7 +7411,12 @@
 	};
 	
 	Window_StatusBase.prototype.skillCount = function(actor) {
-		return actor ? (actor.currentClass().id <= 6 ? 12 : 14) : 10;
+		if(actor)
+		{
+			const classId = actor.currentClass().id;
+			return classId <= 6 ? 12 : (classId === 7 ? 10 : 14);
+		}
+		return 10;
 	};
 	
 	Window_StatusBase.prototype.drawIconNameAndValue = function(x, y, icon, name, curValue, newValue, isPercent, usePlusMinus) {
@@ -7364,7 +7427,7 @@
 		const newValueExists = newValue != null && newValue != undefined ;
 		this.drawText((newValueExists ? newValue : curValue)+"", x, y, textWidth-(isPercent ? spriteW : 0), "right");
 		if(isPercent) {
-			this.drawText("%"+textWidth-spriteW, x, y, spriteW, "left", true);
+			this.drawText("%", x+textWidth-spriteW, y, spriteW, "left", true);
 		}
 		this.drawPlusMinus(x, y, curValue, newValue, usePlusMinus);
 	};
@@ -7518,7 +7581,7 @@
 			case  3: returnVal = 134; break; // Head
 			case  4: returnVal = 147; break; // Back
 			case  5: returnVal = 137; break; // Torso
-			case  6: returnVal = 139; break; // Legs
+			case  6: returnVal = 141; break; // Legs
 			case  7: returnVal = 143; break; // Hands
 			case  8: returnVal = 145; break; // Feet
 			case  9: returnVal = 155; break; // Accessory
@@ -7916,8 +7979,8 @@
 		const x = $gameSystem.windowPadding();
 		const y = $gameSystem.windowPadding() + lineHalfHeight;
 		const y2 = y + lineHeight*4;
-		this.drawText("Performance", x, y, spriteW*11, "left", true);
-		this.drawText("Ability", x, y2, spriteW*7, "left", true);
+		this.drawText("Performance", x, y, spriteW*11);
+		this.drawText("Ability", x, y2, spriteW*7);
 	};
 	
 	Window_SkillLevels.prototype.itemRect = function(index) {
@@ -8192,12 +8255,12 @@
 		this.drawSvActor(actor, x+charWidth*2, y2, true);
 		this.drawActorName(actor, x2, y);
 		
-		this.drawIconAndText(77, "Life", x2, y2, charWidth*6, true);
+		this.drawIconAndText(77, "Life", x2, y2, charWidth*6);
 		this.drawText(actor.hp + "", x2+charWidth*7, y2, charWidth*4, "right");
 		this.drawText("/", x2+charWidth*13, y2, charWidth, "left");
 		this.drawText(actor.mhp + "", x2+charWidth*15, y2, charWidth*4, "right");
 		
-		this.drawText("Endurance", x2, y3, columnWidth, "left", true);
+		this.drawText("Endurance", x2, y3, columnWidth);
 		this.drawIcon(78, x2, y4);
 		this.drawText(Math.floor(actor.mp) + "", x2+charWidth*2, y4, charWidth*3, "right");
 		this.drawText("%", x2+charWidth*5, y4, charWidth, "left", true);
@@ -8205,7 +8268,7 @@
 		const icons = actor.allIcons().slice(0, Math.floor(columnWidth2 / iconWidth));
 		icons.length > 0 ? this.drawActorIcons(actor, x3, y) : this.drawActorClass(actor, x3, y);
 		
-		this.drawText("Skill Pts", x3, y3, columnWidth2, "left", true);
+		this.drawText("Skill Pts", x3, y3, columnWidth2);
 		this.drawIcon(79, x3, y4);
 		this.drawText(actor.currentExp()+"", x3, y4, columnWidth2, "right");
 	};
@@ -8218,8 +8281,8 @@
 		const skillCount = this.skillCount(actor);
 		const y2 = y + lineHeight;
 		const y3 = y2 + lineHeight*3;
-		this.drawText("Performance", x, y, spriteW*11, "left", true);
-		this.drawText("Ability", x, y3, spriteW*11, "left", true);
+		this.drawText("Performance", x, y, spriteW*11);
+		this.drawText("Ability", x, y3, spriteW*11);
 		const x2 = x + spriteW;
 		const x3 = x2 + textWidth + spriteW;
 		let curX = x2;
